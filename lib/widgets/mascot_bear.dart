@@ -81,7 +81,7 @@ class MascotBear extends StatelessWidget {
             right: size * .06,
             child: Transform.rotate(
               angle: .55,
-              child: _arm(length: size * .22),
+              child: _arm(size * .22),
             ),
           ),
           Positioned(
