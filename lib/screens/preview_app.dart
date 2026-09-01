@@ -414,7 +414,7 @@ class _CoinVaultPreviewAppState extends State<CoinVaultPreviewApp> {
               final dx = [-90.0, -35.0, 40.0, 95.0, -70.0, 0.0, 70.0, 30.0];
               final dy = [-70.0, -115.0, -95.0, -50.0, 55.0, -140.0, 25.0, 95.0];
               return Transform.translate(
-                offset: Offset(dx, dy),
+                offset: Offset(dx[i], dy[i]),
                 child: const Text('🪙', style: TextStyle(fontSize: 28)),
               );
             }),
