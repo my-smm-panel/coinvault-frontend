@@ -1,41 +1,35 @@
-# CoinVault Flutter UI
+# CoinVault Flutter App
 
-Pure Flutter frontend rebuild of the provided CoinVault reference image.
+A Flutter mobile app for earning coins via tasks, offers, surveys, spin wheel, and scratch cards.
 
-## What is included
-- Splash, onboarding, auth, home, earn, task list, task detail, surveys
-- Spin wheel, scratch card, daily check-in, challenges, refer & earn
-- Wallet, withdraw methods, withdraw to UPI, withdrawal history
-- Notifications, leaderboard, history, profile, settings, help center
-- Shared theme + reusable buttons/cards so text size issues do not shrink buttons unexpectedly
-- Animated splash, page transitions, spin wheel, scratch card pulse, balance card motion
+## Backend API
 
-## Run
-```bash
+This app connects to the CoinVault backend:
+
+- **Main API:** `https://coinvault-api.onrender.com`
+- **Auth Worker:** `https://coinvault-auth.coinvault.workers.dev`
+
+ApiBaseUrl is configured in `lib/core/api_config.dart` and can be overridden at build time:
+
+```sh
+flutter run --dart-define=API_BASE_URL=https://coinvault-api.onrender.com
+```
+
+## Getting Started
+
+```sh
 flutter pub get
 flutter run
 ```
 
-## Project structure
-```text
-lib/
-├── core/
-│   ├── app_colors.dart
-│   └── app_theme.dart
-├── data/
-│   └── mock_data.dart
-├── models/
-│   └── ui_models.dart
-├── screens/
-│   └── preview_app.dart
-├── widgets/
-│   ├── mascot_bear.dart
-│   └── ui_kit.dart
-└── main.dart
-```
+## Features
 
-## Notes
-- No HTML used.
-- No external package dependency is required.
-- All main buttons use a fixed min height and width policy through `AppPrimaryButton`, so longer labels stay stable.
-- Replace the generated mascot widget later with a PNG/SVG asset if you want exact brand artwork.
+- Spin Wheel & Scratch Card games
+- Task completion (app installs, registrations, etc.)
+- Survey completion
+- Referral rewards
+- Daily check-in bonus
+- UPI / Bank Transfer withdrawals
+- Gift card redemptions (Amazon, Google Play)
+- Real-time leaderboard
+- Push notifications (Firebase)
