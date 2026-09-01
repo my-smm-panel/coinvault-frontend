@@ -37,6 +37,29 @@ class AppRepository {
     }
   }
 
+  /// Fetch user profile from backend
+  Future<Map<String, dynamic>?> fetchUserProfile(String uid) async {
+    try {
+      final res = await _api.get('/api/users/$uid');
+      if (res is Map && res['success'] == true && res['data'] is Map) {
+        return res['data'] as Map<String, dynamic>;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Update user profile on backend
+  Future<bool> updateUserProfile(String uid, Map<String, dynamic> data) async {
+    try {
+      final res = await _api.put('/api/users/$uid', data);
+      return res is Map && res['success'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Verify phone OTP via Firebase idToken (proxied by Cloudflare worker).
   Future<Map<String, dynamic>?> verifyPhone(String idToken) async {
     try {
@@ -83,6 +106,45 @@ class AppRepository {
       if (res is Map && res['data'] is Map) {
         final methods = res['data']['methods'];
         return methods is List ? methods : [];
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Submit withdrawal request
+  Future<Map<String, dynamic>?> submitWithdrawal({
+    required String uid,
+    required int coins,
+    required double amountINR,
+    required String method, // 'upi' or 'bank'
+    required String details,
+  }) async {
+    try {
+      final res = await _api.post('/api/withdrawals', {
+        'userId': uid,
+        'coins': coins,
+        'amountINR': amountINR,
+        'method': method,
+        'details': details,
+      });
+      if (res is Map && res['success'] == true && res['data'] is Map) {
+        return res['data'] as Map<String, dynamic>;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Fetch withdrawal history for user
+  Future<List<dynamic>> fetchWithdrawalHistory(String uid) async {
+    try {
+      final res = await _api.get('/api/withdrawals/history/$uid');
+      if (res is Map && res['data'] is Map) {
+        final items = res['data']['items'];
+        return items is List ? items : [];
       }
       return [];
     } catch (_) {
