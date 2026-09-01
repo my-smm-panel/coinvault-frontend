@@ -1,0 +1,53 @@
+name: Build Signed APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.29.x
+          channel: stable
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Create Android scaffold
+        run: flutter create --platforms=android .
+
+      - name: Build AAB
+        run: flutter build appbundle --release
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build signed APK from AAB
+        run: |
+          curl -sL -o bundletool.jar https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar
+          java -jar bundletool.jar build-apks \
+            --bundle=build/app/outputs/bundle/release/app-release.aab \
+            --output=coinvault.apks \
+            --ks=android/app/coinvault-release.keystore \
+            --ks-key-alias=coinvault \
+            --ks-pass=pass:coinvault123 \
+            --key-pass=pass:coinvault123 \
+            --mode=universal
+          unzip -o coinvault.apks -d apk_out
+          mv apk_out/universal.apk coinvault-release-signed.apk
+
+      - name: Upload signed APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: coinvault-release-apk
+          path: coinvault-release-signed.apk
