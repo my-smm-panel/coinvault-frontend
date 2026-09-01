@@ -42,7 +42,7 @@ class AppRepository {
     try {
       final uri = Uri.parse('${ApiConfig.authWorkerUrl}/api/auth/firebase');
       final res = await httpPost(uri, {'idToken': idToken});
-      if (res is Map && res['success'] == true) return res;
+      if (res is Map && res['success'] == true) return Map<String, dynamic>.from(res);
       return null;
     } catch (_) {
       return null;
