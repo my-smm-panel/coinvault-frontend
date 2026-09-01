@@ -1,0 +1,19 @@
+name: coinvault_flutter
+version: 1.0.0+1
+description: CoinVault mobile app — earn coins via tasks, offers, surveys, spin & scratch cards. Flutter frontend for the CoinVault backend API.
+publish_to: 'none'
+
+environment:
+  sdk: '>=3.4.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  cupertino_icons: ^1.0.8
+
+dev_dependencies:
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true
