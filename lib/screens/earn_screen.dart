@@ -354,27 +354,28 @@ class _SurveyCard extends StatelessWidget {
                   ),
                 ],
               ),
-            const SizedBox(height: AppSpacing.md),
-            Text(title, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: AppSpacing.md),
-            Row(
-              children: [
-                const Icon(Icons.monetization_on_rounded, size: 20, color: AppColors.gold),
-                const SizedBox(width: 6),
-                Text('+$coins coins', style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.gold, fontWeight: FontWeight.w700,
-                )),
-                const Spacer(),
-                OutlinedButton(
-                  onPressed: () {},
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              const SizedBox(height: AppSpacing.md),
+              Text(title, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  const Icon(Icons.monetization_on_rounded, size: 20, color: AppColors.gold),
+                  const SizedBox(width: 6),
+                  Text('+$coins coins', style: AppTextStyles.bodyMedium.copyWith(
+                    color: AppColors.gold, fontWeight: FontWeight.w700,
+                  )),
+                  const Spacer(),
+                  OutlinedButton(
+                    onPressed: () {},
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    ),
+                    child: const Text('Start'),
                   ),
-                  child: const Text('Start'),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

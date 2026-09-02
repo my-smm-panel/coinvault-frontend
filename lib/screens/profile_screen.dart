@@ -54,7 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return Scaffold(
         backgroundColor: AppColors.background,
         appBar: AppBar(title: const Text('Profile')),
-        body: const Center(
+        body: Center(
           child: Text('Please sign in', style: AppTextStyles.bodyMedium),
         ),
       );

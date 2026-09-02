@@ -31,7 +31,7 @@ class CoinVaultApp extends StatelessWidget {
           brightness: Brightness.light,
         ),
         scaffoldBackgroundColor: AppColors.background,
-        fontFamily: GoogleFonts.inter().fontFamily,
+        fontFamily: 'Inter',
         appBarTheme: const AppBarTheme(
           backgroundColor: Colors.transparent,
           elevation: 0,
