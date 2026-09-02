@@ -348,15 +348,10 @@ class _SpinScreenState extends State<SpinScreen>
           ),
           // Top pointer (fixed)
           Positioned(
-            top: -10,
-            child: Container(
-              width: 0,
-              height: 0,
-              decoration: BoxDecoration(
-                borderLeft: const BorderSide(width: 16, color: Colors.transparent),
-                borderRight: const BorderSide(width: 16, color: Colors.transparent),
-                borderBottom: const BorderSide(width: 24, color: AppColors.primary),
-              ),
+            top: -12,
+            child: CustomPaint(
+              size: const Size(32, 12),
+              painter: _TrianglePainter(color: AppColors.primary),
             ),
           ),
         ],
@@ -579,6 +574,31 @@ class _WheelPainter extends CustomPainter {
         Offset(textX - textPainter.width / 2, textY - textPainter.height / 2),
       );
     }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Triangle painter for the spin wheel pointer
+class _TrianglePainter extends CustomPainter {
+  final Color color;
+  
+  _TrianglePainter({required this.color});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+    
+    final path = Path()
+      ..moveTo(size.width / 2, size.height)
+      ..lineTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..close();
+    
+    canvas.drawPath(path, paint);
   }
 
   @override

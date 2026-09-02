@@ -87,7 +87,7 @@ class AuthService {
   /// Sign in with Google
   Future<UserModel?> signInWithGoogle() async {
     try {
-      final googleProvider = GoogleAuthProvider();
+      final googleProvider = firebase_auth.GoogleAuthProvider();
       googleProvider.addScope('email');
       googleProvider.addScope('profile');
       
@@ -96,7 +96,7 @@ class AuthService {
         await _loadUserModel(credential.user!);
         return _userModel;
       }
-    } on FirebaseAuthException catch (e) {
+    } on firebase_auth.FirebaseAuthException catch (e) {
       print('Google Sign-In error: ${e.code} - ${e.message}');
       rethrow;
     }

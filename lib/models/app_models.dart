@@ -12,7 +12,7 @@ class UserModel {
   final String? upiId;
   final String? bankDetails;
 
-  User({
+  UserModel({
     required this.uid,
     required this.displayName,
     this.email,

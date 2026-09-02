@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_theme.dart';
 import '../services/auth_service.dart';
+import '../services/app_repository.dart';
 import '../models/app_models.dart';
 
 class WithdrawScreen extends StatefulWidget {

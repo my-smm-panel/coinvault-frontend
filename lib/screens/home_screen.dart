@@ -580,7 +580,7 @@ class HomeTab extends StatelessWidget {
           childAspectRatio: 1.1,
           children: [
             _ActionCard(
-              icon: Icons.scratch_card_rounded,
+              icon: Icons.credit_card_rounded,
               title: 'Scratch Cards',
               subtitle: 'Instant rewards',
               color: AppColors.primary,
