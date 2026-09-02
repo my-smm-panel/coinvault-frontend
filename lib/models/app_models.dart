@@ -1,5 +1,7 @@
+import 'dart:math' as math;
+
 /// User model
-class User {
+class UserModel {
   final String uid;
   final String displayName;
   final String? email;
@@ -22,8 +24,8 @@ class User {
     this.bankDetails,
   });
 
-  factory User.fromFirebase(Map<String, dynamic> data, String uid) {
-    return User(
+  factory UserModel.fromFirebase(Map<String, dynamic> data, String uid) {
+    return UserModel(
       uid: uid,
       displayName: data['displayName'] ?? 'User',
       email: data['email'],
@@ -51,7 +53,7 @@ class User {
     };
   }
 
-  User copyWith({
+  UserModel copyWith({
     String? displayName,
     String? email,
     String? photoUrl,
@@ -61,7 +63,7 @@ class User {
     String? upiId,
     String? bankDetails,
   }) {
-    return User(
+    return UserModel(
       uid: uid,
       displayName: displayName ?? this.displayName,
       email: email ?? this.email,

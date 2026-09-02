@@ -1,4 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -12,11 +12,11 @@ class AuthService {
   factory AuthService() => _instance;
   AuthService._internal();
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  User? _currentUser;
+  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
+  firebase_auth.User? _currentUser;
   UserModel? _userModel;
 
-  User? get firebaseUser => _currentUser;
+  firebase_auth.User? get firebaseUser => _currentUser;
   UserModel? get userModel => _userModel;
   bool get isLoggedIn => _currentUser != null && _userModel != null;
 
@@ -34,7 +34,7 @@ class AuthService {
     }
   }
 
-  void _onAuthStateChanged(User? user) {
+  void _onAuthStateChanged(firebase_auth.User? user) {
     _currentUser = user;
     if (user != null) {
       _loadUserModel(user);
@@ -43,7 +43,7 @@ class AuthService {
     }
   }
 
-  Future<void> _loadUserModel(User firebaseUser) async {
+  Future<void> _loadUserModel(firebase_auth.User firebaseUser) async {
     // Try to load from local cache first
     final prefs = await SharedPreferences.getInstance();
     final cached = prefs.getString('user_${firebaseUser.uid}');
