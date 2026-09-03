@@ -31,11 +31,11 @@ class CoinVaultApp extends StatelessWidget {
           brightness: Brightness.light,
         ),
         scaffoldBackgroundColor: AppColors.background,
-        appBarTheme: const AppBarTheme(
+        appBarTheme: AppBarTheme(
           backgroundColor: Colors.transparent,
           elevation: 0,
           centerTitle: true,
-          iconTheme: IconThemeData(color: AppColors.textPrimary),
+          iconTheme: const IconThemeData(color: AppColors.textPrimary),
           titleTextStyle: AppTextStyles.titleLarge,
         ),
         cardTheme: CardThemeData(
