@@ -37,8 +37,9 @@ jobs:
                   print("patched ids:", f)
 
           # 2. Move MainActivity.kt to new package (fixes launch force-close)
+          # NOTE: 'in' is a Kotlin keyword -> escape as `in` in package decl
           for src in glob.glob("android/app/src/main/kotlin/**/MainActivity.kt", recursive=True):
-              s = open(src).read().replace(f"package {OLD}", f"package {PKG}")
+              s = open(src).read().replace(f"package {OLD}", "package come.coinvaukt.`in`")
               dst_dir = os.path.join("android/app/src/main/kotlin", *PKG.split("."))
               os.makedirs(dst_dir, exist_ok=True)
               dst = os.path.join(dst_dir, "MainActivity.kt")
