@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "839337325039",
+    "firebase_url": "https://coinvault-be301-default-rtdb.firebaseio.com",
+    "project_id": "coinvault-be301",
+    "storage_bucket": "coinvault-be301.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:839337325039:android:a147ed9b25c65268fc861a",
+        "android_client_info": {
+          "package_name": "come.coinvaukt.in"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "839337325039-dq182sf1ipu1902mb6icv0dhso0rl59h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "come.coinvaukt.in",
+            "certificate_hash": "c3cc78df60cf11c63346d8aa37d183f9451631f2"
+          }
+        },
+        {
+          "client_id": "839337325039-8mao9qj110cfsvol4qcn7dsogickv9hg.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBcyqXjbwtCkwd_FdEbJndHfA6Gk0B8mjI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "839337325039-8mao9qj110cfsvol4qcn7dsogickv9hg.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

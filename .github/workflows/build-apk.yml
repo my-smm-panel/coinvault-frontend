@@ -21,7 +21,13 @@ jobs:
         run: flutter pub get
 
       - name: Create Android scaffold
-        run: flutter create --platforms=android .
+        run: |
+          flutter create --platforms=android .
+          # Fix package name to match google-services.json (come.coinvaukt.in)
+          sed -i 's/com.example.coinvault_flutter/come.coinvaukt.in/g' android/app/build.gradle android/app/src/main/AndroidManifest.xml 2>/dev/null || true
+          sed -i 's/com.example.coinvault_flutter/come.coinvaukt.in/g' android/app/build.gradle.kts 2>/dev/null || true
+          grep -r "applicationId" android/ 2>/dev/null | head -5 || true
+          cat android/app/google-services.json 2>/dev/null | head -20 || echo "google-services.json missing"
 
       - name: Build AAB
         run: flutter build appbundle --release

@@ -1,8 +1,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, TargetPlatform, kIsWeb;
 
-/// Fallback Firebase options - prevents white screen when google-services.json missing.
-/// Real config is in android/app/google-services.json (Firebase console: coinvault-be301)
+/// Firebase options from google-services.json (coinvault-be301, package come.coinvaukt.in)
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) return web;
@@ -17,28 +16,31 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDummy_CoinVault_Fallback_Key',
-    appId: '1:000000000000:android:0000000000000000',
-    messagingSenderId: '000000000000',
+    apiKey: 'AIzaSyBcyqXjbwtCkwd_FdEbJndHfA6Gk0B8mjI',
+    appId: '1:839337325039:android:a147ed9b25c65268fc861a',
+    messagingSenderId: '839337325039',
     projectId: 'coinvault-be301',
-    storageBucket: 'coinvault-be301.appspot.com',
+    storageBucket: 'coinvault-be301.firebasestorage.app',
+    databaseURL: 'https://coinvault-be301-default-rtdb.firebaseio.com',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDummy_CoinVault_Fallback_Key',
-    appId: '1:000000000000:ios:0000000000000000',
-    messagingSenderId: '000000000000',
+    apiKey: 'AIzaSyBcyqXjbwtCkwd_FdEbJndHfA6Gk0B8mjI',
+    appId: '1:839337325039:ios:0000000000000000',
+    messagingSenderId: '839337325039',
     projectId: 'coinvault-be301',
-    storageBucket: 'coinvault-be301.appspot.com',
-    iosBundleId: 'com.coinvault.app',
+    storageBucket: 'coinvault-be301.firebasestorage.app',
+    databaseURL: 'https://coinvault-be301-default-rtdb.firebaseio.com',
+    iosBundleId: 'come.coinvaukt.in',
   );
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDummy_CoinVault_Fallback_Key',
-    appId: '1:000000000000:web:0000000000000000',
-    messagingSenderId: '000000000000',
+    apiKey: 'AIzaSyBcyqXjbwtCkwd_FdEbJndHfA6Gk0B8mjI',
+    appId: '1:839337325039:web:0000000000000000',
+    messagingSenderId: '839337325039',
     projectId: 'coinvault-be301',
     authDomain: 'coinvault-be301.firebaseapp.com',
-    storageBucket: 'coinvault-be301.appspot.com',
+    storageBucket: 'coinvault-be301.firebasestorage.app',
+    measurementId: 'G-XXXXXXX',
   );
 }
