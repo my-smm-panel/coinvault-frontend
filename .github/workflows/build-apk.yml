@@ -51,9 +51,10 @@ jobs:
           for f in glob.glob("android/settings.gradle*"):
               s = open(f).read()
               if "com.google.gms.google-services" not in s:
-                  s2 = re.sub(r"(plugins\s*\{)", '\\1\n    id "com.google.gms.google-services" version "4.4.2" apply false', s, count=1)
-                  if s2 == s:
+                  if f.endswith(".kts"):
                       s2 = re.sub(r"(plugins\s*\{)", '\\1\n    id("com.google.gms.google-services") version "4.4.2" apply false', s, count=1)
+                  else:
+                      s2 = re.sub(r"(plugins\s*\{)", '\\1\n    id \'com.google.gms.google-services\' version \'4.4.2\' apply false', s, count=1)
                   if s2 != s:
                       open(f, "w").write(s2)
                       print("settings plugin:", f)
