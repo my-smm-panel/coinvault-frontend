@@ -20,14 +20,78 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Create Android scaffold
+      - name: Create Android scaffold (package fix + permissions + firebase plugin)
         run: |
           flutter create --platforms=android .
-          # Fix package name to match google-services.json (come.coinvaukt.in)
-          sed -i 's/com.example.coinvault_flutter/come.coinvaukt.in/g' android/app/build.gradle android/app/src/main/AndroidManifest.xml 2>/dev/null || true
-          sed -i 's/com.example.coinvault_flutter/come.coinvaukt.in/g' android/app/build.gradle.kts 2>/dev/null || true
-          grep -r "applicationId" android/ 2>/dev/null | head -5 || true
-          cat android/app/google-services.json 2>/dev/null | head -20 || echo "google-services.json missing"
+          python3 - <<'PYEOF'
+          import re, os, glob
+
+          PKG = "come.coinvaukt.in"
+          OLD = "com.example.coinvault_flutter"
+
+          # 1. applicationId + namespace -> match google-services.json
+          for f in glob.glob("android/app/build.gradle*"):
+              s = open(f).read()
+              if OLD in s:
+                  open(f, "w").write(s.replace(OLD, PKG))
+                  print("patched ids:", f)
+
+          # 2. Move MainActivity.kt to new package (fixes launch force-close)
+          for src in glob.glob("android/app/src/main/kotlin/**/MainActivity.kt", recursive=True):
+              s = open(src).read().replace(f"package {OLD}", f"package {PKG}")
+              dst_dir = os.path.join("android/app/src/main/kotlin", *PKG.split("."))
+              os.makedirs(dst_dir, exist_ok=True)
+              dst = os.path.join(dst_dir, "MainActivity.kt")
+              open(dst, "w").write(s)
+              if os.path.abspath(src) != os.path.abspath(dst):
+                  os.remove(src)
+              print("moved:", src, "->", dst)
+
+          # 3. google-services plugin (settings declares version, app applies it)
+          for f in glob.glob("android/settings.gradle*"):
+              s = open(f).read()
+              if "com.google.gms.google-services" not in s:
+                  s2 = re.sub(r"(plugins\s*\{)", '\\1\n    id "com.google.gms.google-services" version "4.4.2" apply false', s, count=1)
+                  if s2 == s:
+                      s2 = re.sub(r"(plugins\s*\{)", '\\1\n    id("com.google.gms.google-services") version "4.4.2" apply false', s, count=1)
+                  if s2 != s:
+                      open(f, "w").write(s2)
+                      print("settings plugin:", f)
+
+          for f in glob.glob("android/app/build.gradle*"):
+              s = open(f).read()
+              if "com.google.gms.google-services" not in s:
+                  if f.endswith(".kts"):
+                      s2 = re.sub(r"(plugins\s*\{)", '\\1\n    id("com.google.gms.google-services")', s, count=1)
+                  else:
+                      s2 = re.sub(r"(plugins\s*\{)", '\\1\n    id "com.google.gms.google-services"', s, count=1)
+                  if s2 != s:
+                      open(f, "w").write(s2)
+                      print("app plugin:", f)
+
+          # 4. Permissions for task/offers tracking
+          mf = "android/app/src/main/AndroidManifest.xml"
+          s = open(mf).read()
+          perms = [
+              "android.permission.INTERNET",
+              "android.permission.ACCESS_NETWORK_STATE",
+              "android.permission.POST_NOTIFICATIONS",
+              "com.google.android.gms.permission.AD_ID",
+              "android.permission.WAKE_LOCK",
+              "android.permission.QUERY_ALL_PACKAGES",
+              "android.permission.PACKAGE_USAGE_STATS",
+          ]
+          need = [p for p in perms if p not in s]
+          insert = "".join(f'\n    <uses-permission android:name="{p}"/>' for p in need)
+          if insert:
+              s = s.replace("<application", insert + "\n    <application", 1)
+              print("permissions added:", need)
+
+          # 5. App label
+          s = re.sub(r'android:label="[^"]*"', 'android:label="CoinVault"', s, count=1)
+          open(mf, "w").write(s)
+          print(open(mf).read()[:1200])
+          PYEOF
 
       - name: Build AAB
         run: flutter build appbundle --release
