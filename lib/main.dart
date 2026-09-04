@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'firebase_options.dart';
 
 import 'core/app_theme.dart';
 import 'screens/splash_screen.dart';
@@ -8,11 +8,34 @@ import 'services/auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  
-  // Initialize auth service
-  await AuthService().initialize();
-  
+
+  // Firebase init must NEVER block runApp - white screen fix
+  bool firebaseReady = false;
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    firebaseReady = true;
+    debugPrint('Firebase initialized');
+  } catch (e) {
+    debugPrint('Firebase init failed (fallback mode): $e');
+    // Try without options (uses google-services.json if present)
+    try {
+      await Firebase.initializeApp();
+      firebaseReady = true;
+    } catch (e2) {
+      debugPrint('Firebase second attempt failed: $e2');
+    }
+  }
+
+  // Auth init must not crash app even if Firebase failed
+  try {
+    await AuthService().initialize();
+  } catch (e) {
+    debugPrint('AuthService init failed: $e');
+  }
+
+  debugPrint('Launching app firebaseReady=$firebaseReady');
   runApp(const CoinVaultApp());
 }
 

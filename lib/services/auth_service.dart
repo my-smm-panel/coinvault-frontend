@@ -1,5 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
-import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -22,15 +22,18 @@ class AuthService {
 
   /// Initialize Firebase and check for existing session
   Future<void> initialize() async {
-    await Firebase.initializeApp();
-    
-    // Check for existing auth state
-    _auth.authStateChanges().listen(_onAuthStateChanged);
-    
-    // Try to restore user from local storage if already signed in
-    final currentUser = _auth.currentUser;
-    if (currentUser != null) {
-      await _loadUserModel(currentUser);
+    // Firebase already initialized in main.dart - do not re-init
+    try {
+      // Check for existing auth state
+      _auth.authStateChanges().listen(_onAuthStateChanged);
+      
+      // Try to restore user from local storage if already signed in
+      final currentUser = _auth.currentUser;
+      if (currentUser != null) {
+        await _loadUserModel(currentUser);
+      }
+    } catch (e) {
+      debugPrint('AuthService initialize error: $e');
     }
   }
 
