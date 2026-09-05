@@ -227,53 +227,596 @@ class HomeTab extends StatelessWidget {
         final remainingSpins = auth.getRemainingSpins();
 
         return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          // App Bar / Header
-          SliverAppBar(
-            automaticallyImplyLeading: false,
-            pinned: false,
-            floating: true,
-            backgroundColor: AppColors.background,
-            expandedHeight: 180,
-            flexibleSpace: FlexibleSpaceBar(
-              background: _buildHeader(context, user, remainingSpins),
-            ),
+      backgroundColor: const Color(0xFF0E0E13),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _proTopBar(context, user),
+              const SizedBox(height: 12),
+              _proWalletBar(context, user, remainingSpins),
+              const SizedBox(height: 12),
+              _proTicker(),
+              const SizedBox(height: 12),
+              _proPromoRow(context),
+              const SizedBox(height: 18),
+              _proSectionTitle('FEATURED SURVEYS'),
+              const SizedBox(height: 10),
+              _proSurveyRow(context),
+              const SizedBox(height: 18),
+              _proSectionTitle('TASKS OF THE DAY',
+                  action: 'History',
+                  onAction: () => _proPush(
+                      context, const HistoryScreen())),
+              const SizedBox(height: 10),
+              _proTasksList(context),
+              const SizedBox(height: 18),
+              _proMegaBanner(context),
+              const SizedBox(height: 12),
+            ],
           ),
-
-          // Content
-          SliverPadding(
-            padding: const EdgeInsets.all(AppSpacing.md),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                // Kit balance card + categories
-                _buildBalanceCard(context, user),
-                const SizedBox(height: AppSpacing.lg),
-                _buildCategories(context),
-                const SizedBox(height: AppSpacing.lg),
-                // Quick Stats
-                _buildStatsRow(user),
-                const SizedBox(height: AppSpacing.lg),
-                
-                // Spin Wheel Card
-                _buildSpinCard(context, remainingSpins),
-                const SizedBox(height: AppSpacing.lg),
-                
-                // Survey Bonus Offers
-                _buildSurveyOffers(),
-                const SizedBox(height: AppSpacing.lg),
-                
-                // Quick Actions
-                _buildQuickActions(context),
-                const SizedBox(height: AppSpacing.xl),
-              ]),
-            ),
-          ),
-        ],
-          ),
+        ),
+      ),
         );
       },
+    );
+  }
+
+  void _proPush(BuildContext context, Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
+  /// Pro top bar: bear logo + CoinVault + Tutorials / Notification / Profile.
+  Widget _proTopBar(BuildContext context, UserModel? user) {
+    return Row(
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Image.asset(
+            'assets/app_icon_name.png',
+            width: 42,
+            height: 42,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => const Icon(
+              Icons.account_balance_wallet_rounded,
+              color: AppColors.gold,
+              size: 36,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        RichText(
+          text: const TextSpan(
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+            children: [
+              TextSpan(
+                  text: 'Coin',
+                  style: TextStyle(color: AppColors.gold)),
+              TextSpan(
+                  text: 'Vault', style: TextStyle(color: Colors.white)),
+            ],
+          ),
+        ),
+        const Spacer(),
+        _proTopIcon(context, Icons.play_arrow_rounded,
+            const Color(0xFFE53935), 'Tutorials', const HelpScreen()),
+        _proTopIcon(context, Icons.notifications_rounded,
+            AppColors.primary, 'Notification', const NotificationsScreen()),
+        _proTopIcon(context, Icons.person_rounded,
+            const Color(0xFF7C4DFF), 'Profile', const ProfileScreen()),
+      ],
+    );
+  }
+
+  Widget _proTopIcon(BuildContext context, IconData icon, Color color,
+      String label, Widget page) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 10),
+      child: InkWell(
+        onTap: () => _proPush(context, page),
+        borderRadius: BorderRadius.circular(20),
+        child: Column(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration:
+                  BoxDecoration(color: color, shape: BoxShape.circle),
+              child: Icon(icon, color: Colors.white, size: 22),
+            ),
+            const SizedBox(height: 2),
+            Text(label,
+                style: const TextStyle(color: Colors.white70, fontSize: 9)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Pro wallet bar: balance + orange Withdraw button (kit "Shop Now").
+  Widget _proWalletBar(
+      BuildContext context, UserModel? user, int remainingSpins) {
+    final coins = user?.coins ?? 0;
+    final rupees = (coins / 10).toStringAsFixed(2);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF17171F),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.monetization_on_rounded,
+              color: AppColors.gold, size: 28),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('$coins',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800)),
+                Text('≈ ₹$rupees • $remainingSpins spins left',
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 11)),
+              ],
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => _proPush(context, const WithdrawScreen()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Withdraw',
+                style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Winner ticker (kit): horizontal pills of recent earners.
+  Widget _proTicker() {
+    const winners = [
+      ['Aarav', '+250'],
+      ['Priya', '+120'],
+      ['Rohan', '+500'],
+      ['Sneha', '+80'],
+      ['Amit', '+1000'],
+      ['Neha', '+60'],
+    ];
+    return SizedBox(
+      height: 34,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: winners.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFF17171F),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.person_rounded,
+                    size: 14, color: AppColors.gold),
+                const SizedBox(width: 4),
+                Text(winners[i][0],
+                    style:
+                        const TextStyle(color: Colors.white, fontSize: 12)),
+                const SizedBox(width: 6),
+                Text(winners[i][1],
+                    style: const TextStyle(
+                        color: AppColors.gold,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700)),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// 3 promo cards (kit): Exclusive HOT / Fast Earn / Microtask.
+  Widget _proPromoRow(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _proPromoCard(
+            context,
+            'Exclusive',
+            'ELITE BRANDS',
+            Icons.diamond_rounded,
+            const [Color(0xFFB71C1C), Color(0xFFE53935)],
+            badge: 'HOT',
+            onTap: () => _proPush(context, const EarnScreen()),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _proPromoCard(
+            context,
+            'Fast Earn',
+            'INSTANT ₹50',
+            Icons.bolt_rounded,
+            const [Color(0xFFF9A825), Color(0xFFFFD54F)],
+            onTap: () => _proPush(context, const SpinScreen()),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _proPromoCard(
+            context,
+            'Microtask',
+            'QUICK REWARDS',
+            Icons.check_circle_rounded,
+            const [Color(0xFF00695C), Color(0xFF26A69A)],
+            onTap: () => _proPush(context, const EarnScreen()),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _proPromoCard(BuildContext context, String title, String sub,
+      IconData icon, List<Color> gradient,
+      {String? badge, required VoidCallback onTap}) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        height: 128,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: gradient,
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Stack(
+          children: [
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Icon(icon, color: Colors.white.withOpacity(0.85), size: 26),
+                const SizedBox(height: 6),
+                Text(title,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14)),
+                Text(sub,
+                    style: TextStyle(
+                        color: Colors.white.withOpacity(0.8), fontSize: 9)),
+              ],
+            ),
+            if (badge != null)
+              Positioned(
+                top: 0,
+                right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(badge,
+                      style: const TextStyle(
+                          color: Color(0xFFB71C1C),
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800)),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _proSectionTitle(String title,
+      {String? action, VoidCallback? onAction}) {
+    return Row(
+      children: [
+        const Icon(Icons.grid_view_rounded,
+            size: 14, color: Colors.white54),
+        const SizedBox(width: 6),
+        Text(title,
+            style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1)),
+        const Spacer(),
+        if (action != null)
+          InkWell(
+            onTap: onAction,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFF17171F),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Text(action,
+                  style: const TextStyle(
+                      color: Colors.white70, fontSize: 11)),
+            ),
+          ),
+      ],
+    );
+  }
+
+  /// Featured surveys: horizontal coin cards (kit).
+  Widget _proSurveyRow(BuildContext context) {
+    const cards = [
+      ['1050', '1.3k earned'],
+      ['1233', '2.4k earned'],
+      ['1050', '787 earned'],
+    ];
+    return SizedBox(
+      height: 108,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: cards.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, i) {
+          return InkWell(
+            onTap: () => _proPush(context, const EarnScreen()),
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              width: 108,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFF17171F),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                    color: AppColors.gold.withOpacity(0.4)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('EARN',
+                      style: TextStyle(
+                          color: Colors.white54, fontSize: 9)),
+                  Text(cards[i][0],
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800)),
+                  const Text('COINS',
+                      style: TextStyle(
+                          color: Colors.white54, fontSize: 9)),
+                  const SizedBox(height: 2),
+                  Text(cards[i][1],
+                      style: const TextStyle(
+                          color: AppColors.gold, fontSize: 10)),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  /// Tasks of the day (kit rows with brand tiles).
+  Widget _proTasksList(BuildContext context) {
+    const tasks = [
+      ['d', 'Install Game & Play', 'Reach level 5 • 500 coins', Color(0xFFF66B06)],
+      ['HFK', 'Shopping Survey', '10 min • 150 coins', Color(0xFF3B82F6)],
+      ['+', 'Daily Check-in', 'Streak bonus • 25 coins', Color(0xFF10B981)],
+    ];
+    return Column(
+      children: tasks.map((t) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: InkWell(
+            onTap: () => _proPush(context, const EarnScreen()),
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF17171F),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white10),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: (t[3] as Color).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Center(
+                      child: Text(t[0] as String,
+                          style: TextStyle(
+                              color: t[3] as Color,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 18)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(t[1] as String,
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 14)),
+                        Text(t[2] as String,
+                            style: const TextStyle(
+                                color: Colors.white54, fontSize: 11)),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded,
+                      color: Colors.white38),
+                ],
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Mega Task banner + bottom sheet (kit "Limited Time / Swipe Up").
+  Widget _proMegaBanner(BuildContext context) {
+    return InkWell(
+      onTap: () => _proMegaSheet(context),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF4A148C), Color(0xFF7B1FA2)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.gold.withOpacity(0.5)),
+        ),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text('LIMITED',
+                      style: TextStyle(
+                          fontSize: 10, fontWeight: FontWeight.w800)),
+                ),
+                const Icon(Icons.bolt_rounded,
+                    color: AppColors.gold, size: 22),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 10, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.gold,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text('TIME',
+                      style: TextStyle(
+                          fontSize: 10, fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text('MEGA TASK',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 26,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1)),
+            const Text('— TASK OF THE DAY —',
+                style: TextStyle(color: Colors.white70, fontSize: 11)),
+            const SizedBox(height: 6),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text('SWIPE UP',
+                    style: TextStyle(
+                        color: Color(0xFFFF8A80),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13)),
+                Icon(Icons.keyboard_double_arrow_up_rounded,
+                    color: Color(0xFFFF8A80), size: 18),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _proMegaSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Color(0xFF17171F),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Image.asset(
+                'assets/app_icon_name.png',
+                height: 110,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            const Text('Mega Task of the Day',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            const Text(
+              'Spin the wheel now — every spin today counts double luck!',
+              style: TextStyle(color: Colors.white60, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _proPush(context, const SpinScreen());
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+                child: const Text('Spin Now',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
     );
   }
 
