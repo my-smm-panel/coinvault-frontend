@@ -230,6 +230,11 @@ class HomeTab extends StatelessWidget {
             padding: const EdgeInsets.all(AppSpacing.md),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                // Kit balance card + categories
+                _buildBalanceCard(context, user),
+                const SizedBox(height: AppSpacing.lg),
+                _buildCategories(context),
+                const SizedBox(height: AppSpacing.lg),
                 // Quick Stats
                 _buildStatsRow(user),
                 const SizedBox(height: AppSpacing.lg),
@@ -252,6 +257,207 @@ class HomeTab extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  /// Kit balance card: total coins + rupee value + withdraw button.
+  Widget _buildBalanceCard(BuildContext context, UserModel? user) {
+    final coins = user?.coins ?? 0;
+    final rupees = (coins / 10).toStringAsFixed(2);
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Total Balance',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: Colors.white.withOpacity(0.9),
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$coins',
+                  style: AppTextStyles.displayLarge.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  '≈ ₹$rupees',
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: Colors.white.withOpacity(0.9),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            child: Image.asset(
+              'assets/app_icon_name.png',
+              width: 84,
+              height: 84,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.account_balance_wallet_rounded,
+                size: 60,
+                color: Colors.white,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Kit category row: Spin / Scratch / Surveys / Wallet.
+  Widget _buildCategories(BuildContext context) {
+    final items = [
+      {
+        'label': 'Spin',
+        'icon': Icons.casino_rounded,
+        'color': AppColors.primary,
+        'onTap': () => Navigator.push(
+            context, MaterialPageRoute(builder: (_) => const SpinScreen())),
+      },
+      {
+        'label': 'Scratch',
+        'icon': Icons.card_giftcard_rounded,
+        'color': const Color(0xFF8B5CF6),
+        'onTap': () => _showScratchDialog(context),
+      },
+      {
+        'label': 'Surveys',
+        'icon': Icons.assignment_rounded,
+        'color': const Color(0xFF3B82F6),
+        'onTap': () => Navigator.push(
+            context, MaterialPageRoute(builder: (_) => const EarnScreen())),
+      },
+      {
+        'label': 'Wallet',
+        'icon': Icons.account_balance_wallet_rounded,
+        'color': AppColors.success,
+        'onTap': () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const WithdrawScreen())),
+      },
+    ];
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: items.map((item) {
+        final color = item['color'] as Color;
+        return InkWell(
+          onTap: item['onTap'] as VoidCallback,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+            child: Column(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                  child: Icon(item['icon'] as IconData, color: color, size: 28),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  item['label'] as String,
+                  style: AppTextStyles.bodySmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Scratch teaser (kit): reveals today's luck, leads to Spin Wheel.
+  /// No coins granted here - rewards only come from the server.
+  void _showScratchDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                child: Image.asset(
+                  'assets/app_icon_name.png',
+                  height: 120,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => const Icon(
+                    Icons.card_giftcard_rounded,
+                    size: 80,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text('Today\'s Luck Card', style: AppTextStyles.titleMedium),
+              const SizedBox(height: AppSpacing.xs),
+              Text(
+                'Feeling lucky? Your spins are waiting on the wheel.',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.textSecondary,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SpinScreen()),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                  ),
+                  child: const Text('Go to Spin Wheel'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

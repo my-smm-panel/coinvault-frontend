@@ -221,16 +221,16 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Balance Card
+            // Balance Card (kit orange)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.lg),
               decoration: BoxDecoration(
-                gradient: AppColors.goldGradient,
+                gradient: AppColors.primaryGradient,
                 borderRadius: BorderRadius.circular(AppRadius.xl),
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.gold.withOpacity(0.3),
+                    color: AppColors.primary.withOpacity(0.3),
                     blurRadius: 20,
                     offset: const Offset(0, 8),
                   ),
