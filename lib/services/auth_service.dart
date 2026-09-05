@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import '../models/app_models.dart';
 import '../services/app_repository.dart';
+import 'api_client.dart';
 import 'firebase_stats.dart';
 
 /// Auth service handling Firebase Google Sign-In and user session
@@ -26,9 +27,15 @@ class AuthService {
   Future<void> initialize() async {
     // Firebase already initialized in main.dart - do not re-init
     try {
+      // Restore backend JWT (Render API) from previous login
+      final prefs = await SharedPreferences.getInstance();
+      final savedToken = prefs.getString('backend_token');
+      if (savedToken != null && savedToken.isNotEmpty) {
+        ApiClient.instance.token = savedToken;
+      }
       // Check for existing auth state
       _auth.authStateChanges().listen(_onAuthStateChanged);
-      
+
       // Try to restore user from local storage if already signed in
       final currentUser = _auth.currentUser;
       if (currentUser != null) {
@@ -83,6 +90,38 @@ class AuthService {
     await _cacheUserModel();
     // Mirror to Firebase RTDB (fast counter, fire-and-forget)
     FirebaseStats.syncUser(_userModel!);
+    // Login to backend (Render API) to get JWT for spin/withdraw calls.
+    // Never blocks the app - local session works even if backend is down.
+    _loginToBackend(firebaseUser);
+  }
+
+  /// Exchange Firebase idToken for backend JWT (fire-and-forget).
+  Future<void> _loginToBackend(firebase_auth.User firebaseUser) async {
+    try {
+      final idToken = await firebaseUser.getIdToken();
+      if (idToken == null) return;
+      final res = await ApiClient.instance.post(
+        '/api/auth/google',
+        {'idToken': idToken},
+        auth: false,
+      );
+      if (res is Map && res['success'] == true && res['data'] is Map) {
+        final data = res['data'] as Map;
+        final access = data['accessToken'] ?? data['access_token'] ?? data['token'];
+        final refresh = data['refreshToken'] ?? data['refresh_token'];
+        if (access is String && access.isNotEmpty) {
+          ApiClient.instance.token = access;
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setString('backend_token', access);
+          if (refresh is String && refresh.isNotEmpty) {
+            await prefs.setString('backend_refresh_token', refresh);
+          }
+          debugPrint('Backend login ok');
+        }
+      }
+    } catch (e) {
+      debugPrint('Backend login skipped: $e');
+    }
   }
 
   Future<void> _cacheUserModel() async {
@@ -163,6 +202,12 @@ class AuthService {
     await _auth.signOut();
     _currentUser = null;
     _userModel = null;
+    ApiClient.instance.token = null;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('backend_token');
+      await prefs.remove('backend_refresh_token');
+    } catch (_) {}
   }
 
   /// Update user coins (local + backend sync + Firebase RTDB mirror)

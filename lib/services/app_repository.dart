@@ -113,24 +113,13 @@ class AppRepository {
     }
   }
 
-  /// Submit withdrawal request
-  Future<Map<String, dynamic>?> submitWithdrawal({
-    required String uid,
-    required int coins,
-    required double amountINR,
-    required String method, // 'upi' or 'bank'
-    required String details,
-  }) async {
+  /// Server-authoritative spin status (daily limit enforced by backend).
+  /// Returns {canSpin, spinsUsed, dailyLimit} or null when unreachable.
+  Future<Map<String, dynamic>?> spinStatus() async {
     try {
-      final res = await _api.post('/api/withdrawals', {
-        'userId': uid,
-        'coins': coins,
-        'amountINR': amountINR,
-        'method': method,
-        'details': details,
-      });
+      final res = await _api.get('/api/spin/status');
       if (res is Map && res['success'] == true && res['data'] is Map) {
-        return res['data'] as Map<String, dynamic>;
+        return Map<String, dynamic>.from(res['data'] as Map);
       }
       return null;
     } catch (_) {
@@ -138,12 +127,57 @@ class AppRepository {
     }
   }
 
-  /// Fetch withdrawal history for user
+  /// Server-authoritative spin. Reward is decided + credited by the backend
+  /// (Supabase ledger). Returns data {rewardType, coins, spinId, dailyLimit}.
+  /// Throws ApiException when limit is over, session expired, or offline.
+  Future<Map<String, dynamic>> spinNow() async {
+    final res = await _api.post('/api/spin/spin', {});
+    if (res is Map && res['success'] == true && res['data'] is Map) {
+      return Map<String, dynamic>.from(res['data'] as Map);
+    }
+    throw ApiException(-1, 'Spin failed');
+  }
+
+  /// Submit withdrawal request (real endpoint: POST /api/withdrawals/request).
+  /// Throws ApiException with the server message on failure.
+  Future<Map<String, dynamic>> submitWithdrawal({
+    required String uid,
+    required int coins,
+    required String method, // 'upi' or 'bank'
+    required String details,
+  }) async {
+    final isUpi = method == 'upi';
+    final body = <String, dynamic>{
+      'amount': coins,
+      'method': isUpi ? 'UPI' : 'BANK_TRANSFER',
+      if (isUpi) 'upiId': details,
+      if (!isUpi) ..._splitBankDetails(details),
+    };
+    final res = await _api.post('/api/withdrawals/request', body);
+    if (res is Map && res['success'] == true && res['data'] is Map) {
+      return Map<String, dynamic>.from(res['data'] as Map);
+    }
+    throw ApiException(-1, 'Withdrawal failed');
+  }
+
+  /// Best-effort split of free-text bank details into accountNumber/IFSC.
+  /// Server validates strictly and returns a clear message if missing.
+  Map<String, String> _splitBankDetails(String details) {
+    final out = <String, String>{};
+    final ifsc = RegExp(r'[A-Z]{4}0[A-Z0-9]{6}').firstMatch(details.toUpperCase());
+    if (ifsc != null) out['ifscCode'] = ifsc.group(0)!;
+    final ac = RegExp(r'\d{9,20}').firstMatch(details.replaceAll(' ', ''));
+    if (ac != null) out['accountNumber'] = ac.group(0)!;
+    out['accountHolder'] = details.length > 100 ? details.substring(0, 100) : details;
+    return out;
+  }
+
+  /// Fetch withdrawal history for user (real endpoint: GET /api/withdrawals/my).
   Future<List<dynamic>> fetchWithdrawalHistory(String uid) async {
     try {
-      final res = await _api.get('/api/withdrawals/history/$uid');
-      if (res is Map && res['data'] is Map) {
-        final items = res['data']['items'];
+      final res = await _api.get('/api/withdrawals/my');
+      if (res is Map && res['success'] == true && res['data'] is Map) {
+        final items = res['data']['items'] ?? res['data']['withdrawals'] ?? res['data']['data'];
         return items is List ? items : [];
       }
       return [];

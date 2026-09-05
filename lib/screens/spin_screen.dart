@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_theme.dart';
 import '../services/auth_service.dart';
+import '../services/app_repository.dart';
+import '../services/api_client.dart';
 import '../models/app_models.dart';
 
 class SpinScreen extends StatefulWidget {
@@ -41,10 +43,27 @@ class _SpinScreenState extends State<SpinScreen>
   }
 
   Future<void> _loadSpins() async {
+    // Server is source of truth for remaining spins (backend enforces limit).
+    try {
+      final status = await AppRepository.instance.spinStatus();
+      if (status != null && mounted) {
+        final limit = (status['dailyLimit'] ?? 2) as int;
+        final used = (status['spinsUsed'] ?? 0) as int;
+        final left = (limit - used).clamp(0, limit);
+        setState(() {
+          _remainingSpins = left;
+          _statusMessage = left > 0
+              ? 'You have $left free spin${left > 1 ? 's' : ''}'
+              : 'No spins left today';
+        });
+        return;
+      }
+    } catch (_) {}
+    if (!mounted) return;
     final auth = AuthService();
     setState(() {
       _remainingSpins = auth.getRemainingSpins();
-      _statusMessage = _remainingSpins > 0 
+      _statusMessage = _remainingSpins > 0
           ? 'You have $_remainingSpins free spin${_remainingSpins > 1 ? 's' : ''}'
           : 'No spins left today';
     });
@@ -52,17 +71,50 @@ class _SpinScreenState extends State<SpinScreen>
 
   void _onAnimationStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed) {
+      setState(() => _spinning = false);
+      // Reward comes from the SERVER (Supabase ledger) - never local.
+      _redeemServerSpin();
+    }
+  }
+
+  /// Ask backend for the spin outcome. Server decides reward, credits
+  /// Supabase, and we mirror it locally + Firebase RTDB. No coins on failure.
+  Future<void> _redeemServerSpin() async {
+    try {
+      final data = await AppRepository.instance.spinNow();
+      final reward = ((data['coins'] ?? 0) as num).toInt();
+      if (!mounted) return;
+      final auth = AuthService();
+      if (reward > 0) {
+        await auth.addCoins(reward);
+      }
+      await auth.recordSpin();
       setState(() {
-        _spinning = false;
+        _lastReward = reward;
         _showResult = true;
-        _lastReward = _getWeightedReward();
-        _remainingSpins--;
-        _statusMessage = _remainingSpins > 0 
+        _remainingSpins = (_remainingSpins - 1).clamp(0, 99);
+        _statusMessage = _remainingSpins > 0
             ? 'You have $_remainingSpins free spin${_remainingSpins > 1 ? 's' : ''} left'
             : 'No spins left today';
       });
-      _saveSpinAndReward();
-      _showResultDialog();
+      await _loadSpins(); // refresh exact server count
+      if (mounted) _showResultDialog();
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = e.message;
+      });
+      await _loadSpins();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _statusMessage = 'Spin failed. Check connection and try again.';
+      });
     }
   }
 
@@ -74,13 +126,6 @@ class _SpinScreenState extends State<SpinScreen>
     else if (roll < 0.70) return 2;  // 30%
     else return 3;                    // 30%
     // 100 coins is NEVER returned (0% weight)
-  }
-
-  Future<void> _saveSpinAndReward() async {
-    final auth = AuthService();
-    await auth.addCoins(_lastReward);
-    await auth.recordSpin();
-    await _loadSpins();
   }
 
   void _spin() {

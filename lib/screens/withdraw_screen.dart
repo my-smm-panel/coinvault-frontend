@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/app_repository.dart';
+import '../services/api_client.dart';
 import '../models/app_models.dart';
 
 class WithdrawScreen extends StatefulWidget {
@@ -107,24 +108,25 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
 
     try {
       final repo = AppRepository.instance;
-      final result = await repo.submitWithdrawal(
+      // Server debits Supabase ledger atomically - throws with server
+      // message on failure (insufficient balance, limit, validation).
+      await repo.submitWithdrawal(
         uid: _user!.uid,
         coins: coins,
-        amountINR: coins / 10,
         method: _selectedMethod,
         details: details,
       );
 
-      if (result != null && mounted) {
+      if (mounted) {
         await AuthService().deductCoins(coins);
         await AuthService().updateWithdrawInfo(
           upiId: _selectedMethod == 'upi' ? details : null,
           bankDetails: _selectedMethod == 'bank' ? details : null,
         );
         _showSuccessDialog(coins, coins / 10);
-      } else if (mounted) {
-        _showSnackBar('Withdrawal failed. Please try again.');
       }
+    } on ApiException catch (e) {
+      if (mounted) _showSnackBar(e.message);
     } catch (_) {
       if (mounted) _showSnackBar('Error occurred. Please try again.');
     } finally {
