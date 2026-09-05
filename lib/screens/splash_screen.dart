@@ -88,15 +88,16 @@ class _SplashScreenState extends State<SplashScreen>
           ),
           Positioned(
             bottom: 48,
-            left: 0,
-            right: 0,
+            left: 48,
+            right: 48,
             child: const Center(
               child: SizedBox(
-                width: 36,
-                height: 36,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3,
+                width: 180,
+                child: LinearProgressIndicator(
+                  minHeight: 5,
+                  backgroundColor: Colors.white30,
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  borderRadius: BorderRadius.all(Radius.circular(3)),
                 ),
               ),
             ),
