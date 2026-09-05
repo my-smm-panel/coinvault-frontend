@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// App color palette - clean, modern
+/// App color palette - CoinVault orange kit
 class AppColors {
-  // Primary brand colors
-  static const Color primary = Color(0xFF6366F1); // Indigo
-  static const Color primaryLight = Color(0xFF818CF8);
-  static const Color primaryDark = Color(0xFF4F46E5);
-  static const Color primaryContainer = Color(0xFFEEF0FF);
+  // Primary brand colors (kit orange)
+  static const Color primary = Color(0xFFF66B06); // CoinVault orange
+  static const Color primaryLight = Color(0xFFFF8A3D);
+  static const Color primaryDark = Color(0xFFC24E00);
+  static const Color primaryContainer = Color(0xFFFFEDE0);
   
   // Accent - Gold for coins
   static const Color gold = Color(0xFFF59E0B);
@@ -30,6 +30,10 @@ class AppColors {
   static const Color success = Color(0xFF10B981);
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFEF4444);
+
+  // Dark surfaces (kit Spin & Win screen)
+  static const Color spinDark = Color(0xFF151A30);
+  static const Color spinCard = Color(0xFF20263F);
   
   // Border/divider
   static const Color divider = Color(0xFFE2E8F0);

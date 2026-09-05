@@ -257,9 +257,11 @@ class _SpinScreenState extends State<SpinScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: AppColors.spinDark,
       appBar: AppBar(
-        title: const Text('Spin Wheel'),
+        backgroundColor: AppColors.spinDark,
+        foregroundColor: Colors.white,
+        title: const Text('Spin & Win'),
         actions: [
           IconButton(
             icon: const Icon(Icons.history_rounded),
@@ -271,33 +273,42 @@ class _SpinScreenState extends State<SpinScreen>
         padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           children: [
+            // Bear mascot (kit)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+              child: Image.asset(
+                'assets/app_icon_name.png',
+                height: 110,
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
             // Status message
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: _remainingSpins > 0 
-                    ? AppColors.primaryContainer 
-                    : AppColors.surfaceVariant,
+                color: AppColors.spinCard,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
                 border: Border.all(
-                  color: _remainingSpins > 0 
-                      ? AppColors.primary.withOpacity(0.3) 
-                      : AppColors.divider,
+                  color: _remainingSpins > 0
+                      ? AppColors.primary.withOpacity(0.5)
+                      : Colors.white12,
                 ),
               ),
               child: Row(
                 children: [
                   Icon(
                     _remainingSpins > 0 ? Icons.casino_rounded : Icons.lock_rounded,
-                    color: _remainingSpins > 0 ? AppColors.primary : AppColors.textTertiary,
+                    color: _remainingSpins > 0 ? AppColors.primary : Colors.white38,
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: Text(
                       _statusMessage,
                       style: AppTextStyles.bodyMedium.copyWith(
-                        color: _remainingSpins > 0 ? AppColors.primary : AppColors.textSecondary,
+                        color: _remainingSpins > 0 ? Colors.white : Colors.white60,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -321,21 +332,21 @@ class _SpinScreenState extends State<SpinScreen>
             
             const SizedBox(height: AppSpacing.xl),
             
-            // Spin Button
+            // Spin Button (kit orange)
             SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
                 onPressed: (_spinning || _redeeming || _remainingSpins <= 0) ? null : _spin,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _remainingSpins > 0 ? AppColors.gold : AppColors.surfaceVariant,
-                  foregroundColor: _remainingSpins > 0 ? Colors.white : AppColors.textTertiary,
-                  disabledBackgroundColor: AppColors.surfaceVariant,
-                  disabledForegroundColor: AppColors.textTertiary,
+                  backgroundColor: _remainingSpins > 0 ? AppColors.primary : AppColors.spinCard,
+                  foregroundColor: _remainingSpins > 0 ? Colors.white : Colors.white38,
+                  disabledBackgroundColor: AppColors.spinCard,
+                  disabledForegroundColor: Colors.white38,
                   elevation: _remainingSpins > 0 ? 4 : 0,
-                  shadowColor: AppColors.gold.withOpacity(0.4),
+                  shadowColor: AppColors.primary.withOpacity(0.4),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md),
+                    borderRadius: BorderRadius.circular(AppRadius.full),
                   ),
                 ),
                 child: _spinning
@@ -382,10 +393,21 @@ class _SpinScreenState extends State<SpinScreen>
     return Container(
       width: 280,
       height: 280,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.gold, width: 6),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.35),
+            blurRadius: 30,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Wheel segments
+          // Wheel segments (kit colors)
           CustomPaint(
             size: const Size(280, 280),
             painter: _WheelPainter(segments: _segments),
@@ -395,10 +417,10 @@ class _SpinScreenState extends State<SpinScreen>
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              color: AppColors.surface,
+              color: AppColors.spinDark,
               shape: BoxShape.circle,
               boxShadow: AppShadows.card,
-              border: Border.all(color: AppColors.divider, width: 2),
+              border: Border.all(color: AppColors.gold, width: 3),
             ),
             child: Icon(
               Icons.casino_rounded,
@@ -411,7 +433,7 @@ class _SpinScreenState extends State<SpinScreen>
             top: -12,
             child: CustomPaint(
               size: const Size(32, 12),
-              painter: _TrianglePainter(color: AppColors.primary),
+              painter: _TrianglePainter(color: AppColors.gold),
             ),
           ),
         ],
@@ -423,7 +445,8 @@ class _SpinScreenState extends State<SpinScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Possible Rewards', style: AppTextStyles.titleMedium),
+        Text('Possible Rewards',
+            style: AppTextStyles.titleMedium.copyWith(color: Colors.white)),
         const SizedBox(height: AppSpacing.md),
         Wrap(
           spacing: AppSpacing.md,
@@ -433,10 +456,10 @@ class _SpinScreenState extends State<SpinScreen>
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
-                color: is10 ? AppColors.goldContainer : AppColors.surfaceVariant,
+                color: is10 ? AppColors.gold.withOpacity(0.15) : AppColors.spinCard,
                 borderRadius: BorderRadius.circular(AppRadius.full),
                 border: Border.all(
-                  color: is10 ? AppColors.gold.withOpacity(0.3) : AppColors.divider,
+                  color: is10 ? AppColors.gold.withOpacity(0.5) : Colors.white12,
                 ),
               ),
               child: Row(
@@ -445,13 +468,13 @@ class _SpinScreenState extends State<SpinScreen>
                   Icon(
                     Icons.monetization_on_rounded,
                     size: 18,
-                    color: is10 ? AppColors.gold : AppColors.textSecondary,
+                    color: is10 ? AppColors.gold : Colors.white70,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     '$coins coins',
                     style: AppTextStyles.bodyMedium.copyWith(
-                      color: is10 ? AppColors.gold : AppColors.textPrimary,
+                      color: is10 ? AppColors.gold : Colors.white,
                       fontWeight: is10 ? FontWeight.w700 : FontWeight.w500,
                     ),
                   ),
@@ -486,9 +509,9 @@ class _SpinScreenState extends State<SpinScreen>
     return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: AppColors.spinCard,
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: AppColors.divider),
+        border: Border.all(color: Colors.white12),
         boxShadow: AppShadows.card,
       ),
       child: Column(
@@ -499,13 +522,14 @@ class _SpinScreenState extends State<SpinScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
+                  color: AppColors.primary.withOpacity(0.15),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
                 child: const Icon(Icons.info_outline_rounded, color: AppColors.primary, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
-              Text('How It Works', style: AppTextStyles.titleMedium),
+              Text('How It Works',
+                  style: AppTextStyles.titleMedium.copyWith(color: Colors.white)),
             ],
           ),
           const SizedBox(height: AppSpacing.lg),
@@ -552,7 +576,8 @@ class _HowStep extends StatelessWidget {
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
-            child: Text(text, style: AppTextStyles.bodyMedium),
+            child: Text(text,
+                style: AppTextStyles.bodyMedium.copyWith(color: Colors.white70)),
           ),
         ],
       ),
@@ -573,8 +598,8 @@ class _WheelPainter extends CustomPainter {
     
     final colors = [
       AppColors.gold,      // 10 coins - best
-      AppColors.primary,   // 2 coins
-      AppColors.success,   // 3 coins
+      AppColors.primary,   // 2 coins - kit orange
+      Color(0xFF8B5CF6),   // 3 coins - kit purple
     ];
     
     for (int i = 0; i < segments.length; i++) {

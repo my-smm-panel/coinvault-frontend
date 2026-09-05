@@ -74,19 +74,27 @@ class _AuthScreenState extends State<AuthScreen> {
             children: [
               const Spacer(flex: 2),
               
-              // Logo
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  gradient: AppColors.primaryGradient,
-                  borderRadius: BorderRadius.circular(AppRadius.xl),
-                  boxShadow: AppShadows.elevated,
-                ),
-                child: const Icon(
-                  Icons.account_balance_wallet_rounded,
-                  size: 50,
-                  color: Colors.white,
+              // Logo - bear mascot (kit)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(AppRadius.xl),
+                child: Image.asset(
+                  'assets/app_icon_name.png',
+                  width: 140,
+                  height: 140,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) => Container(
+                    width: 100,
+                    height: 100,
+                    decoration: BoxDecoration(
+                      gradient: AppColors.primaryGradient,
+                      borderRadius: BorderRadius.circular(AppRadius.xl),
+                    ),
+                    child: const Icon(
+                      Icons.account_balance_wallet_rounded,
+                      size: 50,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
               ),
               const SizedBox(height: AppSpacing.xl),
@@ -151,14 +159,15 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                   label: Text(_loading ? 'Signing in...' : 'Continue with Google'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: AppColors.textPrimary,
-                    elevation: 0,
-                    side: const BorderSide(color: AppColors.divider),
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 2,
+                    shadowColor: AppColors.primary.withOpacity(0.4),
+                    side: BorderSide.none,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.md),
+                      borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
-                    textStyle: AppTextStyles.labelLarge.copyWith(color: AppColors.textPrimary),
+                    textStyle: AppTextStyles.labelLarge.copyWith(color: Colors.white),
                   ),
                 ),
               ),

@@ -273,15 +273,10 @@ class HomeTab extends StatelessWidget {
                   CircleAvatar(
                     radius: 28,
                     backgroundColor: Colors.white.withOpacity(0.2),
-                    backgroundImage: user?.photoUrl != null 
-                        ? NetworkImage(user!.photoUrl!) 
-                        : null,
-                    child: user?.photoUrl == null
-                        ? Text(
-                            user?.displayName?.substring(0, 1).toUpperCase() ?? 'U',
-                            style: AppTextStyles.headlineLarge.copyWith(color: Colors.white),
-                          )
-                        : null,
+                    backgroundImage: user?.photoUrl != null
+                        ? NetworkImage(user!.photoUrl!)
+                        : const AssetImage('assets/app_icon_name.png')
+                            as ImageProvider,
                   ),
                   const SizedBox(width: AppSpacing.md),
                   Expanded(
