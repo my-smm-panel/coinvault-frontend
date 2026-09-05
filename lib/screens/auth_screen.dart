@@ -36,24 +36,11 @@ class _AuthScreenState extends State<AuthScreen> {
       }
     } on FirebaseAuthException catch (e) {
       debugPrint('AuthScreen Firebase error: ${e.code} ${e.message}');
-      // Demo mode fallback already handled in AuthService, but if still error show it
-      if (e.code == 'network-request-failed') {
-        setState(() => _error = 'Network error. Check your connection.');
-      } else {
-        // Try demo login as last resort - let user enter app
-        try {
-          final demo = await AuthService().signInWithGoogle();
-          if (demo != null && mounted) {
-            Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
-            return;
-          }
-        } catch (_) {}
-        setState(() => _error = 'Sign-in failed (${e.code}). Firebase config missing - contact developer.');
-      }
+      setState(() => _error = 'Sign-in failed (${e.code}): ${e.message ?? "Please try again."}');
     } catch (e) {
       debugPrint('AuthScreen error: $e');
       setState(() {
-        _error = 'Something went wrong: $e';
+        _error = 'Sign-in error: $e';
       });
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -187,32 +174,6 @@ class _AuthScreenState extends State<AuthScreen> {
 
               const SizedBox(height: AppSpacing.md),
 
-              // Demo entry (testing) - never blocked
-              TextButton(
-                onPressed: _loading ? null : () async {
-                  setState(() { _loading = true; _error = null; });
-                  try {
-                    final demo = await AuthService().signInAsDemo();
-                    if (mounted) {
-                      Navigator.of(context).pushReplacement(
-                        MaterialPageRoute(builder: (_) => const HomeScreen()),
-                      );
-                    }
-                  } catch (e) {
-                    if (mounted) setState(() => _error = 'Demo login failed: $e');
-                  } finally {
-                    if (mounted) setState(() => _loading = false);
-                  }
-                },
-                child: Text(
-                  'Continue as Demo (testing)',
-                  style: AppTextStyles.labelMedium.copyWith(
-                    color: AppColors.textTertiary,
-                    decoration: TextDecoration.underline,
-                  ),
-                ),
-              ),
-              
               const Spacer(flex: 3),
             ],
           ),

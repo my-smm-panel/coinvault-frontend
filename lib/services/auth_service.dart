@@ -88,7 +88,7 @@ class AuthService {
     );
   }
 
-  /// Sign in with Google - native account picker first, browser fallback second
+  /// Sign in with Google - PRODUCTION (no demo fallback)
   Future<UserModel?> signInWithGoogle() async {
     // 1. Native Google account picker (reliable on Android)
     try {
@@ -111,79 +111,28 @@ class AuthService {
         return _userModel;
       }
       return null;
-    } on firebase_auth.FirebaseAuthException catch (e) {
-      debugPrint('Native Google Sign-In Firebase error: ${e.code} - ${e.message}');
-      if (_isConfigError(e)) {
-        debugPrint('Firebase not configured - demo mode');
-        return await _createDemoUser();
-      }
-      // config ok but native failed -> try browser flow below
-      debugPrint('Trying browser fallback...');
+    } on firebase_auth.FirebaseAuthException {
+      rethrow; // production: surface real error, no demo mask
     } catch (e) {
       debugPrint('Native Google Sign-In error: $e');
-      if (_isConfigErrorString(e.toString())) {
-        return await _createDemoUser();
-      }
       // fall through to browser flow
     }
 
     // 2. Browser fallback (signInWithProvider)
-    try {
-      final googleProvider = firebase_auth.GoogleAuthProvider();
-      googleProvider.addScope('email');
-      googleProvider.addScope('profile');
-
-      final credential = await _auth.signInWithProvider(googleProvider);
-      if (credential.user != null) {
-        await _loadUserModel(credential.user!);
-        return _userModel;
-      }
-    } on firebase_auth.FirebaseAuthException catch (e) {
-      debugPrint('Browser Google Sign-In error: ${e.code} - ${e.message}');
-      if (_isConfigError(e)) {
-        return await _createDemoUser();
-      }
-      rethrow;
-    } catch (e) {
-      debugPrint('Browser Google Sign-In generic error: $e');
-      if (_isConfigErrorString(e.toString())) {
-        return await _createDemoUser();
-      }
-      rethrow;
+    final googleProvider = firebase_auth.GoogleAuthProvider();
+    googleProvider.addScope('email');
+    googleProvider.addScope('profile');
+    final credential = await _auth.signInWithProvider(googleProvider);
+    if (credential.user != null) {
+      await _loadUserModel(credential.user!);
+      return _userModel;
     }
     return null;
   }
 
-  bool _isConfigError(firebase_auth.FirebaseAuthException e) {
-    return e.code == 'operation-not-allowed' ||
-        e.code == 'invalid-credential' ||
-        e.code == 'api-key-not-valid' ||
-        e.code == 'invalid-api-key' ||
-        (e.message?.contains('API key') ?? false) ||
-        (e.message?.contains('not valid') ?? false);
-  }
-
-  bool _isConfigErrorString(String s) {
-    return s.contains('API key') || s.contains('not valid') || s.contains('Firebase');
-  }
-
-  /// Explicit demo login - never blocked
-  Future<UserModel> signInAsDemo() async {
-    return await _createDemoUser();
-  }
-
   Future<UserModel> _createDemoUser() async {
-    const demoUid = 'demo_user_001';
-    _userModel = UserModel(
-      uid: demoUid,
-      displayName: 'Demo User',
-      email: 'demo@coinvault.app',
-      photoUrl: null,
-      coins: 500,
-    );
-    await _cacheUserModel();
-    return _userModel!;
-  }
+    // DISABLED for production - throw instead of masking errors
+    throw StateError('Demo mode removed for production');
 
   /// Sign out
   Future<void> signOut() async {
