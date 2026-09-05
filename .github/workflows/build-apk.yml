@@ -95,6 +95,56 @@ jobs:
           print(open(mf).read()[:1200])
           PYEOF
 
+      - name: Set launcher icon (bear)
+        run: |
+          pip install pillow -q
+          python3 - <<'PYEOF'
+          from PIL import Image
+          import os
+
+          src = Image.open("assets/app_icon.jpg").convert("RGB")
+          w, h = src.size
+          side = min(w, h)
+          square = src.crop(((w - side) // 2, (h - side) // 2,
+                             (w + side) // 2, (h + side) // 2))
+          # background = corner color of source
+          bg = "#%02x%02x%02x" % square.getpixel((5, 5))
+          print("bg:", bg, "src:", src.size)
+
+          res = "android/app/src/main/res"
+          legacy = {"mipmap-mdpi": 48, "mipmap-hdpi": 72, "mipmap-xhdpi": 96,
+                    "mipmap-xxhdpi": 144, "mipmap-xxxhdpi": 192}
+          fg = {"mipmap-mdpi": 108, "mipmap-hdpi": 162, "mipmap-xhdpi": 216,
+                "mipmap-xxhdpi": 324, "mipmap-xxxhdpi": 432}
+          for d, px in legacy.items():
+              os.makedirs(f"{res}/{d}", exist_ok=True)
+              square.resize((px, px), Image.LANCZOS).save(f"{res}/{d}/ic_launcher.png")
+          for d, px in fg.items():
+              os.makedirs(f"{res}/{d}", exist_ok=True)
+              square.resize((px, px), Image.LANCZOS).save(f"{res}/{d}/ic_launcher_foreground.png")
+
+          os.makedirs(f"{res}/mipmap-anydpi-v26", exist_ok=True)
+          adaptive = ('<?xml version="1.0" encoding="utf-8"?>\n'
+                      '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
+                      '    <background android:drawable="@color/ic_launcher_background"/>\n'
+                      '    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n'
+                      '</adaptive-icon>\n')
+          open(f"{res}/mipmap-anydpi-v26/ic_launcher.xml", "w").write(adaptive)
+          open(f"{res}/mipmap-anydpi-v26/ic_launcher_round.xml", "w").write(adaptive)
+
+          os.makedirs(f"{res}/values", exist_ok=True)
+          vc = f"{res}/values/colors.xml"
+          colortag = f'<color name="ic_launcher_background">{bg}</color>'
+          if os.path.exists(vc):
+              s = open(vc).read()
+              if "ic_launcher_background" not in s:
+                  s = s.replace("</resources>", f"    {colortag}\n</resources>")
+                  open(vc, "w").write(s)
+          else:
+              open(vc, "w").write(f'<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    {colortag}\n</resources>\n')
+          print("launcher icon done")
+          PYEOF
+
       - name: Build AAB
         run: flutter build appbundle --release
 
