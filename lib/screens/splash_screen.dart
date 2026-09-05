@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import '../core/app_theme.dart';
+import '../services/auth_service.dart';
 import 'auth_screen.dart';
+import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -20,6 +23,8 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+    // Fullscreen splash: hide status bar (battery/time) + nav bar
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _controller = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -33,11 +38,21 @@ class _SplashScreenState extends State<SplashScreen>
     
     _controller.forward();
     
-    // Navigate after animation
-    Future.delayed(const Duration(milliseconds: 2000), () {
+    // Navigate after animation: persisted Firebase users go straight Home
+    Future.delayed(const Duration(milliseconds: 2000), () async {
+      if (!mounted) return;
+      // Restore system UI before leaving splash
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+      Widget next = const AuthScreen();
+      try {
+        if (FirebaseAuth.instance.currentUser != null) {
+          final model = await AuthService().ensureUserLoaded();
+          if (model != null && mounted) next = const HomeScreen();
+        }
+      } catch (_) {}
       if (mounted) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const AuthScreen()),
+          MaterialPageRoute(builder: (_) => next),
         );
       }
     });
@@ -45,6 +60,8 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    // Safety: always restore system UI
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _controller.dispose();
     super.dispose();
   }

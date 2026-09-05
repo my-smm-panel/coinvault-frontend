@@ -66,17 +66,20 @@ class AuthService {
       if (userData != null) {
         _userModel = UserModel.fromFirebase(userData, firebaseUser.uid);
         await _cacheUserModel();
+        return;
       }
     } catch (_) {
-      // Create default user model if backend unavailable
-      _userModel = UserModel(
-        uid: firebaseUser.uid,
-        displayName: firebaseUser.displayName ?? 'User',
-        email: firebaseUser.email,
-        photoUrl: firebaseUser.photoURL,
-      );
-      await _cacheUserModel();
+      // fall through to local profile below
     }
+    // Backend unavailable or unknown user: build from Firebase profile
+    // (never leave _userModel null for a signed-in user)
+    _userModel = UserModel(
+      uid: firebaseUser.uid,
+      displayName: firebaseUser.displayName ?? 'User',
+      email: firebaseUser.email,
+      photoUrl: firebaseUser.photoURL,
+    );
+    await _cacheUserModel();
   }
 
   Future<void> _cacheUserModel() async {
@@ -133,6 +136,23 @@ class AuthService {
   Future<UserModel> _createDemoUser() async {
     // DISABLED for production - throw instead of masking errors
     throw StateError('Demo mode removed for production');
+  }
+
+  /// Ensure locally persisted Firebase user has a loaded UserModel.
+  /// Returns null if no Firebase session exists.
+  Future<UserModel?> ensureUserLoaded() async {
+    try {
+      final currentUser = _auth.currentUser;
+      if (currentUser == null) return null;
+      _currentUser = currentUser;
+      if (_userModel == null) {
+        await _loadUserModel(currentUser);
+      }
+      return _userModel;
+    } catch (e) {
+      debugPrint('ensureUserLoaded error: $e');
+      return _userModel;
+    }
   }
 
   /// Sign out
