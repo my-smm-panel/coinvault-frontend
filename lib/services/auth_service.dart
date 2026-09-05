@@ -133,6 +133,7 @@ class AuthService {
   Future<UserModel> _createDemoUser() async {
     // DISABLED for production - throw instead of masking errors
     throw StateError('Demo mode removed for production');
+  }
 
   /// Sign out
   Future<void> signOut() async {
