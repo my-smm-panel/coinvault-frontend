@@ -75,8 +75,13 @@ class AuthService extends ChangeNotifier {
       final repo = AppRepository.instance;
       final userData = await repo.fetchUserProfile(firebaseUser.uid);
       if (userData != null) {
-        _userModel = UserModel.fromFirebase(userData, firebaseUser.uid);
+        // Normalize backend profile keys to UserModel keys.
+        final norm = Map<String, dynamic>.from(userData);
+        norm['displayName'] ??= norm['name'];
+        norm['photoUrl'] ??= norm['avatar'];
+        _userModel = UserModel.fromFirebase(norm, firebaseUser.uid);
         await _cacheUserModel();
+        notifyListeners();
         return;
       }
     } catch (_) {

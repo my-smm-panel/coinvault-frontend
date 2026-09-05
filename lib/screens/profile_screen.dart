@@ -4,6 +4,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/app_theme.dart';
 import '../services/auth_service.dart';
 import '../models/app_models.dart';
+import 'leaderboard_screen.dart';
+import 'history_screen.dart';
+import 'notifications_screen.dart';
+import 'refer_screen.dart';
+import 'help_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -213,12 +218,40 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Settings
             _buildSection('Settings', [
               _InfoTile(
+                icon: Icons.group_add_rounded,
+                title: 'Refer & Earn',
+                subtitle: 'Invite friends, earn bonus coins',
+                color: const Color(0xFFEC4899),
+                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const ReferScreen())),
+              ),
+              _InfoTile(
+                icon: Icons.emoji_events_rounded,
+                title: 'Leaderboard',
+                subtitle: 'Top earners this week',
+                color: AppColors.gold,
+                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const LeaderboardScreen())),
+              ),
+              _InfoTile(
+                icon: Icons.history_rounded,
+                title: 'History',
+                subtitle: 'Withdrawals, spins & tasks',
+                color: const Color(0xFF14B8A6),
+                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const HistoryScreen())),
+              ),
+              _InfoTile(
                 icon: Icons.notifications_rounded,
                 title: 'Notifications',
                 subtitle: 'Manage push notifications',
                 color: AppColors.primary,
                 trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
-                onTap: () {},
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const NotificationsScreen())),
               ),
               _InfoTile(
                 icon: Icons.help_outline_rounded,
@@ -226,7 +259,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 subtitle: 'FAQs, contact us',
                 color: AppColors.success,
                 trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
-                onTap: () {},
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const HelpScreen())),
               ),
               _InfoTile(
                 icon: Icons.privacy_tip_rounded,

@@ -37,12 +37,12 @@ class AppRepository {
     }
   }
 
-  /// Fetch user profile from backend
+  /// Fetch user profile from backend (real endpoint: GET /api/users/profile).
   Future<Map<String, dynamic>?> fetchUserProfile(String uid) async {
     try {
-      final res = await _api.get('/api/users/$uid');
+      final res = await _api.get('/api/users/profile');
       if (res is Map && res['success'] == true && res['data'] is Map) {
-        return res['data'] as Map<String, dynamic>;
+        return Map<String, dynamic>.from(res['data'] as Map);
       }
       return null;
     } catch (_) {
@@ -86,16 +86,100 @@ class AppRepository {
     }
   }
 
-  /// Fetch leaderboard for a period (DAILY / WEEKLY / MONTHLY).
+  /// Fetch leaderboard for a period (DAILY / WEEKLY / MONTHLY / ALL_TIME).
   Future<Map<String, dynamic>> fetchLeaderboard(String period) async {
     try {
-      final res = await _api.get('/api/leaderboard/$period', auth: false);
+      final res = await _api.get('/api/leaderboard/$period');
       if (res is Map && res['success'] == true && res['data'] is Map) {
-        return res['data'] as Map<String, dynamic>;
+        return Map<String, dynamic>.from(res['data'] as Map);
       }
       return {};
     } catch (_) {
       return {};
+    }
+  }
+
+  /// Leaderboard prizes (public).
+  Future<dynamic> leaderboardPrizes() async {
+    try {
+      final res = await _api.get('/api/leaderboard/prizes', auth: false);
+      if (res is Map && res['success'] == true) return res['data'];
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Referral info: code, link, stats, referral list.
+  Future<Map<String, dynamic>> referralInfo() async {
+    try {
+      final res = await _api.get('/api/referrals/info');
+      if (res is Map && res['success'] == true && res['data'] is Map) {
+        return Map<String, dynamic>.from(res['data'] as Map);
+      }
+      return {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  /// Notifications list.
+  Future<List<dynamic>> notificationsList() async {
+    try {
+      final res = await _api.get('/api/notifications');
+      if (res is Map && res['success'] == true && res['data'] is Map) {
+        final items = res['data']['items'];
+        return items is List ? items : [];
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<bool> notifRead(String id) async {
+    try {
+      final res = await _api.patch('/api/notifications/$id/read', {});
+      return res is Map && res['success'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> notifReadAll() async {
+    try {
+      final res = await _api.patch('/api/notifications/read-all', {});
+      return res is Map && res['success'] == true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Spin history (backend returns a raw list).
+  Future<List<dynamic>> spinHistoryList() async {
+    try {
+      final res = await _api.get('/api/spin/history');
+      if (res is Map && res['success'] == true) {
+        final d = res['data'];
+        return d is List ? d : [];
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Task history (backend returns a raw list).
+  Future<List<dynamic>> taskHistoryList() async {
+    try {
+      final res = await _api.get('/api/tasks/history');
+      if (res is Map && res['success'] == true) {
+        final d = res['data'];
+        return d is List ? d : [];
+      }
+      return [];
+    } catch (_) {
+      return [];
     }
   }
 

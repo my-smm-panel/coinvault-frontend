@@ -1,0 +1,167 @@
+import 'package:flutter/material.dart';
+
+import '../core/app_theme.dart';
+import '../services/app_repository.dart';
+
+/// Notifications inbox (kit screen 13).
+class NotificationsScreen extends StatefulWidget {
+  const NotificationsScreen({super.key});
+
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
+  List<dynamic> _items = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final items = await AppRepository.instance.notificationsList();
+    if (!mounted) return;
+    setState(() {
+      _items = items;
+      _loading = false;
+    });
+  }
+
+  Future<void> _open(Map m) async {
+    final id = (m['id'] ?? '').toString();
+    if (id.isNotEmpty && m['isRead'] != true) {
+      await AppRepository.instance.notifRead(id);
+      if (mounted) {
+        setState(() {
+          final i = _items.indexWhere((e) => (e as Map)['id'] == id);
+          if (i >= 0) {
+            final copy = Map<String, dynamic>.from(_items[i] as Map);
+            copy['isRead'] = true;
+            _items[i] = copy;
+          }
+        });
+      }
+    }
+  }
+
+  Future<void> _readAll() async {
+    await AppRepository.instance.notifReadAll();
+    _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        title: const Text('Notifications'),
+        actions: [
+          TextButton(
+            onPressed: _readAll,
+            child: const Text('Mark all read',
+                style: TextStyle(color: AppColors.primary)),
+          ),
+        ],
+      ),
+      body: _loading
+          ? const Center(
+              child: CircularProgressIndicator(color: AppColors.primary))
+          : _items.isEmpty
+              ? Center(
+                  child: Text('No notifications yet',
+                      style: AppTextStyles.bodyMedium
+                          .copyWith(color: AppColors.textTertiary)),
+                )
+              : RefreshIndicator(
+                  color: AppColors.primary,
+                  onRefresh: _load,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _items.length,
+                    itemBuilder: (_, i) {
+                      final m =
+                          Map<String, dynamic>.from(_items[i] as Map);
+                      final unread = m['isRead'] != true;
+                      return InkWell(
+                        onTap: () => _open(m),
+                        borderRadius:
+                            BorderRadius.circular(AppRadius.lg),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            color: unread
+                                ? AppColors.primaryContainer
+                                : AppColors.surface,
+                            borderRadius:
+                                BorderRadius.circular(AppRadius.lg),
+                            border: Border.all(
+                              color: unread
+                                  ? AppColors.primary.withOpacity(0.3)
+                                  : AppColors.divider,
+                            ),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: unread
+                                      ? AppColors.primary.withOpacity(0.15)
+                                      : AppColors.surfaceVariant,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.notifications_rounded,
+                                  size: 20,
+                                  color: unread
+                                      ? AppColors.primary
+                                      : AppColors.textTertiary,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      (m['title'] ?? 'Notification')
+                                          .toString(),
+                                      style: AppTextStyles.bodyMedium
+                                          .copyWith(
+                                              fontWeight: FontWeight.w700),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      (m['message'] ?? '').toString(),
+                                      style: AppTextStyles.bodySmall,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (unread)
+                                Container(
+                                  width: 10,
+                                  height: 10,
+                                  margin: const EdgeInsets.only(top: 4),
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+    );
+  }
+}

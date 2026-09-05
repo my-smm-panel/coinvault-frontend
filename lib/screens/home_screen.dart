@@ -8,6 +8,10 @@ import 'earn_screen.dart';
 import 'spin_screen.dart';
 import 'withdraw_screen.dart';
 import 'profile_screen.dart';
+import 'leaderboard_screen.dart';
+import 'history_screen.dart';
+import 'notifications_screen.dart';
+import 'refer_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -356,9 +360,39 @@ class HomeTab extends StatelessWidget {
         'onTap': () => Navigator.push(context,
             MaterialPageRoute(builder: (_) => const WithdrawScreen())),
       },
+      {
+        'label': 'Board',
+        'icon': Icons.emoji_events_rounded,
+        'color': AppColors.gold,
+        'onTap': () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const LeaderboardScreen())),
+      },
+      {
+        'label': 'Refer',
+        'icon': Icons.group_add_rounded,
+        'color': const Color(0xFFEC4899),
+        'onTap': () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const ReferScreen())),
+      },
+      {
+        'label': 'History',
+        'icon': Icons.history_rounded,
+        'color': const Color(0xFF14B8A6),
+        'onTap': () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const HistoryScreen())),
+      },
+      {
+        'label': 'Notices',
+        'icon': Icons.notifications_rounded,
+        'color': const Color(0xFFF43F5E),
+        'onTap': () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const NotificationsScreen())),
+      },
     ];
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
+    return Wrap(
+      alignment: WrapAlignment.spaceEvenly,
+      spacing: 2,
+      runSpacing: 8,
       children: items.map((item) {
         final color = item['color'] as Color;
         return InkWell(
