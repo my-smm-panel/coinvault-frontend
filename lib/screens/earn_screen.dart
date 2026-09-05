@@ -73,6 +73,16 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
     );
   }
 
+  /// Brand icon + color per task type (kit style).
+  static const Map<String, List<dynamic>> _taskStyles = {
+    'app': [Icons.download_rounded, Color(0xFF3B82F6)],
+    'video': [Icons.play_circle_fill_rounded, Color(0xFFEF4444)],
+    'profile': [Icons.person_rounded, Color(0xFF10B981)],
+    'login': [Icons.star_rounded, Color(0xFFF59E0B)],
+    'share': [Icons.share_rounded, Color(0xFF14B8A6)],
+    'review': [Icons.rate_review_rounded, Color(0xFFF66B06)],
+  };
+
   Widget _buildTaskList() {
     final tasks = [
       {'title': 'Download & Open App', 'coins': 50, 'desc': 'Install and open for 30 seconds', 'type': 'app'},
@@ -88,10 +98,14 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
       itemCount: tasks.length,
       itemBuilder: (context, index) {
         final task = tasks[index];
+        final style = _taskStyles[task['type']] ??
+            const [Icons.task_alt_rounded, AppColors.primary];
         return _TaskCard(
           title: task['title'] as String,
           coins: task['coins'] as int,
           description: task['desc'] as String,
+          icon: style[0] as IconData,
+          color: style[1] as Color,
           onTap: () => _showTaskDetail(task),
         );
       },
@@ -235,12 +249,16 @@ class _TaskCard extends StatelessWidget {
   final int coins;
   final String description;
   final VoidCallback onTap;
+  final IconData icon;
+  final Color color;
 
   const _TaskCard({
     required this.title,
     required this.coins,
     required this.description,
     required this.onTap,
+    this.icon = Icons.task_alt_rounded,
+    this.color = AppColors.primary,
   });
 
   @override
@@ -258,10 +276,10 @@ class _TaskCard extends StatelessWidget {
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
+                  color: color.withOpacity(0.12),
                   borderRadius: BorderRadius.circular(AppRadius.md),
                 ),
-                child: const Icon(Icons.task_alt_rounded, color: AppColors.primary, size: 24),
+                child: Icon(icon, color: color, size: 24),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -302,13 +320,21 @@ class _SurveyCard extends StatelessWidget {
   final int coins;
   final String time;
   final String provider;
-
   const _SurveyCard({
     required this.title,
     required this.coins,
     required this.time,
     required this.provider,
   });
+
+  /// Brand color per survey provider (kit style).
+  static Color _providerColor(String p) {
+    final v = p.toLowerCase();
+    if (v.contains('bitlabs')) return const Color(0xFF8B5CF6);
+    if (v.contains('cpx')) return const Color(0xFF3B82F6);
+    if (v.contains('poll')) return const Color(0xFF14B8A6);
+    return AppColors.primary;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -327,11 +353,11 @@ class _SurveyCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.primaryContainer,
+                      color: _providerColor(provider).withOpacity(0.12),
                       borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
                     child: Text(provider, style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.primary, fontWeight: FontWeight.w600,
+                      color: _providerColor(provider), fontWeight: FontWeight.w600,
                     )),
                   ),
                   const Spacer(),

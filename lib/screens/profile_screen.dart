@@ -95,15 +95,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: Colors.white.withOpacity(0.2),
-                    backgroundImage: _user!.photoUrl != null 
-                        ? NetworkImage(_user!.photoUrl!) 
-                        : null,
-                    child: _user!.photoUrl == null
-                        ? Text(
-                            _user!.displayName.substring(0, 1).toUpperCase(),
-                            style: AppTextStyles.displayLarge.copyWith(color: Colors.white),
-                          )
-                        : null,
+                    backgroundImage: _user!.photoUrl != null
+                        ? NetworkImage(_user!.photoUrl!)
+                        : const AssetImage('assets/app_icon_name.png')
+                            as ImageProvider,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Text(

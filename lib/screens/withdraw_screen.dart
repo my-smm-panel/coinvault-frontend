@@ -296,10 +296,11 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
               children: [
                 Expanded(
                   child: _MethodCard(
-                    icon: Icons.account_balance_wallet_rounded,
+                    icon: Icons.flash_on_rounded,
                     title: 'UPI',
                     subtitle: 'Instant to UPI ID',
                     isSelected: _selectedMethod == 'upi',
+                    color: const Color(0xFF16A34A),
                     onTap: () => setState(() => _selectedMethod = 'upi'),
                   ),
                 ),
@@ -310,6 +311,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                     title: 'Bank Transfer',
                     subtitle: '1-2 business days',
                     isSelected: _selectedMethod == 'bank',
+                    color: const Color(0xFF1D4ED8),
                     onTap: () => setState(() => _selectedMethod = 'bank'),
                   ),
                 ),
@@ -460,6 +462,7 @@ class _MethodCard extends StatelessWidget {
   final String subtitle;
   final bool isSelected;
   final VoidCallback onTap;
+  final Color color;
 
   const _MethodCard({
     required this.icon,
@@ -467,6 +470,7 @@ class _MethodCard extends StatelessWidget {
     required this.subtitle,
     required this.isSelected,
     required this.onTap,
+    this.color = AppColors.primary,
   });
 
   @override
@@ -477,10 +481,10 @@ class _MethodCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(AppSpacing.md),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryContainer : AppColors.surface,
+          color: isSelected ? color.withOpacity(0.08) : AppColors.surface,
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(
-            color: isSelected ? AppColors.primary : AppColors.divider,
+            color: isSelected ? color : AppColors.divider,
             width: isSelected ? 2 : 1,
           ),
           boxShadow: isSelected ? AppShadows.card : null,
@@ -490,19 +494,19 @@ class _MethodCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : AppColors.surfaceVariant,
+                color: isSelected ? color : color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
               child: Icon(
                 icon,
                 size: 28,
-                color: isSelected ? Colors.white : AppColors.textSecondary,
+                color: isSelected ? Colors.white : color,
               ),
             ),
             const SizedBox(height: AppSpacing.md),
             Text(title, style: AppTextStyles.bodyMedium.copyWith(
               fontWeight: FontWeight.w700,
-              color: isSelected ? AppColors.primary : AppColors.textPrimary,
+              color: isSelected ? color : AppColors.textPrimary,
             )),
             const SizedBox(height: 4),
             Text(

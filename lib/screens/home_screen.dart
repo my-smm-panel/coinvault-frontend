@@ -154,10 +154,23 @@ class _NavItem extends StatelessWidget {
               Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Icon(
-                    icon,
-                    size: 24,
-                    color: isActive ? AppColors.primary : AppColors.textTertiary,
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? AppColors.primary.withOpacity(0.12)
+                          : Colors.transparent,
+                      borderRadius:
+                          BorderRadius.circular(AppRadius.full),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 24,
+                      color: isActive
+                          ? AppColors.primary
+                          : AppColors.textTertiary,
+                    ),
                   ),
                   if (badge != null && badge! > 0 && !isActive)
                     Positioned(
