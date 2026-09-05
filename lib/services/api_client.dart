@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -21,37 +22,49 @@ class ApiClient {
         if (auth && _token != null) 'Authorization': 'Bearer $_token',
       };
 
+  static const _timeout = Duration(seconds: 15);
+
   Future<dynamic> get(String path, {bool auth = true}) async {
-    final res = await http.get(Uri.parse('${ApiConfig.apiBaseUrl}$path'),
-        headers: _headers(auth: auth));
+    final res = await http
+        .get(Uri.parse('${ApiConfig.apiBaseUrl}$path'),
+            headers: _headers(auth: auth))
+        .timeout(_timeout);
     return _decode(res);
   }
 
   Future<dynamic> post(String path, Map<String, dynamic> body,
       {bool auth = true}) async {
-    final res = await http.post(Uri.parse('${ApiConfig.apiBaseUrl}$path'),
-        headers: _headers(auth: auth), body: jsonEncode(body));
+    final res = await http
+        .post(Uri.parse('${ApiConfig.apiBaseUrl}$path'),
+            headers: _headers(auth: auth), body: jsonEncode(body))
+        .timeout(_timeout);
     return _decode(res);
   }
 
   Future<dynamic> put(String path, Map<String, dynamic> body,
       {bool auth = true}) async {
-    final res = await http.put(Uri.parse('${ApiConfig.apiBaseUrl}$path'),
-        headers: _headers(auth: auth), body: jsonEncode(body));
+    final res = await http
+        .put(Uri.parse('${ApiConfig.apiBaseUrl}$path'),
+            headers: _headers(auth: auth), body: jsonEncode(body))
+        .timeout(_timeout);
     return _decode(res);
   }
 
   Future<dynamic> patch(String path, [Map<String, dynamic>? body,
       bool auth = true]) async {
-    final res = await http.patch(Uri.parse('${ApiConfig.apiBaseUrl}$path'),
-        headers: _headers(auth: auth),
-        body: body == null ? null : jsonEncode(body));
+    final res = await http
+        .patch(Uri.parse('${ApiConfig.apiBaseUrl}$path'),
+            headers: _headers(auth: auth),
+            body: body == null ? null : jsonEncode(body))
+        .timeout(_timeout);
     return _decode(res);
   }
 
   Future<dynamic> delete(String path, {bool auth = true}) async {
-    final res = await http.delete(Uri.parse('${ApiConfig.apiBaseUrl}$path'),
-        headers: _headers(auth: auth));
+    final res = await http
+        .delete(Uri.parse('${ApiConfig.apiBaseUrl}$path'),
+            headers: _headers(auth: auth))
+        .timeout(_timeout);
     return _decode(res);
   }
 

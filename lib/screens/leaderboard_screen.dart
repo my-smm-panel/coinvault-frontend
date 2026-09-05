@@ -4,7 +4,7 @@ import '../core/app_theme.dart';
 import '../services/app_repository.dart';
 import '../services/auth_service.dart';
 
-/// Leaderboard - kit dark style: coin header, PRO REWARDS podium,
+/// Leaderboard - kit dark style: coin header, CoinVault podium,
 /// your rank banner, Daily/Weekly/Monthly pills, letter-avatar rows.
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
@@ -126,13 +126,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     );
   }
 
-  /// Purple header: back + coins pill + PRO REWARDS LEADERBOARD.
+  /// Purple header: back + coins pill + COINVAULT LEADERBOARD.
   Widget _header(int walletCoins) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF4A148C), Color(0xFF6A1B9A)],
+          colors: [Color(0xFFF66B06), Color(0xFFB34700)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -185,11 +185,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFFF9A825), Color(0xFFF66B06)],
+                colors: [Color(0xFFF66B06), Color(0xFFB34700)],
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text('PRO REWARDS LEADERBOARD',
+            child: const Text('COINVAULT LEADERBOARD',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                     color: Colors.white,
@@ -284,7 +284,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF4A148C), Color(0xFF7B1FA2)],
+          colors: [Color(0xFFF66B06), Color(0xFFB34700)],
         ),
         borderRadius: BorderRadius.circular(16),
         border:

@@ -2,23 +2,22 @@ import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
-import 'earn_screen.dart';
 
 /// Earning History - exact kit style: purple header, white pill tabs,
 /// Ongoing/Completed/Expired/Rejected sub-tabs, white cards with
 /// status pill + progress line + bottom progress bar + logo tile.
 class HistoryScreen extends StatefulWidget {
-  const HistoryScreen({super.key});
+  final String initialTab; // 'Tasks' or 'Payouts'
+  const HistoryScreen({super.key, this.initialTab = 'Tasks'});
 
   @override
   State<HistoryScreen> createState() => _HistoryScreenState();
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  String _tab = 'Tasks';
+  late String _tab;
   String _sub = 'Ongoing';
   List<dynamic> _withdrawals = [];
-  List<dynamic> _spins = [];
   List<dynamic> _tasks = [];
   bool _loading = true;
 
@@ -38,6 +37,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   @override
   void initState() {
     super.initState();
+    _tab = widget.initialTab == 'Payouts' ? 'Payouts' : 'Tasks';
     _load();
   }
 
@@ -45,12 +45,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
     setState(() => _loading = true);
     final repo = AppRepository.instance;
     final w = await repo.fetchWithdrawalHistory('');
-    final s = await repo.spinHistoryList();
     final t = await repo.taskHistoryList();
     if (!mounted) return;
     setState(() {
       _withdrawals = w;
-      _spins = s;
       _tasks = t;
       _loading = false;
     });
@@ -94,11 +92,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF4A148C), Color(0xFF6A1B9A)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        gradient: AppColors.brandHeader,
       ),
       child: Row(
         children: [
@@ -127,7 +121,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _pillTabs() {
-    const tabs = ['Tasks', 'Surveys', 'Games', 'Payouts'];
+    const tabs = ['Tasks', 'Payouts'];
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
       child: Row(
@@ -205,16 +199,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _currentTab() {
-    switch (_tab) {
-      case 'Surveys':
-        return _surveysList();
-      case 'Games':
-        return _gamesList();
-      case 'Payouts':
-        return _payoutsList();
-      default:
-        return _tasksList();
-    }
+    if (_tab == 'Payouts') return _payoutsList();
+    return _tasksList();
   }
 
   // ---------------- DATA ----------------
@@ -252,21 +238,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     };
   }
 
-  Map<String, dynamic>? _kitGame(Map m) {
-    final reward = ((m['reward'] ?? 0) as num).toInt();
-    final won = reward > 0;
-    final bucket = won ? 'Completed' : 'Expired';
-    if (bucket != _sub) return null;
-    return {
-      'title': won ? 'Spin Win' : 'Spin Played',
-      'pill': won ? 'Coins earned  $reward' : 'No Win',
-      'pillBlue': won,
-      'progress': won ? '100% Completed' : '0% Completed',
-      'pct': won ? 1.0 : 0.0,
-      'barBlue': won,
-      'date': _date(m),
-    };
-  }
 
   Map<String, dynamic>? _kitPayout(Map m) {
     final status = (m['status'] ?? 'PENDING').toString().toUpperCase();
@@ -335,19 +306,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _gamesList() {
-    final items = _spins
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .map(_kitGame)
-        .whereType<Map<String, dynamic>>()
-        .toList();
-    if (items.isEmpty) return _empty('Nothing here yet');
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
-      itemCount: items.length,
-      itemBuilder: (_, i) => _kitCard(items[i]),
-    );
-  }
 
   Widget _payoutsList() {
     final items = _withdrawals
@@ -363,50 +321,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _surveysList() {
-    // No survey-history endpoint yet: honest kit-styled empty state.
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
-      children: [
-        Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            children: [
-              const Text('No surveys completed yet',
-                  style: TextStyle(
-                      color: Color(0xFF1A1A22),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700)),
-              const SizedBox(height: 4),
-              const Text('Complete a survey to see it here',
-                  style:
-                      TextStyle(color: Color(0xFF667085), fontSize: 13)),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (_) => const EarnScreen())),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text('Earn Now',
-                    style: TextStyle(fontWeight: FontWeight.w800)),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
 
   // ---------------- KIT CARD ----------------
 

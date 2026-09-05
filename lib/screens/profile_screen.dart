@@ -115,7 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          colors: [Color(0xFF2A0A5E), Color(0xFF4A148C)],
+          colors: [Color(0xFFF66B06), Color(0xFFB34700)],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
         ),
@@ -330,7 +330,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF7C4DFF), Color(0xFF651FFF)],
+            colors: [Color(0xFFF66B06), Color(0xFFB34700)],
           ),
           borderRadius: BorderRadius.circular(12),
         ),
@@ -357,7 +357,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _row('My History', () => _push(const HistoryScreen())),
         _row('My Stats', () => _push(const LeaderboardScreen())),
         _row('My Transactions',
-            () => _push(const HistoryScreen())),
+            () => _push(const HistoryScreen(initialTab: 'Payouts'))),
         _row('Refer & Earn', () => _push(const ReferScreen())),
         _row('My Network', () => _push(const ReferScreen())),
         _row('Earn More', () => _push(const EarnScreen())),

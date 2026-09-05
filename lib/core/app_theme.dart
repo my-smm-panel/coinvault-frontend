@@ -7,23 +7,23 @@ class AppColors {
   static const Color primary = Color(0xFFF66B06); // CoinVault orange
   static const Color primaryLight = Color(0xFFFF8A3D);
   static const Color primaryDark = Color(0xFFC24E00);
-  static const Color primaryContainer = Color(0xFFFFEDE0);
+  static const Color primaryContainer = Color(0xFF3A1E08);
   
   // Accent - Gold for coins
   static const Color gold = Color(0xFFF59E0B);
   static const Color goldLight = Color(0xFFFBBF24);
-  static const Color goldContainer = Color(0xFFFFF4E5);
+  static const Color goldContainer = Color(0xFF3A2A08);
   
-  // Surface colors
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF8FAFC);
-  static const Color background = Color(0xFFFAFAFA);
-  static const Color cardBackground = Color(0xFFFFFFFF);
-  
-  // Text colors
-  static const Color textPrimary = Color(0xFF1E293B);
-  static const Color textSecondary = Color(0xFF64748B);
-  static const Color textTertiary = Color(0xFF94A3B8);
+  // Surface colors (CoinVault dark)
+  static const Color surface = Color(0xFF17171F);
+  static const Color surfaceVariant = Color(0xFF1E1E28);
+  static const Color background = Color(0xFF0B0B12);
+  static const Color cardBackground = Color(0xFF17171F);
+
+  // Text colors (dark theme)
+  static const Color textPrimary = Color(0xFFFFFFFF);
+  static const Color textSecondary = Color(0xFFB3B3C0);
+  static const Color textTertiary = Color(0xFF6B6B78);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
   
   // Status colors
@@ -31,13 +31,13 @@ class AppColors {
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFEF4444);
 
-  // Dark surfaces (kit Spin & Win screen)
-  static const Color spinDark = Color(0xFF151A30);
-  static const Color spinCard = Color(0xFF20263F);
-  
-  // Border/divider
-  static const Color divider = Color(0xFFE2E8F0);
-  static const Color border = Color(0xFFE2E8F0);
+  // Dark surfaces (CoinVault warm dark)
+  static const Color spinDark = Color(0xFF0E0A06);
+  static const Color spinCard = Color(0xFF1D130B);
+
+  // Border/divider (dark theme)
+  static const Color divider = Color(0xFF2A2A35);
+  static const Color border = Color(0xFF2A2A35);
   
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
@@ -53,7 +53,14 @@ class AppColors {
   );
   
   static const LinearGradient cardGradient = LinearGradient(
-    colors: [Color(0xFFFFFFFF), Color(0xFFF8FAFC)],
+    colors: [Color(0xFF17171F), Color(0xFF1E1E28)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  /// Own brand header (orange) - replaces all purple/ProRewards headers.
+  static const LinearGradient brandHeader = LinearGradient(
+    colors: [Color(0xFFF66B06), Color(0xFFB34700)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

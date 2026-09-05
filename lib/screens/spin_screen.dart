@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/app_repository.dart';
 import '../services/api_client.dart';
 import '../models/app_models.dart';
+import 'history_screen.dart';
 
 class SpinScreen extends StatefulWidget {
   const SpinScreen({super.key});
@@ -26,7 +27,8 @@ class _SpinScreenState extends State<SpinScreen>
   int _remainingSpins = 2;
   String _statusMessage = 'You have 2 free spins';
 
-  final List<int> _segments = [10, 2, 3]; // 100 is NEVER included - weighted 0%
+  // 8-slice wheel, values mirror real payouts (10/2/3). Server decides reward.
+  final List<int> _segments = [10, 2, 3, 2, 10, 3, 2, 3];
   // Probabilities: 10=40%, 2=30%, 3=30%
 
   @override
@@ -265,7 +267,12 @@ class _SpinScreenState extends State<SpinScreen>
         actions: [
           IconButton(
             icon: const Icon(Icons.history_rounded),
-            onPressed: () {}, // Spin history
+            tooltip: 'My history',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (_) => const HistoryScreen()),
+            ),
           ),
         ],
       ),
@@ -318,16 +325,29 @@ class _SpinScreenState extends State<SpinScreen>
             ),
             const SizedBox(height: AppSpacing.xl),
             
-            // Spin Wheel
-            AnimatedBuilder(
-              animation: _controller,
-              builder: (context, child) {
-                return Transform.rotate(
-                  angle: _rotationAnim.value,
-                  child: child,
-                );
-              },
-              child: _buildWheel(),
+            // Spin Wheel (wheel rotates, pointer stays fixed on top)
+            Stack(
+              alignment: Alignment.topCenter,
+              children: [
+                AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    return Transform.rotate(
+                      angle: _rotationAnim.value,
+                      child: child,
+                    );
+                  },
+                  child: _buildWheel(),
+                ),
+                Positioned(
+                  top: 0,
+                  child: CustomPaint(
+                    size: const Size(36, 22),
+                    painter:
+                        _TrianglePainter(color: AppColors.gold),
+                  ),
+                ),
+              ],
             ),
             
             const SizedBox(height: AppSpacing.xl),
@@ -390,52 +410,99 @@ class _SpinScreenState extends State<SpinScreen>
   }
 
   Widget _buildWheel() {
-    return Container(
-      width: 280,
-      height: 280,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: AppColors.gold, width: 6),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withOpacity(0.35),
-            blurRadius: 30,
-            spreadRadius: 2,
-          ),
-        ],
-      ),
+    // Outer bulb ring positions (12 bulbs around the wheel).
+    final bulbs = List.generate(12, (i) {
+      final a = (i * 2 * math.pi / 12) - math.pi / 2;
+      return Offset(150 + 158 * math.cos(a), 150 + 158 * math.sin(a));
+    });
+    return SizedBox(
+      width: 320,
+      height: 320,
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Wheel segments (kit colors)
-          CustomPaint(
-            size: const Size(280, 280),
-            painter: _WheelPainter(segments: _segments),
-          ),
-          // Center circle
+          // Bulbs
+          ...bulbs.map((o) => Positioned(
+                left: o.dx - 7,
+                top: o.dy - 7,
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: _spinning
+                        ? AppColors.gold
+                        : AppColors.gold.withOpacity(0.45),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.gold.withOpacity(0.7),
+                        blurRadius: _spinning ? 12 : 5,
+                      ),
+                    ],
+                  ),
+                ),
+              )),
+          // Wheel disc
           Container(
-            width: 80,
-            height: 80,
+            width: 290,
+            height: 290,
             decoration: BoxDecoration(
-              color: AppColors.spinDark,
               shape: BoxShape.circle,
-              boxShadow: AppShadows.card,
-              border: Border.all(color: AppColors.gold, width: 3),
+              border: Border.all(color: AppColors.gold, width: 7),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withOpacity(0.45),
+                  blurRadius: 40,
+                  spreadRadius: 4,
+                ),
+                BoxShadow(
+                  color: AppColors.gold.withOpacity(0.25),
+                  blurRadius: 70,
+                  spreadRadius: 8,
+                ),
+              ],
             ),
-            child: Icon(
-              Icons.casino_rounded,
-              size: 36,
-              color: AppColors.gold,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Wheel segments (own warm palette)
+                CustomPaint(
+                  size: const Size(290, 290),
+                  painter: _WheelPainter(segments: _segments),
+                ),
+                // Center hub with bear
+                Container(
+                  width: 92,
+                  height: 92,
+                  decoration: BoxDecoration(
+                    color: AppColors.spinDark,
+                    shape: BoxShape.circle,
+                    border:
+                        Border.all(color: AppColors.gold, width: 4),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.5),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/app_icon.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const Icon(
+                        Icons.casino_rounded,
+                        size: 38,
+                        color: AppColors.gold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-          // Top pointer (fixed)
-          Positioned(
-            top: -12,
-            child: CustomPaint(
-              size: const Size(32, 12),
-              painter: _TrianglePainter(color: AppColors.gold),
-            ),
-          ),
+          // Top pointer is rendered fixed outside (see build).
         ],
       ),
     );
@@ -451,7 +518,7 @@ class _SpinScreenState extends State<SpinScreen>
         Wrap(
           spacing: AppSpacing.md,
           runSpacing: AppSpacing.sm,
-          children: _segments.map((coins) {
+          children: [10, 3, 2].map((coins) {
             final is10 = coins == 10;
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -596,18 +663,20 @@ class _WheelPainter extends CustomPainter {
     final radius = size.width / 2;
     final segmentAngle = 2 * math.pi / segments.length;
     
+    // Own warm palette (no purple) - index-safe for any slice count.
     final colors = [
-      AppColors.gold,      // 10 coins - best
-      AppColors.primary,   // 2 coins - kit orange
-      Color(0xFF8B5CF6),   // 3 coins - kit purple
+      AppColors.gold,          // 10 coins - best
+      AppColors.primary,       // hot orange
+      const Color(0xFFB34700), // deep orange
+      const Color(0xFFFFD54F), // light gold
     ];
-    
+
     for (int i = 0; i < segments.length; i++) {
       final startAngle = i * segmentAngle - math.pi / 2;
-      
+
       // Segment background
       final paint = Paint()
-        ..color = colors[i]
+        ..color = colors[i % colors.length]
         ..style = PaintingStyle.fill;
       
       final path = Path()

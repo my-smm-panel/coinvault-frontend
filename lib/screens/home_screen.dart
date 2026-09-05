@@ -306,7 +306,7 @@ class HomeTab extends StatelessWidget {
         _proTopIcon(context, Icons.notifications_rounded,
             AppColors.primary, 'Notification', const NotificationsScreen()),
         _proTopIcon(context, Icons.person_rounded,
-            const Color(0xFF7C4DFF), 'Profile', const ProfileScreen()),
+            AppColors.primary, 'Profile', const ProfileScreen()),
       ],
     );
   }
@@ -694,7 +694,7 @@ class HomeTab extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
-            colors: [Color(0xFF4A148C), Color(0xFF7B1FA2)],
+            colors: [Color(0xFFF66B06), Color(0xFFB34700)],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),

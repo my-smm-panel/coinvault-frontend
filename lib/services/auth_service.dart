@@ -58,7 +58,7 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _loadUserModel(firebase_auth.User firebaseUser) async {
-    // Try to load from local cache first
+    // Try to load from local cache first (instant UI)
     final prefs = await SharedPreferences.getInstance();
     final cached = prefs.getString('user_${firebaseUser.uid}');
     if (cached != null) {
@@ -66,26 +66,19 @@ class AuthService extends ChangeNotifier {
         final data = json.decode(cached);
         _userModel = UserModel.fromFirebase(data, firebaseUser.uid);
         notifyListeners();
-        return;
       } catch (_) {}
     }
-    
-    // Fetch from backend
-    try {
-      final repo = AppRepository.instance;
-      final userData = await repo.fetchUserProfile(firebaseUser.uid);
-      if (userData != null) {
-        // Normalize backend profile keys to UserModel keys.
-        final norm = Map<String, dynamic>.from(userData);
-        norm['displayName'] ??= norm['name'];
-        norm['photoUrl'] ??= norm['avatar'];
-        _userModel = UserModel.fromFirebase(norm, firebaseUser.uid);
-        await _cacheUserModel();
-        notifyListeners();
-        return;
-      }
-    } catch (_) {
-      // fall through to local profile below
+
+    // Always refresh backend JWT + profile in background so realtime
+    // data (spin/tasks/withdrawals/leaderboard) never goes stale.
+    _loginToBackend(firebaseUser);
+    if (_userModel == null) {
+      await _refreshProfileFromBackend(firebaseUser);
+      if (_userModel != null) return;
+    } else {
+      // Cached session: refresh profile silently without blocking.
+      _refreshProfileFromBackend(firebaseUser);
+      return;
     }
     // Backend unavailable or unknown user: build from Firebase profile
     // (never leave _userModel null for a signed-in user)
@@ -102,6 +95,31 @@ class AuthService extends ChangeNotifier {
     // Login to backend (Render API) to get JWT for spin/withdraw calls.
     // Never blocks the app - local session works even if backend is down.
     _loginToBackend(firebaseUser);
+  }
+
+  /// Fetch backend profile and merge (keeps Firebase name/photo).
+  Future<void> _refreshProfileFromBackend(
+      firebase_auth.User firebaseUser) async {
+    try {
+      final repo = AppRepository.instance;
+      final userData = await repo.fetchUserProfile(firebaseUser.uid);
+      if (userData == null) return;
+      final norm = Map<String, dynamic>.from(userData);
+      norm['displayName'] ??= norm['name'];
+      norm['photoUrl'] ??= norm['avatar'];
+      final fresh = UserModel.fromFirebase(norm, firebaseUser.uid);
+      _userModel = fresh.copyWith(
+        displayName: firebaseUser.displayName?.isNotEmpty == true
+            ? firebaseUser.displayName!
+            : fresh.displayName,
+        photoUrl: firebaseUser.photoURL ?? fresh.photoUrl,
+        email: firebaseUser.email ?? fresh.email,
+      );
+      await _cacheUserModel();
+      notifyListeners();
+    } catch (_) {
+      // Offline: cached/Firebase profile stays.
+    }
   }
 
   /// Exchange Firebase idToken for backend JWT (fire-and-forget).

@@ -112,27 +112,149 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildSurveyList() {
-    final surveys = [
-      {'title': 'Consumer Habits Survey', 'coins': 100, 'time': '8 min', 'provider': 'BitLabs'},
-      {'title': 'Tech Preferences', 'coins': 75, 'time': '5 min', 'provider': 'CPX Research'},
-      {'title': 'Shopping Behavior', 'coins': 150, 'time': '12 min', 'provider': 'Pollfish'},
-      {'title': 'Mobile Gaming Survey', 'coins': 80, 'time': '6 min', 'provider': 'BitLabs'},
-      {'title': 'Finance & Banking', 'coins': 120, 'time': '10 min', 'provider': 'CPX Research'},
-    ];
+  /// All surveys (grouped by provider on the Surveys tab).
+  static const List<Map<String, dynamic>> _allSurveys = [
+    {'title': 'Consumer Habits Survey', 'coins': 100, 'time': '8 min', 'provider': 'BitLabs'},
+    {'title': 'Tech Preferences', 'coins': 75, 'time': '5 min', 'provider': 'CPX Research'},
+    {'title': 'Shopping Behavior', 'coins': 150, 'time': '12 min', 'provider': 'Pollfish'},
+    {'title': 'Mobile Gaming Survey', 'coins': 80, 'time': '6 min', 'provider': 'BitLabs'},
+    {'title': 'Finance & Banking', 'coins': 120, 'time': '10 min', 'provider': 'CPX Research'},
+    {'title': 'Lifestyle Poll', 'coins': 60, 'time': '4 min', 'provider': 'Cint'},
+    {'title': 'Product Feedback', 'coins': 90, 'time': '7 min', 'provider': 'Prime Surveys'},
+    {'title': 'Daily Opinion', 'coins': 45, 'time': '3 min', 'provider': 'TimeWall'},
+  ];
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      itemCount: surveys.length,
+  /// Survey providers only (kit style grid).
+  static const List<Map<String, dynamic>> _providers = [
+    {'name': 'Cint', 'bonus': '55% BONUS', 'color': Color(0xFF8B5CF6)},
+    {'name': 'Prime Surveys', 'bonus': '', 'color': Color(0xFF3B82F6)},
+    {'name': 'TimeWall', 'bonus': '', 'color': Color(0xFF10B981)},
+    {'name': 'BitLabs', 'bonus': '', 'color': Color(0xFF8B5CF6)},
+    {'name': 'CPX Research', 'bonus': '', 'color': Color(0xFF3B82F6)},
+    {'name': 'Pollfish', 'bonus': '', 'color': Color(0xFF14B8A6)},
+  ];
+
+  /// Surveys tab shows ONLY providers; tap opens that provider's surveys.
+  Widget _buildSurveyList() {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.85,
+      ),
+      itemCount: _providers.length,
       itemBuilder: (context, index) {
-        final s = surveys[index];
-        return _SurveyCard(
-          title: s['title'] as String,
-          coins: s['coins'] as int,
-          time: s['time'] as String,
-          provider: s['provider'] as String,
+        final p = _providers[index];
+        final color = p['color'] as Color;
+        final count = _allSurveys
+            .where((s) => s['provider'] == p['name'])
+            .length;
+        return InkWell(
+          onTap: () => _showProviderSurveys(
+              p['name'] as String, context),
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF17171F),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: color.withOpacity(0.45)),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if ((p['bonus'] as String).isNotEmpty)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(p['bonus'] as String,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w800)),
+                  ),
+                Text((p['name'] as String).substring(0, 1),
+                    style: TextStyle(
+                        color: color,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6),
+                  child: Text(p['name'] as String,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700)),
+                ),
+                Text('$count surveys',
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 10)),
+              ],
+            ),
+          ),
         );
       },
+    );
+  }
+
+  void _showProviderSurveys(String provider, BuildContext context) {
+    final list = _allSurveys
+        .where((s) => s['provider'] == provider)
+        .toList();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Color(0xFF17171F),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(provider,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            Text('${list.length} surveys available',
+                style: const TextStyle(
+                    color: Colors.white54, fontSize: 12)),
+            const SizedBox(height: 12),
+            Flexible(
+              child: ListView.builder(
+                shrinkWrap: true,
+                itemCount: list.length,
+                itemBuilder: (_, i) {
+                  final s = list[i];
+                  return _SurveyCard(
+                    title: s['title'] as String,
+                    coins: s['coins'] as int,
+                    time: s['time'] as String,
+                    provider: s['provider'] as String,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
