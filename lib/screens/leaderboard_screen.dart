@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
+import '../services/auth_service.dart';
 
-/// Leaderboard with podium top-3 + period tabs (kit screen 19).
+/// Leaderboard - kit dark style: coin header, PRO REWARDS podium,
+/// your rank banner, Daily/Weekly/Monthly pills, letter-avatar rows.
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
 
@@ -17,6 +19,18 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   List<dynamic> _top = [];
   int? _myRank;
   int _myCoins = 0;
+
+  static const _bg = Color(0xFF0B0B12);
+  static const _card = Color(0xFF17171F);
+
+  static const _avatarColors = [
+    Color(0xFF3B82F6),
+    Color(0xFFF66B06),
+    Color(0xFF8B5CF6),
+    Color(0xFF10B981),
+    Color(0xFFEC4899),
+    Color(0xFF14B8A6),
+  ];
 
   @override
   void initState() {
@@ -50,96 +64,208 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final walletCoins = AuthService().userModel?.coins ?? _myCoins;
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('Leaderboard')),
-      body: Column(
+      backgroundColor: _bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _header(walletCoins),
+            _periodRow(),
+            if (_myRank != null) _myRankBanner(),
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child: SizedBox(
+                        width: 180,
+                        child: LinearProgressIndicator(
+                          color: AppColors.primary,
+                          backgroundColor: Colors.white10,
+                        ),
+                      ),
+                    )
+                  : _top.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No rankings yet. Complete tasks to climb!',
+                            style: TextStyle(
+                                color: Colors.white54, fontSize: 14),
+                          ),
+                        )
+                      : RefreshIndicator(
+                          color: AppColors.primary,
+                          backgroundColor: _card,
+                          onRefresh: _load,
+                          child: ListView(
+                            padding:
+                                const EdgeInsets.fromLTRB(14, 10, 14, 20),
+                            children: [
+                              if (_top.length >= 3) _podium(),
+                              if (_top.length >= 3)
+                                const SizedBox(height: 12),
+                              ..._top
+                                  .skip(_top.length >= 3 ? 3 : 0)
+                                  .map((e) {
+                                final m =
+                                    Map<String, dynamic>.from(
+                                        e as Map);
+                                return _row(
+                                  m['rank'] as int? ?? 0,
+                                  _name(m),
+                                  ((m['coinsEarned'] ?? 0) as num)
+                                      .toInt(),
+                                );
+                              }),
+                            ],
+                          ),
+                        ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Purple header: back + coins pill + PRO REWARDS LEADERBOARD.
+  Widget _header(int walletCoins) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF4A148C), Color(0xFF6A1B9A)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-            child: Row(
-              children: ['DAILY', 'WEEKLY', 'MONTHLY', 'ALL_TIME'].map((p) {
-                final active = _period == p;
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 3),
-                    child: ChoiceChip(
-                      label: Text(
-                        p == 'ALL_TIME' ? 'All' : p[0] + p.substring(1).toLowerCase(),
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: active ? Colors.white : AppColors.textSecondary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      selected: active,
-                      selectedColor: AppColors.primary,
-                      backgroundColor: AppColors.surfaceVariant,
-                      onSelected: (_) {
-                        setState(() => _period = p);
-                        _load();
-                      },
-                    ),
+          Row(
+            children: [
+              InkWell(
+                onTap: () => Navigator.pop(context),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                );
-              }).toList(),
-            ),
+                  child: const Icon(Icons.arrow_back_rounded,
+                      color: Colors.white, size: 20),
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: AppColors.gold.withOpacity(0.5)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.monetization_on_rounded,
+                        color: AppColors.gold, size: 18),
+                    const SizedBox(width: 6),
+                    Text('$walletCoins',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800)),
+                  ],
+                ),
+              ),
+            ],
           ),
-          if (_myRank != null)
-            Container(
-              margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFF9A825), Color(0xFFF66B06)],
               ),
-              child: Row(
-                children: [
-                  const Icon(Icons.emoji_events_rounded, color: Colors.white),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Your rank #$_myRank • $_myCoins coins',
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ],
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text('PRO REWARDS LEADERBOARD',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _periodRow() {
+    const periods = ['DAILY', 'WEEKLY', 'MONTHLY'];
+    const labels = ['Daily', 'Weekly', 'Monthly'];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
+      child: Row(
+        children: List.generate(periods.length, (i) {
+          final active = _period == periods[i];
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: InkWell(
+              onTap: () {
+                setState(() => _period = periods[i]);
+                _load();
+              },
+              borderRadius: BorderRadius.circular(20),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 8),
+                decoration: BoxDecoration(
+                  color: active ? AppColors.primary : _card,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                      color: active
+                          ? AppColors.primary
+                          : Colors.white12),
+                ),
+                child: Text(labels[i],
+                    style: TextStyle(
+                        color: active
+                            ? Colors.white
+                            : Colors.white60,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700)),
               ),
             ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget _myRankBanner() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+      padding: const EdgeInsets.symmetric(
+          horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        gradient: AppColors.primaryGradient,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.emoji_events_rounded,
+              color: Colors.white, size: 20),
+          const SizedBox(width: 8),
           Expanded(
-            child: _loading
-                ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary))
-                : _top.isEmpty
-                    ? Center(
-                        child: Text(
-                          'No rankings yet. Complete tasks to climb!',
-                          style: AppTextStyles.bodyMedium
-                              .copyWith(color: AppColors.textTertiary),
-                        ),
-                      )
-                    : RefreshIndicator(
-                        color: AppColors.primary,
-                        onRefresh: _load,
-                        child: ListView(
-                          padding: const EdgeInsets.all(16),
-                          children: [
-                            if (_top.length >= 3) _podium(),
-                            const SizedBox(height: 8),
-                            ..._top.skip(_top.length >= 3 ? 3 : 0).map((e) {
-                              final m = Map<String, dynamic>.from(e as Map);
-                              return _row(
-                                m['rank'] as int? ?? 0,
-                                _name(m),
-                                ((m['coinsEarned'] ?? 0) as num).toInt(),
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
+            child: Text(
+              'Your Rank #$_myRank • $_myCoins coins',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14),
+            ),
           ),
         ],
       ),
@@ -148,122 +274,157 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   Widget _podium() {
     final first = Map<String, dynamic>.from(_top[0] as Map);
-    final second = _top.length > 1 ? Map<String, dynamic>.from(_top[1] as Map) : null;
-    final third = _top.length > 2 ? Map<String, dynamic>.from(_top[2] as Map) : null;
+    final second = _top.length > 1
+        ? Map<String, dynamic>.from(_top[1] as Map)
+        : null;
+    final third = _top.length > 2
+        ? Map<String, dynamic>.from(_top[2] as Map)
+        : null;
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF4A148C), Color(0xFF7B1FA2)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border:
+            Border.all(color: AppColors.gold.withOpacity(0.4)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (second != null)
-            _podiumUser(second, 2, 70, Colors.white.withOpacity(0.85)),
-          _podiumUser(first, 1, 92, AppColors.gold),
+            _podiumUser(second, 2, Colors.white.withOpacity(0.7)),
+          _podiumUser(first, 1, AppColors.gold),
           if (third != null)
-            _podiumUser(third, 3, 70, Colors.white.withOpacity(0.7)),
+            _podiumUser(third, 3, Colors.white.withOpacity(0.5)),
         ],
       ),
     );
   }
 
-  Widget _podiumUser(Map m, int rank, double h, Color ring) {
+  Widget _podiumUser(Map m, int rank, Color ring) {
+    final name = _name(m);
+    final coins = ((m['coinsEarned'] ?? 0) as num).toInt();
     return Column(
       children: [
+        if (rank == 1)
+          const Icon(Icons.emoji_events_rounded,
+              color: AppColors.gold, size: 26),
+        const SizedBox(height: 4),
         Container(
           padding: const EdgeInsets.all(3),
-          decoration: BoxDecoration(shape: BoxShape.circle, color: ring),
+          decoration:
+              BoxDecoration(shape: BoxShape.circle, color: ring),
           child: CircleAvatar(
-            radius: 26,
-            backgroundColor: Colors.white,
+            radius: rank == 1 ? 30 : 25,
+            backgroundColor: const Color(0xFF1A1A26),
             child: Text(
-              _name(m).substring(0, 1).toUpperCase(),
-              style: AppTextStyles.headlineMedium.copyWith(color: AppColors.primary),
+              name.substring(0, 1).toUpperCase(),
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 22),
             ),
           ),
         ),
-        const SizedBox(height: 6),
-        SizedBox(
-          height: h,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                ),
-                child: Text(
-                  '#$rank',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w800),
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                _name(m),
-                style: const TextStyle(color: Colors.white, fontSize: 12),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              Text(
-                '${((m['coinsEarned'] ?? 0) as num).toInt()}',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12),
-              ),
-            ],
+        const SizedBox(height: 4),
+        Container(
+          padding: const EdgeInsets.symmetric(
+              horizontal: 10, vertical: 3),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.35),
+            borderRadius: BorderRadius.circular(12),
           ),
+          child: Text('#$rank',
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 12)),
+        ),
+        const SizedBox(height: 2),
+        SizedBox(
+          width: 90,
+          child: Text(name,
+              textAlign: TextAlign.center,
+              style:
+                  const TextStyle(color: Colors.white, fontSize: 12),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+        ),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.monetization_on_rounded,
+                size: 13, color: AppColors.gold),
+            const SizedBox(width: 2),
+            Text('$coins',
+                style: const TextStyle(
+                    color: AppColors.gold,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13)),
+          ],
         ),
       ],
     );
   }
 
   Widget _row(int rank, String name, int coins) {
+    final color = _avatarColors[rank % _avatarColors.length];
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.divider),
+        color: _card,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
       ),
       child: Row(
         children: [
           SizedBox(
-            width: 32,
-            child: Text(
-              '#$rank',
-              style:
-                  AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w800),
-            ),
+            width: 34,
+            child: Text('#$rank',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 14)),
           ),
           CircleAvatar(
             radius: 18,
-            backgroundColor: AppColors.primaryContainer,
+            backgroundColor: color.withOpacity(0.2),
             child: Text(
-              name.substring(0, 1).toUpperCase(),
-              style: const TextStyle(
-                  color: AppColors.primary, fontWeight: FontWeight.w700),
+              name.isEmpty ? 'U' : name.substring(0, 1).toUpperCase(),
+              style: TextStyle(
+                  color: color, fontWeight: FontWeight.w800),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
-            child: Text(name,
-                style: AppTextStyles.bodyMedium
-                    .copyWith(fontWeight: FontWeight.w600)),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                Text('$coins coins',
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 11)),
+              ],
+            ),
           ),
           const Icon(Icons.monetization_on_rounded,
               size: 16, color: AppColors.gold),
           const SizedBox(width: 4),
           Text('$coins',
-              style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.gold, fontWeight: FontWeight.w700)),
+              style: const TextStyle(
+                  color: AppColors.gold,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14)),
         ],
       ),
     );

@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_theme.dart';
 import '../services/auth_service.dart';
 import '../models/app_models.dart';
+import 'earn_screen.dart';
 import 'leaderboard_screen.dart';
 import 'history_screen.dart';
 import 'notifications_screen.dart';
 import 'refer_screen.dart';
 import 'help_screen.dart';
 
+/// Profile - kit dark style: purple top, avatar + balance pill,
+/// All Time Statistics, purple analysis button, dark menu rows.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -20,6 +22,9 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   UserModel? _user;
   bool _loading = true;
+
+  static const _bg = Color(0xFF0B0B12);
+  static const _card = Color(0xFF17171F);
 
   @override
   void initState() {
@@ -46,366 +51,399 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  void _push(Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: _bg,
         body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
-
     if (_user == null) {
       return Scaffold(
-        backgroundColor: AppColors.background,
+        backgroundColor: _bg,
         appBar: AppBar(title: const Text('Profile')),
-        body: Center(
-          child: Text('Please sign in', style: AppTextStyles.bodyMedium),
+        body: const Center(
+          child: Text('Please sign in',
+              style: TextStyle(color: Colors.white70)),
         ),
       );
     }
-
+    final user = _user!;
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Profile'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout_rounded),
-            onPressed: _signOut,
-            tooltip: 'Sign Out',
+      backgroundColor: _bg,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              _topHeader(user),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _statsRow(user),
+                    const SizedBox(height: 14),
+                    _analysisButton(),
+                    const SizedBox(height: 16),
+                    _menu(user),
+                    const SizedBox(height: 12),
+                    const Center(
+                      child: Text('CoinVault v1.0.0',
+                          style: TextStyle(
+                              color: Colors.white38, fontSize: 11)),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Purple top: PROFILE + Settings, avatar + name + balance + login info.
+  Widget _topHeader(UserModel user) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF2A0A5E), Color(0xFF4A148C)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              const Text('PROFILE',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800)),
+              const Spacer(),
+              InkWell(
+                onTap: () => _push(const HelpScreen()),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    children: [
+                      Text('Settings',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700)),
+                      SizedBox(width: 4),
+                      Icon(Icons.settings_rounded,
+                          color: Colors.white, size: 16),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white38, width: 2),
+                ),
+                child: CircleAvatar(
+                  radius: 38,
+                  backgroundColor: Colors.white10,
+                  backgroundImage: user.photoUrl != null
+                      ? NetworkImage(user.photoUrl!)
+                      : const AssetImage('assets/app_icon_name.png')
+                          as ImageProvider,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      user.displayName.isEmpty
+                          ? 'User'
+                          : user.displayName,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    const Text('Current Balance',
+                        style: TextStyle(
+                            color: Colors.white54, fontSize: 12)),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.monetization_on_rounded,
+                              color: AppColors.gold, size: 20),
+                          const SizedBox(width: 6),
+                          Text('${user.coins}',
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text('Login Info',
+                        style: TextStyle(
+                            color: Colors.white54, fontSize: 12)),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.phone_rounded,
+                              color: Colors.white70, size: 16),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.all(7),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.mail_rounded,
+                              color: Colors.white70, size: 16),
+                        ),
+                        if (user.email != null &&
+                            user.email!.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(user.email!,
+                                style: const TextStyle(
+                                    color: Colors.white54,
+                                    fontSize: 11),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
+    );
+  }
+
+  Widget _statsRow(UserModel user) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('All Time Statistics',
+            style: TextStyle(
+                color: Colors.white70,
+                fontSize: 13,
+                fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        Row(
           children: [
-            // Profile Header
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.xl),
-              decoration: BoxDecoration(
-                gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.circular(AppRadius.xl),
-                boxShadow: AppShadows.elevated,
-              ),
-              child: Column(
-                children: [
-                  CircleAvatar(
-                    radius: 50,
-                    backgroundColor: Colors.white.withOpacity(0.2),
-                    backgroundImage: _user!.photoUrl != null
-                        ? NetworkImage(_user!.photoUrl!)
-                        : const AssetImage('assets/app_icon_name.png')
-                            as ImageProvider,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  Text(
-                    _user!.displayName,
-                    style: AppTextStyles.headlineMedium.copyWith(color: Colors.white),
-                  ),
-                  if (_user!.email != null) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      _user!.email!,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.lg),
-                  // Coins display
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                      border: Border.all(color: Colors.white.withOpacity(0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.monetization_on_rounded, color: AppColors.gold, size: 24),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              '${_user!.coins} Coins',
-                              style: AppTextStyles.titleMedium.copyWith(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            Text(
-                              '≈ ₹${(_user!.coins / 10).toStringAsFixed(1)}',
-                              style: AppTextStyles.bodySmall.copyWith(
-                                color: Colors.white.withOpacity(0.8),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            Expanded(
+                child: _statCard(
+                    '${user.coins}', 'Available to\nWithdraw')),
+            const SizedBox(width: 10),
+            Expanded(
+                child: _statCard(
+                    '${2 - user.dailySpinsUsed < 0 ? 0 : 2 - user.dailySpinsUsed}',
+                    'Spins Left\nToday')),
+            const SizedBox(width: 10),
+            Expanded(
+                child:
+                    _statCard('${user.coins}', 'Total\nEarnings')),
+          ],
+        ),
+      ],
+    );
+  }
 
-            const SizedBox(height: AppSpacing.xl),
+  Widget _statCard(String value, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 6),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        children: [
+          Text(value,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800)),
+          const SizedBox(height: 4),
+          Text(label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: Colors.white54, fontSize: 11)),
+        ],
+      ),
+    );
+  }
 
-            // Stats Grid
-            Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    title: 'Total Earned',
-                    value: '${_user!.coins}',
-                    subtitle: 'coins',
-                    icon: Icons.trending_up_rounded,
-                    color: AppColors.gold,
-                  ),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: _StatCard(
-                    title: 'Spins Used Today',
-                    value: '${_user!.dailySpinsUsed}',
-                    subtitle: '/ 2',
-                    icon: Icons.casino_rounded,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ],
-            ),
-
-            const SizedBox(height: AppSpacing.xl),
-
-            // Withdrawal Info Section
-            _buildSection('Withdrawal Details', [
-              if (_user!.upiId != null && _user!.upiId!.isNotEmpty)
-                _InfoTile(
-                  icon: Icons.account_balance_wallet_rounded,
-                  title: 'UPI ID',
-                  subtitle: _user!.upiId!,
-                  color: AppColors.primary,
-                ),
-              if (_user!.bankDetails != null && _user!.bankDetails!.isNotEmpty)
-                _InfoTile(
-                  icon: Icons.account_balance_rounded,
-                  title: 'Bank Details',
-                  subtitle: _user!.bankDetails!,
-                  color: AppColors.success,
-                ),
-              if ((_user!.upiId == null || _user!.upiId!.isEmpty) &&
-                  (_user!.bankDetails == null || _user!.bankDetails!.isEmpty))
-                _InfoTile(
-                  icon: Icons.info_outline_rounded,
-                  title: 'No withdrawal method saved',
-                  subtitle: 'Add UPI or Bank details in Withdraw screen',
-                  color: AppColors.textTertiary,
-                ),
-            ]),
-
-            const SizedBox(height: AppSpacing.lg),
-
-            // Settings
-            _buildSection('Settings', [
-              _InfoTile(
-                icon: Icons.group_add_rounded,
-                title: 'Refer & Earn',
-                subtitle: 'Invite friends, earn bonus coins',
-                color: const Color(0xFFEC4899),
-                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const ReferScreen())),
-              ),
-              _InfoTile(
-                icon: Icons.emoji_events_rounded,
-                title: 'Leaderboard',
-                subtitle: 'Top earners this week',
-                color: AppColors.gold,
-                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const LeaderboardScreen())),
-              ),
-              _InfoTile(
-                icon: Icons.history_rounded,
-                title: 'History',
-                subtitle: 'Withdrawals, spins & tasks',
-                color: const Color(0xFF14B8A6),
-                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const HistoryScreen())),
-              ),
-              _InfoTile(
-                icon: Icons.notifications_rounded,
-                title: 'Notifications',
-                subtitle: 'Manage push notifications',
-                color: AppColors.primary,
-                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const NotificationsScreen())),
-              ),
-              _InfoTile(
-                icon: Icons.help_outline_rounded,
-                title: 'Help & Support',
-                subtitle: 'FAQs, contact us',
-                color: AppColors.success,
-                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
-                onTap: () => Navigator.push(context,
-                    MaterialPageRoute(builder: (_) => const HelpScreen())),
-              ),
-              _InfoTile(
-                icon: Icons.privacy_tip_rounded,
-                title: 'Privacy Policy',
-                subtitle: 'Read our privacy policy',
-                color: AppColors.warning,
-                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
-                onTap: () {},
-              ),
-              _InfoTile(
-                icon: Icons.description_rounded,
-                title: 'Terms of Service',
-                subtitle: 'Read terms and conditions',
-                color: AppColors.error,
-                trailing: const Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
-                onTap: () {},
-              ),
-            ]),
-
-            const SizedBox(height: AppSpacing.xl),
-
-            // App Version
-            Text(
-              'CoinVault v1.0.0',
-              style: AppTextStyles.bodySmall.copyWith(color: AppColors.textTertiary),
-            ),
-            const SizedBox(height: AppSpacing.xl),
+  Widget _analysisButton() {
+    return InkWell(
+      onTap: () => _push(const LeaderboardScreen()),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF7C4DFF), Color(0xFF651FFF)],
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('SEE PERFORMANCE ANALYSIS',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800)),
+            SizedBox(width: 8),
+            Icon(Icons.arrow_forward_rounded,
+                color: Colors.white, size: 20),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSection(String title, List<Widget> children) {
+  Widget _menu(UserModel user) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: AppTextStyles.titleMedium),
-        const SizedBox(height: AppSpacing.md),
-        Container(
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: AppColors.divider),
-            boxShadow: AppShadows.card,
-          ),
-          child: Column(
-            children: children.map((child) => child).toList(),
-          ),
-        ),
+        _row('My History', () => _push(const HistoryScreen())),
+        _row('My Stats', () => _push(const LeaderboardScreen())),
+        _row('My Transactions',
+            () => _push(const HistoryScreen())),
+        _row('Refer & Earn', () => _push(const ReferScreen())),
+        _row('My Network', () => _push(const ReferScreen())),
+        _row('Earn More', () => _push(const EarnScreen())),
+        _row('Notifications',
+            () => _push(const NotificationsScreen())),
+        _row('Support & Help', () => _push(const HelpScreen())),
+        if ((user.upiId ?? '').isNotEmpty)
+          _staticRow('UPI', user.upiId!),
+        if ((user.bankDetails ?? '').isNotEmpty)
+          _staticRow('Bank', user.bankDetails!),
+        _row('Sign Out', _signOut, red: true),
       ],
     );
   }
-}
 
-class _StatCard extends StatelessWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-
-  const _StatCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.divider),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(AppRadius.md),
-            ),
-            child: Icon(icon, size: 24, color: color),
+  Widget _row(String title, VoidCallback onTap, {bool red = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+              horizontal: 16, vertical: 15),
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.white10),
           ),
-          const SizedBox(height: AppSpacing.md),
-          Text(value, style: AppTextStyles.headlineMedium.copyWith(
-            fontWeight: FontWeight.w800,
-            color: color,
-          )),
-          Text(subtitle, style: AppTextStyles.bodySmall),
-          const SizedBox(height: AppSpacing.xs),
-          Text(title, style: AppTextStyles.bodySmall),
-        ],
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(title,
+                    style: TextStyle(
+                        color: red
+                            ? const Color(0xFFFF8A80)
+                            : Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600)),
+              ),
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: Colors.white10,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.arrow_forward_rounded,
+                    color: Colors.white70, size: 16),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
-}
 
-class _InfoTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final Widget? trailing;
-  final VoidCallback? onTap;
-
-  const _InfoTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    this.trailing,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
+  Widget _staticRow(String title, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 15),
+        decoration: BoxDecoration(
+          color: _card,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white10),
+        ),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppRadius.md),
-              ),
-              child: Icon(icon, size: 22, color: color),
-            ),
-            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: AppTextStyles.bodySmall),
+                  Text(title,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
+                  Text(value,
+                      style: const TextStyle(
+                          color: Colors.white54, fontSize: 12),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
-            if (trailing != null) trailing!,
           ],
         ),
       ),

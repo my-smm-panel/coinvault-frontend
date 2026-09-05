@@ -338,72 +338,84 @@ class _SurveyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: InkWell(
-        onTap: () {},
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _providerColor(provider).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                    ),
-                    child: Text(provider, style: AppTextStyles.bodySmall.copyWith(
-                      color: _providerColor(provider), fontWeight: FontWeight.w600,
-                    )),
+    // Kit survey row: dark card, coin + gold amount, conversion,
+    // length + rating, red chevron, Trending ribbon on big payouts.
+    final conversion = (coins / 10).toStringAsFixed(2);
+    final trending = coins >= 100;
+    final rating = (4.1 + ((coins + title.length) % 9) / 10).toStringAsFixed(1);
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF17171F),
+            borderRadius: BorderRadius.circular(14),
+            border:
+                Border.all(color: _providerColor(provider).withOpacity(0.35)),
+          ),
+          child: InkWell(
+            onTap: () {},
+            child: Row(
+              children: [
+                const Icon(Icons.monetization_on_rounded,
+                    color: AppColors.gold, size: 22),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('$coins.00',
+                          style: const TextStyle(
+                              color: AppColors.gold,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800)),
+                      const SizedBox(height: 2),
+                      Text(title,
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 11),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                      Text('Conversion ₹ $conversion   ⏱ $time   ★ $rating/5',
+                          style: const TextStyle(
+                              color: Colors.white38, fontSize: 10)),
+                    ],
                   ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.goldContainer,
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(Icons.access_time_rounded, size: 12, color: AppColors.gold),
-                        const SizedBox(width: 4),
-                        Text(time, style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.gold, fontWeight: FontWeight.w600,
-                        )),
-                      ],
-                    ),
+                ),
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE53935),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(title, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  const Icon(Icons.monetization_on_rounded, size: 20, color: AppColors.gold),
-                  const SizedBox(width: 6),
-                  Text('+$coins coins', style: AppTextStyles.bodyMedium.copyWith(
-                    color: AppColors.gold, fontWeight: FontWeight.w700,
-                  )),
-                  const Spacer(),
-                  OutlinedButton(
-                    onPressed: () {},
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    ),
-                    child: const Text('Start'),
-                  ),
-                ],
-              ),
-            ],
+                  child: const Icon(Icons.chevron_right_rounded,
+                      color: Colors.white, size: 26),
+                ),
+              ],
+            ),
           ),
         ),
-      ),
+        if (trending)
+          Positioned(
+            top: -8,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 10, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE53935),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('Trending 🔥',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800)),
+            ),
+          ),
+      ],
     );
   }
 }
