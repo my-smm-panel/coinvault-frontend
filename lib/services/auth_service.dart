@@ -6,6 +6,7 @@ import 'dart:convert';
 
 import '../models/app_models.dart';
 import '../services/app_repository.dart';
+import 'firebase_stats.dart';
 
 /// Auth service handling Firebase Google Sign-In and user session
 class AuthService {
@@ -80,6 +81,8 @@ class AuthService {
       photoUrl: firebaseUser.photoURL,
     );
     await _cacheUserModel();
+    // Mirror to Firebase RTDB (fast counter, fire-and-forget)
+    FirebaseStats.syncUser(_userModel!);
   }
 
   Future<void> _cacheUserModel() async {
@@ -162,11 +165,12 @@ class AuthService {
     _userModel = null;
   }
 
-  /// Update user coins (local + backend sync)
+  /// Update user coins (local + backend sync + Firebase RTDB mirror)
   Future<void> addCoins(int amount) async {
     if (_userModel == null) return;
     _userModel = _userModel!.copyWith(coins: _userModel!.coins + amount);
     await _cacheUserModel();
+    FirebaseStats.addCoinsDelta(_userModel!.uid, amount);
     await _syncToBackend();
   }
 
@@ -174,6 +178,7 @@ class AuthService {
     if (_userModel == null) return;
     _userModel = _userModel!.copyWith(coins: (_userModel!.coins - amount).clamp(0, 999999));
     await _cacheUserModel();
+    FirebaseStats.addCoinsDelta(_userModel!.uid, -amount);
     await _syncToBackend();
   }
 
@@ -186,6 +191,7 @@ class AuthService {
       lastSpinDate: now,
     );
     await _cacheUserModel();
+    FirebaseStats.recordSpin(_userModel!.uid);
     await _syncToBackend();
   }
 
