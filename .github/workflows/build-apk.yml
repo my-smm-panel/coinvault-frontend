@@ -102,7 +102,7 @@ jobs:
           from PIL import Image
           import os
 
-          src = Image.open("assets/app_icon.jpg").convert("RGB")
+          src = Image.open("assets/app_icon_name.png").convert("RGB")
           w, h = src.size
           side = min(w, h)
           square = src.crop(((w - side) // 2, (h - side) // 2,

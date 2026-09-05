@@ -69,68 +69,35 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ScaleTransition(
-              scale: _scaleAnim,
-              child: FadeTransition(
-                opacity: _fadeAnim,
-                child: Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    borderRadius: BorderRadius.circular(AppRadius.xl),
-                    boxShadow: AppShadows.elevated,
-                  ),
-                  child: const Icon(
-                    Icons.account_balance_wallet_rounded,
-                    size: 60,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+      backgroundColor: const Color(0xFFF66B06),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Bear loading screen (same image as sent on Telegram)
+          FadeTransition(
+            opacity: _fadeAnim,
+            child: Image.asset(
+              'assets/app_icon.jpg',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            FadeTransition(
-              opacity: _fadeAnim,
-              child: Text(
-                'CoinVault',
-                style: AppTextStyles.displayLarge.copyWith(
-                  fontWeight: FontWeight.w800,
-                  background: Paint()
-                    ..shader = AppColors.primaryGradient
-                        .createShader(const Rect.fromLTWH(0, 0, 200, 70)),
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            FadeTransition(
-              opacity: _fadeAnim,
-              child: Text(
-                'Earn. Spin. Withdraw.',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textTertiary,
-                ),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xxl),
-            FadeTransition(
-              opacity: _fadeAnim,
+          ),
+          Positioned(
+            bottom: 48,
+            left: 0,
+            right: 0,
+            child: const Center(
               child: SizedBox(
-                width: 40,
-                height: 40,
+                width: 36,
+                height: 36,
                 child: CircularProgressIndicator(
                   strokeWidth: 3,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
