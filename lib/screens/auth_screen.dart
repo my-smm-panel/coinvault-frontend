@@ -184,6 +184,34 @@ class _AuthScreenState extends State<AuthScreen> {
                 style: AppTextStyles.bodySmall.copyWith(color: AppColors.textTertiary),
                 textAlign: TextAlign.center,
               ),
+
+              const SizedBox(height: AppSpacing.md),
+
+              // Demo entry (testing) - never blocked
+              TextButton(
+                onPressed: _loading ? null : () async {
+                  setState(() { _loading = true; _error = null; });
+                  try {
+                    final demo = await AuthService().signInAsDemo();
+                    if (mounted) {
+                      Navigator.of(context).pushReplacement(
+                        MaterialPageRoute(builder: (_) => const HomeScreen()),
+                      );
+                    }
+                  } catch (e) {
+                    if (mounted) setState(() => _error = 'Demo login failed: $e');
+                  } finally {
+                    if (mounted) setState(() => _loading = false);
+                  }
+                },
+                child: Text(
+                  'Continue as Demo (testing)',
+                  style: AppTextStyles.labelMedium.copyWith(
+                    color: AppColors.textTertiary,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
               
               const Spacer(flex: 3),
             ],

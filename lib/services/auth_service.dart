@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 
@@ -87,41 +88,88 @@ class AuthService {
     );
   }
 
-  /// Sign in with Google - with fallback for missing Firebase config
+  /// Sign in with Google - native account picker first, browser fallback second
   Future<UserModel?> signInWithGoogle() async {
+    // 1. Native Google account picker (reliable on Android)
+    try {
+      final googleUser = await GoogleSignIn(
+        scopes: ['email', 'profile'],
+        serverClientId: '839337325039-8mao9qj110cfsvol4qcn7dsogickv9hg.apps.googleusercontent.com',
+      ).signIn();
+      if (googleUser == null) {
+        debugPrint('GoogleSignIn: user dismissed account picker');
+        return null; // real cancel - let UI show it
+      }
+      final googleAuth = await googleUser.authentication;
+      final credential = firebase_auth.GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+      final userCred = await _auth.signInWithCredential(credential);
+      if (userCred.user != null) {
+        await _loadUserModel(userCred.user!);
+        return _userModel;
+      }
+      return null;
+    } on firebase_auth.FirebaseAuthException catch (e) {
+      debugPrint('Native Google Sign-In Firebase error: ${e.code} - ${e.message}');
+      if (_isConfigError(e)) {
+        debugPrint('Firebase not configured - demo mode');
+        return await _createDemoUser();
+      }
+      // config ok but native failed -> try browser flow below
+      debugPrint('Trying browser fallback...');
+    } catch (e) {
+      debugPrint('Native Google Sign-In error: $e');
+      if (_isConfigErrorString(e.toString())) {
+        return await _createDemoUser();
+      }
+      // fall through to browser flow
+    }
+
+    // 2. Browser fallback (signInWithProvider)
     try {
       final googleProvider = firebase_auth.GoogleAuthProvider();
       googleProvider.addScope('email');
       googleProvider.addScope('profile');
-      
+
       final credential = await _auth.signInWithProvider(googleProvider);
       if (credential.user != null) {
         await _loadUserModel(credential.user!);
         return _userModel;
       }
     } on firebase_auth.FirebaseAuthException catch (e) {
-      debugPrint('Google Sign-In error: ${e.code} - ${e.message}');
-      // Fallback: Firebase not configured (dummy apiKey / missing google-services.json)
-      // Create demo user so app can be tested without blocking
-      if (e.code == 'operation-not-allowed' || 
-          e.code == 'invalid-credential' || 
-          e.code == 'api-key-not-valid' ||
-          e.code == 'invalid-api-key' ||
-          e.message?.contains('API key') == true ||
-          e.message?.contains('not valid') == true) {
-        debugPrint('Firebase auth not configured - using demo mode');
+      debugPrint('Browser Google Sign-In error: ${e.code} - ${e.message}');
+      if (_isConfigError(e)) {
         return await _createDemoUser();
       }
       rethrow;
     } catch (e) {
-      debugPrint('Google Sign-In generic error: $e');
-      // If Firebase completely unavailable, allow demo login
-      if (e.toString().contains('API key') || e.toString().contains('not valid') || e.toString().contains('Firebase')) {
+      debugPrint('Browser Google Sign-In generic error: $e');
+      if (_isConfigErrorString(e.toString())) {
         return await _createDemoUser();
       }
       rethrow;
     }
     return null;
+  }
+
+  bool _isConfigError(firebase_auth.FirebaseAuthException e) {
+    return e.code == 'operation-not-allowed' ||
+        e.code == 'invalid-credential' ||
+        e.code == 'api-key-not-valid' ||
+        e.code == 'invalid-api-key' ||
+        (e.message?.contains('API key') ?? false) ||
+        (e.message?.contains('not valid') ?? false);
+  }
+
+  bool _isConfigErrorString(String s) {
+    return s.contains('API key') || s.contains('not valid') || s.contains('Firebase');
+  }
+
+  /// Explicit demo login - never blocked
+  Future<UserModel> signInAsDemo() async {
+    return await _createDemoUser();
   }
 
   Future<UserModel> _createDemoUser() async {
