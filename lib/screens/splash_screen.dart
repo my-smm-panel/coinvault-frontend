@@ -73,13 +73,17 @@ class _SplashScreenState extends State<SplashScreen>
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Bear loading screen (same image as sent on Telegram)
+          // Bear loading screen: whole image always visible.
+          // Image bg is solid orange = same as scaffold, so it blends
+          // seamlessly on any screen size (no crop, no stretch).
           FadeTransition(
             opacity: _fadeAnim,
-            child: Image.asset(
-              'assets/app_icon.jpg',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+            child: Center(
+              child: Image.asset(
+                'assets/app_icon.jpg',
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+              ),
             ),
           ),
           Positioned(
