@@ -12,6 +12,7 @@ import 'leaderboard_screen.dart';
 import 'history_screen.dart';
 import 'notifications_screen.dart';
 import 'refer_screen.dart';
+import 'help_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
