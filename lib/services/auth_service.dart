@@ -9,8 +9,9 @@ import '../services/app_repository.dart';
 import 'api_client.dart';
 import 'firebase_stats.dart';
 
-/// Auth service handling Firebase Google Sign-In and user session
-class AuthService {
+/// Auth service handling Firebase Google Sign-In and user session.
+/// Extends ChangeNotifier so wallet/balance UI updates instantly (no restart).
+class AuthService extends ChangeNotifier {
   static final AuthService _instance = AuthService._internal();
   factory AuthService() => _instance;
   AuthService._internal();
@@ -52,6 +53,7 @@ class AuthService {
       _loadUserModel(user);
     } else {
       _userModel = null;
+      notifyListeners();
     }
   }
 
@@ -63,6 +65,7 @@ class AuthService {
       try {
         final data = json.decode(cached);
         _userModel = UserModel.fromFirebase(data, firebaseUser.uid);
+        notifyListeners();
         return;
       } catch (_) {}
     }
@@ -88,6 +91,7 @@ class AuthService {
       photoUrl: firebaseUser.photoURL,
     );
     await _cacheUserModel();
+    notifyListeners();
     // Mirror to Firebase RTDB (fast counter, fire-and-forget)
     FirebaseStats.syncUser(_userModel!);
     // Login to backend (Render API) to get JWT for spin/withdraw calls.
@@ -190,9 +194,11 @@ class AuthService {
       if (_userModel == null) {
         await _loadUserModel(currentUser);
       }
+      notifyListeners();
       return _userModel;
     } catch (e) {
       debugPrint('ensureUserLoaded error: $e');
+      notifyListeners();
       return _userModel;
     }
   }
@@ -202,6 +208,7 @@ class AuthService {
     await _auth.signOut();
     _currentUser = null;
     _userModel = null;
+    notifyListeners();
     ApiClient.instance.token = null;
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -215,6 +222,7 @@ class AuthService {
     if (_userModel == null) return;
     _userModel = _userModel!.copyWith(coins: _userModel!.coins + amount);
     await _cacheUserModel();
+    notifyListeners(); // wallet updates instantly, no restart
     FirebaseStats.addCoinsDelta(_userModel!.uid, amount);
     await _syncToBackend();
   }
@@ -223,6 +231,7 @@ class AuthService {
     if (_userModel == null) return;
     _userModel = _userModel!.copyWith(coins: (_userModel!.coins - amount).clamp(0, 999999));
     await _cacheUserModel();
+    notifyListeners(); // wallet updates instantly, no restart
     FirebaseStats.addCoinsDelta(_userModel!.uid, -amount);
     await _syncToBackend();
   }
@@ -236,6 +245,7 @@ class AuthService {
       lastSpinDate: now,
     );
     await _cacheUserModel();
+    notifyListeners();
     FirebaseStats.recordSpin(_userModel!.uid);
     await _syncToBackend();
   }
@@ -245,6 +255,7 @@ class AuthService {
     if (_userModel == null) return;
     _userModel = _userModel!.copyWith(upiId: upiId, bankDetails: bankDetails);
     await _cacheUserModel();
+    notifyListeners();
     await _syncToBackend();
   }
 

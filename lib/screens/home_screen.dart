@@ -201,11 +201,15 @@ class HomeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final auth = AuthService();
-    final user = auth.userModel;
-    final remainingSpins = auth.getRemainingSpins();
+    // Rebuilds instantly whenever AuthService coins/user change (no restart).
+    return ListenableBuilder(
+      listenable: AuthService(),
+      builder: (context, _) {
+        final auth = AuthService();
+        final user = auth.userModel;
+        final remainingSpins = auth.getRemainingSpins();
 
-    return Scaffold(
+        return Scaffold(
       backgroundColor: AppColors.background,
       body: CustomScrollView(
         slivers: [
@@ -245,7 +249,9 @@ class HomeTab extends StatelessWidget {
             ),
           ),
         ],
-      ),
+          ),
+        );
+      },
     );
   }
 

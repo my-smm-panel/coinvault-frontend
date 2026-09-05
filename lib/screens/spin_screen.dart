@@ -21,6 +21,7 @@ class _SpinScreenState extends State<SpinScreen>
   late Animation<double> _rotationAnim;
   int _lastReward = 0;
   bool _spinning = false;
+  bool _redeeming = false; // server redeem in-flight: block second spin
   bool _showResult = false;
   int _remainingSpins = 2;
   String _statusMessage = 'You have 2 free spins';
@@ -71,7 +72,10 @@ class _SpinScreenState extends State<SpinScreen>
 
   void _onAnimationStatus(AnimationStatus status) {
     if (status == AnimationStatus.completed) {
-      setState(() => _spinning = false);
+      setState(() {
+        _spinning = false;
+        _redeeming = true; // lock: no second spin before result
+      });
       // Reward comes from the SERVER (Supabase ledger) - never local.
       _redeemServerSpin();
     }
@@ -89,9 +93,11 @@ class _SpinScreenState extends State<SpinScreen>
         await auth.addCoins(reward);
       }
       await auth.recordSpin();
+      if (!mounted) return;
       setState(() {
         _lastReward = reward;
         _showResult = true;
+        _redeeming = false; // unlock: result shown
         _remainingSpins = (_remainingSpins - 1).clamp(0, 99);
         _statusMessage = _remainingSpins > 0
             ? 'You have $_remainingSpins free spin${_remainingSpins > 1 ? 's' : ''} left'
@@ -102,6 +108,7 @@ class _SpinScreenState extends State<SpinScreen>
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
+        _redeeming = false; // unlock on failure too
         _statusMessage = e.message;
       });
       await _loadSpins();
@@ -113,6 +120,7 @@ class _SpinScreenState extends State<SpinScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
+        _redeeming = false;
         _statusMessage = 'Spin failed. Check connection and try again.';
       });
     }
@@ -129,7 +137,8 @@ class _SpinScreenState extends State<SpinScreen>
   }
 
   void _spin() {
-    if (_spinning || _remainingSpins <= 0) return;
+    // Blocked while spinning, redeeming result, or out of spins.
+    if (_spinning || _redeeming || _remainingSpins <= 0) return;
     
     final auth = AuthService();
     if (!auth.canSpin()) {
@@ -166,6 +175,7 @@ class _SpinScreenState extends State<SpinScreen>
   }
 
   void _showResultDialog() {
+    final won = _lastReward > 0;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -186,11 +196,12 @@ class _SpinScreenState extends State<SpinScreen>
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  gradient: AppColors.goldGradient,
+                  gradient: won ? AppColors.goldGradient : null,
+                  color: won ? null : AppColors.surfaceVariant,
                   shape: BoxShape.circle,
                   boxShadow: [
                     BoxShadow(
-                      color: AppColors.gold.withOpacity(0.4),
+                      color: (won ? AppColors.gold : AppColors.textTertiary).withOpacity(0.4),
                       blurRadius: 20,
                       offset: const Offset(0, 8),
                     ),
@@ -198,9 +209,9 @@ class _SpinScreenState extends State<SpinScreen>
                 ),
                 child: Center(
                   child: Text(
-                    '+$_lastReward',
+                    won ? '+$_lastReward' : '0',
                     style: AppTextStyles.displayLarge.copyWith(
-                      color: Colors.white,
+                      color: won ? Colors.white : AppColors.textSecondary,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -208,13 +219,17 @@ class _SpinScreenState extends State<SpinScreen>
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                'Congratulations!',
+                won ? 'Awesome! Congratulations!' : 'Better luck next time!',
                 style: AppTextStyles.headlineMedium,
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
-                'You won $_lastReward coins',
+                won
+                    ? 'You won $_lastReward coins — added to your wallet'
+                    : 'No coins this time. Try again tomorrow!',
                 style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.lg),
               SizedBox(
@@ -311,7 +326,7 @@ class _SpinScreenState extends State<SpinScreen>
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: (_spinning || _remainingSpins <= 0) ? null : _spin,
+                onPressed: (_spinning || _redeeming || _remainingSpins <= 0) ? null : _spin,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _remainingSpins > 0 ? AppColors.gold : AppColors.surfaceVariant,
                   foregroundColor: _remainingSpins > 0 ? Colors.white : AppColors.textTertiary,
