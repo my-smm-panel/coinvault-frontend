@@ -307,7 +307,7 @@ class _SpinScreenState extends State<SpinScreen>
               child: Row(
                 children: [
                   Icon(
-                    _remainingSpins > 0 ? Icons.casino_rounded : Icons.lock_rounded,
+                    _remainingSpins > 0 ? Icons.donut_large_rounded : Icons.lock_rounded,
                     color: _remainingSpins > 0 ? AppColors.primary : Colors.white38,
                   ),
                   const SizedBox(width: AppSpacing.md),
@@ -492,7 +492,7 @@ class _SpinScreenState extends State<SpinScreen>
                       'assets/app_icon.jpg',
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => const Icon(
-                        Icons.casino_rounded,
+                        Icons.donut_large_rounded,
                         size: 38,
                         color: AppColors.gold,
                       ),

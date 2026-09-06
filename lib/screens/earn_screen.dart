@@ -270,7 +270,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
 
     // Mock offers when API unavailable
     final offers = [
-      {'title': 'Install Game & Reach Level 10', 'coins': 500, 'icon': Icons.games_rounded, 'color': AppColors.primary},
+      {'title': 'Install Partner App & Reach Level 10', 'coins': 500, 'icon': Icons.apps_rounded, 'color': AppColors.primary},
       {'title': 'Sign up for Newsletter', 'coins': 50, 'icon': Icons.email_rounded, 'color': AppColors.success},
       {'title': 'Create Account on Partner Site', 'coins': 200, 'icon': Icons.person_add_rounded, 'color': AppColors.warning},
       {'title': 'Subscribe to YouTube Channel', 'coins': 75, 'icon': Icons.play_circle_rounded, 'color': AppColors.error},

@@ -266,7 +266,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       children: [
         _stat('Withdrawable', '${user.coins}',
             Icons.payments_rounded, AppColors.primary),
-        _stat('Spins Left', spinsLeft, Icons.casino_rounded,
+        _stat('Spins Left', spinsLeft, Icons.donut_large_rounded,
             AppColors.gold),
         _stat('Total Earned', '${user.coins}',
             Icons.emoji_events_rounded, const Color(0xFF10B981)),

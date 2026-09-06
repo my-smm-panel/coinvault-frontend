@@ -101,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () => setState(() => _currentIndex = 1),
                 ),
                 _NavItem(
-                  icon: Icons.casino_rounded,
+                  icon: Icons.donut_large_rounded,
                   label: 'Spin',
                   isActive: _currentIndex == 2,
                   onTap: () => setState(() => _currentIndex = 2),
@@ -255,6 +255,10 @@ class HomeTab extends StatelessWidget {
                       context, const HistoryScreen())),
               const SizedBox(height: 10),
               _proTasksList(context),
+              const SizedBox(height: 18),
+              _proSectionTitle('QUICK PLAY'),
+              const SizedBox(height: 10),
+              _proQuickPlay(context, remainingSpins),
               const SizedBox(height: 18),
               _proSectionTitle('EARNING PARTNERS',
                   action: 'Earn',
@@ -449,7 +453,7 @@ class HomeTab extends StatelessWidget {
             context,
             'Lucky Spin',
             '2 FREE DAILY',
-            Icons.casino_rounded,
+            Icons.donut_large_rounded,
             const [Color(0xFFF66B06), Color(0xFFB34700)],
             badge: 'FREE',
             onTap: () => _proPush(context, const SpinScreen()),
@@ -684,6 +688,226 @@ class HomeTab extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+
+  /// QUICK PLAY: Spin / Scratch / Challenges / Refer (own 4-tile row).
+  Widget _proQuickPlay(BuildContext context, int remainingSpins) {
+    final tiles = [
+      {
+        'label': 'Spin',
+        'sub': '$remainingSpins left',
+        'icon': Icons.donut_large_rounded,
+        'color': AppColors.primary,
+        'onTap': () => _proPush(context, const SpinScreen()),
+      },
+      {
+        'label': 'Scratch',
+        'sub': 'Try luck',
+        'icon': Icons.card_giftcard_rounded,
+        'color': const Color(0xFFF59E0B),
+        'onTap': () => _showScratchDialog(context),
+      },
+      {
+        'label': 'Challenges',
+        'sub': 'Daily goals',
+        'icon': Icons.emoji_events_rounded,
+        'color': const Color(0xFF10B981),
+        'onTap': () => _showChallenges(context, remainingSpins),
+      },
+      {
+        'label': 'Refer',
+        'sub': 'Bonus coins',
+        'icon': Icons.group_add_rounded,
+        'color': const Color(0xFFEC4899),
+        'onTap': () => _proPush(context, const ReferScreen()),
+      },
+    ];
+    return Row(
+      children: tiles.map((t) {
+        final color = t['color'] as Color;
+        return Expanded(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: InkWell(
+              onTap: t['onTap'] as VoidCallback,
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF17171F),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                      color: color.withOpacity(0.45)),
+                ),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            color,
+                            color.withOpacity(0.55)
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(t['icon'] as IconData,
+                          color: Colors.white, size: 24),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(t['label'] as String,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800)),
+                    Text(t['sub'] as String,
+                        style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 10)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  /// Daily challenges sheet with live spin progress.
+  void _showChallenges(BuildContext context, int remainingSpins) {
+    final used = (2 - remainingSpins).clamp(0, 2);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Color(0xFF17171F),
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(24)),
+          border:
+              Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Today's Challenges",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800)),
+            const SizedBox(height: 4),
+            const Text('Complete goals, earn bonus coins',
+                style: TextStyle(
+                    color: Colors.white54, fontSize: 12)),
+            const SizedBox(height: 12),
+            _challengeRow(
+                context,
+                'Spin the wheel 2 times',
+                '$used/2 done',
+                used / 2,
+                '+20 coins',
+                () => _proPush(context, const SpinScreen())),
+            _challengeRow(
+                context,
+                'Complete 3 tasks',
+                'Earn Screen',
+                0,
+                '+50 coins',
+                () => _proPush(context, const EarnScreen())),
+            _challengeRow(
+                context,
+                'Invite 1 friend',
+                'Refer & Earn',
+                0,
+                '+100 coins',
+                () => _proPush(context, const ReferScreen())),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _challengeRow(
+      BuildContext context,
+      String title,
+      String sub,
+      double progress,
+      String reward,
+      VoidCallback onTap) {
+    final done = progress >= 1;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0B0B12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+              color: done
+                  ? const Color(0xFF10B981).withOpacity(0.5)
+                  : Colors.white10),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14)),
+                  Text('$sub • $reward',
+                      style: const TextStyle(
+                          color: Colors.white54, fontSize: 11)),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 6,
+                      backgroundColor: Colors.white10,
+                      valueColor:
+                          const AlwaysStoppedAnimation<Color>(
+                              Color(0xFF10B981)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                onTap();
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: done
+                    ? const Color(0xFF10B981)
+                    : AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: Text(done ? 'Done' : 'Go',
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -952,7 +1176,7 @@ class HomeTab extends StatelessWidget {
     final items = [
       {
         'label': 'Spin',
-        'icon': Icons.casino_rounded,
+        'icon': Icons.donut_large_rounded,
         'color': AppColors.primary,
         'onTap': () => Navigator.push(
             context, MaterialPageRoute(builder: (_) => const SpinScreen())),
@@ -1190,7 +1414,7 @@ class HomeTab extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.casino_rounded, color: Colors.white, size: 16),
+                      const Icon(Icons.donut_large_rounded, color: Colors.white, size: 16),
                       const SizedBox(width: 6),
                       Text(
                         '$remainingSpins free spin${remainingSpins > 1 ? 's' : ''} left today',
@@ -1277,7 +1501,7 @@ class HomeTab extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                Icons.casino_rounded,
+                Icons.donut_large_rounded,
                 size: 36,
                 color: remainingSpins > 0 ? AppColors.gold : AppColors.textTertiary,
               ),
