@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_theme.dart';
+import '../core/provider_logos.dart';
 import '../services/auth_service.dart';
 import '../models/app_models.dart';
 import 'earn_screen.dart';
 import 'spin_screen.dart';
+import 'surveys_screen.dart';
 import 'withdraw_screen.dart';
 import 'profile_screen.dart';
 import 'leaderboard_screen.dart';
@@ -36,7 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
       const HomeTab(),
       const EarnScreen(),
       const SpinScreen(),
-      const WithdrawScreen(),
+      const SurveysScreen(),
       const ProfileScreen(),
     ]);
   }
@@ -106,8 +108,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   badge: _user?.remainingSpins() ?? 2,
                 ),
                 _NavItem(
-                  icon: Icons.account_balance_wallet_rounded,
-                  label: 'Withdraw',
+                  icon: Icons.assignment_rounded,
+                  label: 'Surveys',
                   isActive: _currentIndex == 3,
                   onTap: () => setState(() => _currentIndex = 3),
                 ),
@@ -438,29 +440,18 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  /// 3 promo cards (kit): Exclusive HOT / Fast Earn / Microtask.
+  /// Own promo cards (NOT copy): Lucky Spin / Invite & Earn / Top Earners.
   Widget _proPromoRow(BuildContext context) {
     return Row(
       children: [
         Expanded(
           child: _proPromoCard(
             context,
-            'Exclusive',
-            'ELITE BRANDS',
-            Icons.diamond_rounded,
-            const [Color(0xFFB71C1C), Color(0xFFE53935)],
-            badge: 'HOT',
-            onTap: () => _proPush(context, const EarnScreen()),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: _proPromoCard(
-            context,
-            'Fast Earn',
-            'INSTANT ₹50',
-            Icons.bolt_rounded,
-            const [Color(0xFFF9A825), Color(0xFFFFD54F)],
+            'Lucky Spin',
+            '2 FREE DAILY',
+            Icons.casino_rounded,
+            const [Color(0xFFF66B06), Color(0xFFB34700)],
+            badge: 'FREE',
             onTap: () => _proPush(context, const SpinScreen()),
           ),
         ),
@@ -468,11 +459,23 @@ class HomeTab extends StatelessWidget {
         Expanded(
           child: _proPromoCard(
             context,
-            'Microtask',
-            'QUICK REWARDS',
-            Icons.check_circle_rounded,
-            const [Color(0xFF00695C), Color(0xFF26A69A)],
-            onTap: () => _proPush(context, const EarnScreen()),
+            'Invite & Earn',
+            'BONUS COINS',
+            Icons.group_add_rounded,
+            const [Color(0xFFF59E0B), Color(0xFFB45309)],
+            onTap: () => _proPush(context, const ReferScreen()),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _proPromoCard(
+            context,
+            'Top Earners',
+            'WEEKLY RANKS',
+            Icons.emoji_events_rounded,
+            const [Color(0xFF10B981), Color(0xFF047857)],
+            onTap: () =>
+                _proPush(context, const LeaderboardScreen()),
           ),
         ),
       ],
@@ -629,12 +632,13 @@ class HomeTab extends StatelessWidget {
   /// Tasks of the day (kit rows with brand tiles).
   Widget _proTasksList(BuildContext context) {
     const tasks = [
-      ['d', 'Install Game & Play', 'Reach level 5 • 500 coins', Color(0xFFF66B06)],
-      ['HFK', 'Shopping Survey', '10 min • 150 coins', Color(0xFF3B82F6)],
-      ['+', 'Daily Check-in', 'Streak bonus • 25 coins', Color(0xFF10B981)],
+      ['Install Game & Play', 'Reach level 5 • 500 coins', 'PubScale'],
+      ['Shopping Survey', '10 min • 150 coins', 'Cint'],
+      ['Daily Check-in', 'Streak bonus • 25 coins', 'TimeWall'],
     ];
     return Column(
       children: tasks.map((t) {
+        final provider = t[2];
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: InkWell(
@@ -649,34 +653,26 @@ class HomeTab extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Container(
-                    width: 46,
-                    height: 46,
-                    decoration: BoxDecoration(
-                      color: (t[3] as Color).withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: Text(t[0] as String,
-                          style: TextStyle(
-                              color: t[3] as Color,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 18)),
-                    ),
-                  ),
+                  ProviderLogo(provider, size: 46),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(t[1] as String,
+                        Text(t[0],
                             style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 14)),
-                        Text(t[2] as String,
+                        Text(t[1],
                             style: const TextStyle(
                                 color: Colors.white54, fontSize: 11)),
+                        Text(provider,
+                            style: TextStyle(
+                                color: ProviderLogos.colorFor(
+                                    provider),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700)),
                       ],
                     ),
                   ),
@@ -691,19 +687,19 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  /// All earning providers on Home (horizontal scroll, own dark style).
+  /// All earning providers on Home (horizontal scroll, real logos).
   Widget _proProvidersRow(BuildContext context) {
     const providers = [
-      ['Cint', Color(0xFF8B5CF6)],
-      ['Prime Surveys', Color(0xFF3B82F6)],
-      ['TimeWall', Color(0xFF10B981)],
-      ['BitLabs', Color(0xFF8B5CF6)],
-      ['CPX Research', Color(0xFF3B82F6)],
-      ['Pollfish', Color(0xFF14B8A6)],
-      ['PubScale', Color(0xFFF66B06)],
-      ['OfferPro', Color(0xFFEC4899)],
-      ['GrowDeck', Color(0xFFF59E0B)],
-      ['CPI Droid', Color(0xFF10B981)],
+      'Cint',
+      'Prime Surveys',
+      'TimeWall',
+      'BitLabs',
+      'CPX Research',
+      'Pollfish',
+      'PubScale',
+      'OfferPro',
+      'GrowDeck',
+      'CPI Droid',
     ];
     return SizedBox(
       height: 104,
@@ -712,8 +708,8 @@ class HomeTab extends StatelessWidget {
         itemCount: providers.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (_, i) {
-          final name = providers[i][0] as String;
-          final color = providers[i][1] as Color;
+          final name = providers[i];
+          final color = ProviderLogos.colorFor(name);
           return InkWell(
             onTap: () => _proPush(context, const EarnScreen()),
             borderRadius: BorderRadius.circular(14),
@@ -729,21 +725,7 @@ class HomeTab extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: color.withOpacity(0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text(name[0],
-                          style: TextStyle(
-                              color: color,
-                              fontSize: 20,
-                              fontWeight: FontWeight.w800)),
-                    ),
-                  ),
+                  ProviderLogo(name, size: 40, radius: 20),
                   const SizedBox(height: 6),
                   Text(name,
                       textAlign: TextAlign.center,

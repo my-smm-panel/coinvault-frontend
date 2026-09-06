@@ -8,6 +8,7 @@ import 'leaderboard_screen.dart';
 import 'history_screen.dart';
 import 'notifications_screen.dart';
 import 'refer_screen.dart';
+import 'withdraw_screen.dart';
 import 'help_screen.dart';
 
 /// Profile - own CoinVault style: centered bear avatar overlapping
@@ -331,6 +332,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const ReferScreen()],
       ['Earn', Icons.task_alt_rounded, const Color(0xFF3B82F6),
         const EarnScreen()],
+      ['Withdraw', Icons.account_balance_wallet_rounded,
+        AppColors.primary, const WithdrawScreen()],
       ['Alerts', Icons.notifications_rounded, const Color(0xFFF59E0B),
         const NotificationsScreen()],
     ];

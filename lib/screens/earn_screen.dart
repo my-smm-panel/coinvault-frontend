@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_theme.dart';
+import '../core/provider_logos.dart';
 import '../services/app_repository.dart';
 
 class EarnScreen extends StatefulWidget {
@@ -85,12 +86,12 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
 
   Widget _buildTaskList() {
     final tasks = [
-      {'title': 'Download & Open App', 'coins': 50, 'desc': 'Install and open for 30 seconds', 'type': 'app'},
-      {'title': 'Watch Video Ad', 'coins': 10, 'desc': 'Watch 30-second video', 'type': 'video'},
-      {'title': 'Complete Profile', 'coins': 25, 'desc': 'Fill all profile fields', 'type': 'profile'},
-      {'title': 'Daily Login', 'coins': 5, 'desc': 'Open app today', 'type': 'login'},
-      {'title': 'Share on WhatsApp', 'coins': 15, 'desc': 'Share referral link', 'type': 'share'},
-      {'title': 'Rate App on Play Store', 'coins': 30, 'desc': 'Leave 5-star review', 'type': 'review'},
+      {'title': 'Download & Open App', 'coins': 50, 'desc': 'Install and open for 30 seconds', 'type': 'app', 'provider': 'PubScale'},
+      {'title': 'Watch Video Ad', 'coins': 10, 'desc': 'Watch 30-second video', 'type': 'video', 'provider': 'Lootably'},
+      {'title': 'Complete Profile', 'coins': 25, 'desc': 'Fill all profile fields', 'type': 'profile', 'provider': 'Cint'},
+      {'title': 'Daily Login', 'coins': 5, 'desc': 'Open app today', 'type': 'login', 'provider': 'TimeWall'},
+      {'title': 'Share on WhatsApp', 'coins': 15, 'desc': 'Share referral link', 'type': 'share', 'provider': 'GrowDeck'},
+      {'title': 'Rate App on Play Store', 'coins': 30, 'desc': 'Leave 5-star review', 'type': 'review', 'provider': 'OfferPro'},
     ];
 
     return ListView.builder(
@@ -104,6 +105,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
           title: task['title'] as String,
           coins: task['coins'] as int,
           description: task['desc'] as String,
+          provider: task['provider'] as String,
           icon: style[0] as IconData,
           color: style[1] as Color,
           onTap: () => _showTaskDetail(task),
@@ -179,11 +181,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
                             fontSize: 8,
                             fontWeight: FontWeight.w800)),
                   ),
-                Text((p['name'] as String).substring(0, 1),
-                    style: TextStyle(
-                        color: color,
-                        fontSize: 30,
-                        fontWeight: FontWeight.w800)),
+                ProviderLogo(p['name'] as String, size: 46),
                 const SizedBox(height: 4),
                 Padding(
                   padding:
@@ -373,6 +371,7 @@ class _TaskCard extends StatelessWidget {
   final VoidCallback onTap;
   final IconData icon;
   final Color color;
+  final String provider;
 
   const _TaskCard({
     required this.title,
@@ -381,6 +380,7 @@ class _TaskCard extends StatelessWidget {
     required this.onTap,
     this.icon = Icons.task_alt_rounded,
     this.color = AppColors.primary,
+    this.provider = '',
   });
 
   @override
@@ -394,15 +394,9 @@ class _TaskCard extends StatelessWidget {
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Icon(icon, color: color, size: 24),
-              ),
+              ProviderLogo(
+                  provider.isEmpty ? title : provider,
+                  size: 48),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Column(
@@ -411,6 +405,11 @@ class _TaskCard extends StatelessWidget {
                     Text(title, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
                     const SizedBox(height: 2),
                     Text(description, style: AppTextStyles.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    if (provider.isNotEmpty)
+                      Text(provider,
+                          style: AppTextStyles.bodySmall.copyWith(
+                              color: ProviderLogos.colorFor(provider),
+                              fontWeight: FontWeight.w600)),
                   ],
                 ),
               ),
@@ -481,9 +480,8 @@ class _SurveyCard extends StatelessWidget {
             onTap: () {},
             child: Row(
               children: [
-                const Icon(Icons.monetization_on_rounded,
-                    color: AppColors.gold, size: 22),
-                const SizedBox(width: 6),
+                ProviderLogo(provider, size: 44),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
