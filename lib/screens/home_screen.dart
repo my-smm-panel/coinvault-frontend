@@ -697,47 +697,269 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  /// Tasks of the day: ONLY provider logos; tap opens its tasks page.
+  /// Tasks of the day: rich app-install / game-play cards
+  /// with provider logo, direct tap = full steps.
   Widget _proTasksList(BuildContext context) {
-    const providers = [
-      'PubScale',
-      'Cint',
-      'TimeWall',
-      'BitLabs',
-      'CPX Research',
-      'Pollfish',
-      'OfferPro',
-      'GrowDeck',
-      'CPI Droid',
-      'Lootably',
+    const tasks = [
+      {
+        'title': 'Ludo Supreme',
+        'sub': 'Install & play 5 games',
+        'coins': 500,
+        'provider': 'PubScale',
+        'steps': [
+          'Install Ludo Supreme from Play Store',
+          'Open & create account',
+          'Play 5 Ludo matches',
+          'Reach level 3 — Coins credited'
+        ]
+      },
+      {
+        'title': 'MPL Ludo',
+        'sub': 'Install & play 5 games',
+        'coins': 350,
+        'provider': 'CPI Droid',
+        'steps': [
+          'Install MPL',
+          'Open & sign up',
+          'Play 5 Ludo games',
+          'Coins credited in 24h'
+        ]
+      },
+      {
+        'title': 'Rummy Circle',
+        'sub': 'Install & play 3 rounds',
+        'coins': 300,
+        'provider': 'PubScale',
+        'steps': [
+          'Install Rummy Circle',
+          'Register with mobile',
+          'Play 3 cash games',
+          'Complete KYC — Coins credited'
+        ]
+      },
+      {
+        'title': 'Dream11',
+        'sub': 'Install & create team',
+        'coins': 200,
+        'provider': 'CPI Droid',
+        'steps': [
+          'Install Dream11',
+          'Create your first team',
+          'Join 1 contest — Coins credited'
+        ]
+      },
+      {
+        'title': 'Watch Video Ad',
+        'sub': 'Watch 30-sec video',
+        'coins': 10,
+        'provider': 'Lootably',
+        'steps': ['Tap Start', 'Watch video till end', 'Coins credited']
+      },
+      {
+        'title': 'Daily Check-in',
+        'sub': 'Open app today',
+        'coins': 25,
+        'provider': 'TimeWall',
+        'steps': ['Open CoinVault today', 'Tap Check-in — Coins credited']
+      },
     ];
     return SizedBox(
-      height: 88,
+      height: 148,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: providers.length,
+        itemCount: tasks.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (_, i) {
-          final name = providers[i];
-          final color = ProviderLogos.colorFor(name);
+          final t = tasks[i];
+          final provider = t['provider'] as String;
+          final color = ProviderLogos.colorFor(provider);
           return InkWell(
-            onTap: () => _proPush(
-                context, ProviderTasksScreen(provider: name)),
-            borderRadius: BorderRadius.circular(18),
+            onTap: () => _showHomeTaskDetail(context, t, color),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
-              width: 88,
+              width: 168,
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color(0xFF17171F),
-                borderRadius: BorderRadius.circular(18),
-                border:
-                    Border.all(color: color.withOpacity(0.45)),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: color.withOpacity(0.45)),
               ),
-              child: Center(
-                child: ProviderLogo(name, size: 62, radius: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      ProviderLogo(provider, size: 40),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          gradient: AppColors.goldGradient,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                            '+${t['coins']}',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text(t['title'] as String,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700)),
+                  Text(t['sub'] as String,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white54, fontSize: 11)),
+                  const Spacer(),
+                  Row(
+                    children: [
+                      const Icon(Icons.verified_rounded,
+                          color: AppColors.gold, size: 12),
+                      const SizedBox(width: 3),
+                      Text(provider,
+                          style: TextStyle(
+                              color: color,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ],
               ),
             ),
           );
         },
+      ),
+    );
+  }
+
+
+  void _showHomeTaskDetail(
+      BuildContext context, Map<String, dynamic> t, Color color) {
+    final provider = t['provider'] as String;
+    final steps = (t['steps'] as List).cast<String>();
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (_) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Color(0xFF17171F),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          border: Border(top: BorderSide(color: Colors.white10)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                ProviderLogo(provider, size: 56),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(t['title'] as String,
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 17,
+                              fontWeight: FontWeight.w800)),
+                      Text(provider,
+                          style: TextStyle(
+                              color: color,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    gradient: AppColors.goldGradient,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text('+${t['coins']} coins',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            const Text('How to earn',
+                style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            ...steps.asMap().entries.map((e) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 26,
+                        height: 26,
+                        decoration: BoxDecoration(
+                          color: color.withOpacity(0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text('\${e.key + 1}',
+                              style: TextStyle(
+                                  color: color,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800)),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 3),
+                          child: Text(e.value,
+                              style: const TextStyle(
+                                  color: Colors.white, fontSize: 13)),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text(
+                              'Task started! Complete steps to earn coins.')));
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('Start Task',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
