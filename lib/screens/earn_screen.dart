@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
 import '../services/app_repository.dart';
+import 'provider_tasks_screen.dart';
 
 class EarnScreen extends StatefulWidget {
   const EarnScreen({super.key});
@@ -84,31 +85,51 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
     'review': [Icons.rate_review_rounded, Color(0xFFF66B06)],
   };
 
-  Widget _buildTaskList() {
-    final tasks = [
-      {'title': 'Download & Open App', 'coins': 50, 'desc': 'Install and open for 30 seconds', 'type': 'app', 'provider': 'PubScale'},
-      {'title': 'Watch Video Ad', 'coins': 10, 'desc': 'Watch 30-second video', 'type': 'video', 'provider': 'Lootably'},
-      {'title': 'Complete Profile', 'coins': 25, 'desc': 'Fill all profile fields', 'type': 'profile', 'provider': 'Cint'},
-      {'title': 'Daily Login', 'coins': 5, 'desc': 'Open app today', 'type': 'login', 'provider': 'TimeWall'},
-      {'title': 'Share on WhatsApp', 'coins': 15, 'desc': 'Share referral link', 'type': 'share', 'provider': 'GrowDeck'},
-      {'title': 'Rate App on Play Store', 'coins': 30, 'desc': 'Leave 5-star review', 'type': 'review', 'provider': 'OfferPro'},
-    ];
+  /// Tasks tab: ONLY provider logos; tap opens that provider's tasks.
+  static const _taskProviders = [
+    'PubScale',
+    'Cint',
+    'TimeWall',
+    'BitLabs',
+    'CPX Research',
+    'Pollfish',
+    'OfferPro',
+    'GrowDeck',
+    'CPI Droid',
+    'Lootably',
+  ];
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      itemCount: tasks.length,
+  Widget _buildTaskList() {
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 0.9,
+      ),
+      itemCount: _taskProviders.length,
       itemBuilder: (context, index) {
-        final task = tasks[index];
-        final style = _taskStyles[task['type']] ??
-            const [Icons.task_alt_rounded, AppColors.primary];
-        return _TaskCard(
-          title: task['title'] as String,
-          coins: task['coins'] as int,
-          description: task['desc'] as String,
-          provider: task['provider'] as String,
-          icon: style[0] as IconData,
-          color: style[1] as Color,
-          onTap: () => _showTaskDetail(task),
+        final name = _taskProviders[index];
+        final color = ProviderLogos.colorFor(name);
+        return InkWell(
+          onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (_) =>
+                    ProviderTasksScreen(provider: name)),
+          ),
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF17171F),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color.withOpacity(0.45)),
+            ),
+            child: Center(
+              child: ProviderLogo(name, size: 58),
+            ),
+          ),
         );
       },
     );

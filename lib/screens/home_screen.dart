@@ -8,6 +8,7 @@ import '../models/app_models.dart';
 import 'earn_screen.dart';
 import 'spin_screen.dart';
 import 'surveys_screen.dart';
+import 'provider_tasks_screen.dart';
 import 'withdraw_screen.dart';
 import 'profile_screen.dart';
 import 'leaderboard_screen.dart';
@@ -288,31 +289,19 @@ class HomeTab extends StatelessWidget {
               const SizedBox(height: 12),
               _proWalletBar(context, user, remainingSpins),
               const SizedBox(height: 12),
-              _proTicker(),
-              const SizedBox(height: 12),
               _proPromoRow(context),
               const SizedBox(height: 18),
               _proSectionTitle('FEATURED SURVEYS'),
               const SizedBox(height: 10),
               _proSurveyRow(context),
               const SizedBox(height: 18),
-              _proSectionTitle('TASKS OF THE DAY',
-                  action: 'History',
-                  onAction: () => _proPush(
-                      context, const HistoryScreen())),
+              _proSectionTitle('TASKS OF THE DAY'),
               const SizedBox(height: 10),
               _proTasksList(context),
               const SizedBox(height: 18),
               _proSectionTitle('QUICK PLAY'),
               const SizedBox(height: 10),
               _proQuickPlay(context, remainingSpins),
-              const SizedBox(height: 18),
-              _proSectionTitle('EARNING PARTNERS',
-                  action: 'Earn',
-                  onAction: () =>
-                      _proPush(context, const EarnScreen())),
-              const SizedBox(height: 10),
-              _proProvidersRow(context),
               const SizedBox(height: 18),
               _proMegaBanner(context),
               const SizedBox(height: 12),
@@ -445,51 +434,6 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  /// Winner ticker (kit): horizontal pills of recent earners.
-  Widget _proTicker() {
-    const winners = [
-      ['Aarav', '+250'],
-      ['Priya', '+120'],
-      ['Rohan', '+500'],
-      ['Sneha', '+80'],
-      ['Amit', '+1000'],
-      ['Neha', '+60'],
-    ];
-    return SizedBox(
-      height: 34,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: winners.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          return Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFF17171F),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.person_rounded,
-                    size: 14, color: AppColors.gold),
-                const SizedBox(width: 4),
-                Text(winners[i][0],
-                    style:
-                        const TextStyle(color: Colors.white, fontSize: 12)),
-                const SizedBox(width: 6),
-                Text(winners[i][1],
-                    style: const TextStyle(
-                        color: AppColors.gold,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700)),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
 
   /// Own promo cards (NOT copy): Lucky Spin / Invite & Earn / Top Earners.
   Widget _proPromoRow(BuildContext context) {
@@ -723,164 +667,132 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  /// Tasks of the day (kit rows with brand tiles).
+  /// Tasks of the day: ONLY provider logos; tap opens its tasks page.
   Widget _proTasksList(BuildContext context) {
-    const tasks = [
-      ['Install Game & Play', 'Reach level 5 • 500 coins', 'PubScale'],
-      ['Shopping Survey', '10 min • 150 coins', 'Cint'],
-      ['Daily Check-in', 'Streak bonus • 25 coins', 'TimeWall'],
+    const providers = [
+      'PubScale',
+      'Cint',
+      'TimeWall',
+      'BitLabs',
+      'CPX Research',
+      'Pollfish',
+      'OfferPro',
+      'GrowDeck',
+      'CPI Droid',
+      'Lootably',
     ];
-    return Column(
-      children: tasks.map((t) {
-        final provider = t[2];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: InkWell(
-            onTap: () => _proPush(context, const EarnScreen()),
-            borderRadius: BorderRadius.circular(14),
+    return SizedBox(
+      height: 88,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: providers.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, i) {
+          final name = providers[i];
+          final color = ProviderLogos.colorFor(name);
+          return InkWell(
+            onTap: () => _proPush(
+                context, ProviderTasksScreen(provider: name)),
+            borderRadius: BorderRadius.circular(18),
             child: Container(
-              padding: const EdgeInsets.all(12),
+              width: 88,
               decoration: BoxDecoration(
                 color: const Color(0xFF17171F),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: Colors.white10),
+                borderRadius: BorderRadius.circular(18),
+                border:
+                    Border.all(color: color.withOpacity(0.45)),
               ),
-              child: Row(
-                children: [
-                  ProviderLogo(provider, size: 46),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(t[0],
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                                fontSize: 14)),
-                        Text(t[1],
-                            style: const TextStyle(
-                                color: Colors.white54, fontSize: 11)),
-                        Text(provider,
-                            style: TextStyle(
-                                color: ProviderLogos.colorFor(
-                                    provider),
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700)),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.chevron_right_rounded,
-                      color: Colors.white38),
-                ],
+              child: Center(
+                child: ProviderLogo(name, size: 62, radius: 14),
               ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        },
+      ),
     );
   }
 
-  /// QUICK PLAY: Spin / Scratch / Challenges / Refer (own 4-tile row).
+  /// QUICK PLAY: high-asset image cards 2x2, tiny labels only.
   Widget _proQuickPlay(BuildContext context, int remainingSpins) {
     final tiles = [
       {
         'label': 'Spin',
-        'sub': '$remainingSpins left',
-        'icon': Icons.donut_large_rounded,
-        'color': AppColors.primary,
+        'image': 'assets/wheel.png',
         'onTap': () => _proPush(context, const SpinScreen()),
       },
       {
         'label': 'Scratch',
-        'sub': 'Try luck',
-        'icon': Icons.card_giftcard_rounded,
-        'color': const Color(0xFFF59E0B),
+        'image': 'assets/scratch.png',
         'onTap': () => _showScratchDialog(context),
       },
       {
         'label': 'Challenges',
-        'sub': 'Daily goals',
-        'icon': Icons.emoji_events_rounded,
-        'color': const Color(0xFF10B981),
-        'onTap': () => _showChallenges(context, remainingSpins),
+        'image': 'assets/trophy.png',
+        'onTap': () =>
+            _showChallenges(context, remainingSpins),
       },
       {
         'label': 'Refer',
-        'sub': 'Bonus coins',
-        'icon': Icons.group_add_rounded,
-        'color': const Color(0xFFEC4899),
+        'image': 'assets/app_icon.jpg',
         'onTap': () => _proPush(context, const ReferScreen()),
       },
     ];
-    return Row(
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 1.35,
       children: tiles.map((t) {
-        final color = t['color'] as Color;
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: InkWell(
-              onTap: t['onTap'] as VoidCallback,
-              borderRadius: BorderRadius.circular(16),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF17171F),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                      color: color.withOpacity(0.45)),
-                ),
-                child: Column(
-                  children: [
-                    if ((t['label'] as String) == 'Spin')
-                      Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                              color: AppColors.gold, width: 2),
+        return InkWell(
+          onTap: t['onTap'] as VoidCallback,
+          borderRadius: BorderRadius.circular(18),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF17171F),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(18),
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    t['image'] as String,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        const SizedBox.shrink(),
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 7),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            Colors.black.withOpacity(0.85),
+                          ],
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
                         ),
-                        child: ClipOval(
-                          child: Image.asset('assets/wheel.png',
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  Icon(t['icon'] as IconData,
-                                      color: Colors.white,
-                                      size: 24)),
-                        ),
-                      )
-                    else
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              color,
-                              color.withOpacity(0.55)
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(t['icon'] as IconData,
-                            color: Colors.white, size: 24),
                       ),
-                    const SizedBox(height: 6),
-                    Text(t['label'] as String,
+                      child: Text(
+                        t['label'] as String,
+                        textAlign: TextAlign.center,
                         style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800)),
-                    Text(t['sub'] as String,
-                        style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 10)),
-                  ],
-                ),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -1020,49 +932,6 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  /// Earning providers: big icons only, no text.
-  Widget _proProvidersRow(BuildContext context) {
-    const providers = [
-      'Cint',
-      'Prime Surveys',
-      'TimeWall',
-      'BitLabs',
-      'CPX Research',
-      'Pollfish',
-      'PubScale',
-      'OfferPro',
-      'GrowDeck',
-      'CPI Droid',
-    ];
-    return SizedBox(
-      height: 88,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: providers.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (_, i) {
-          final name = providers[i];
-          final color = ProviderLogos.colorFor(name);
-          return InkWell(
-            onTap: () => _proPush(context, const EarnScreen()),
-            borderRadius: BorderRadius.circular(18),
-            child: Container(
-              width: 88,
-              decoration: BoxDecoration(
-                color: const Color(0xFF17171F),
-                borderRadius: BorderRadius.circular(18),
-                border:
-                    Border.all(color: color.withOpacity(0.45)),
-              ),
-              child: Center(
-                child: ProviderLogo(name, size: 62, radius: 14),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
 
   /// Mega Task banner + bottom sheet (kit "Limited Time / Swipe Up").
   Widget _proMegaBanner(BuildContext context) {
