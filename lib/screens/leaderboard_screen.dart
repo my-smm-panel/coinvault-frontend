@@ -182,20 +182,38 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           const SizedBox(height: 10),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 14, vertical: 10),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFFF66B06), Color(0xFFB34700)],
               ),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Text('COINVAULT LEADERBOARD',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.5)),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.asset(
+                    'assets/app_icon.jpg',
+                    width: 32,
+                    height: 32,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) =>
+                        const SizedBox.shrink(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text('COINVAULT LEADERBOARD',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5)),
+              ],
+            ),
           ),
         ],
       ),

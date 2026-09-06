@@ -101,7 +101,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () => setState(() => _currentIndex = 1),
                 ),
                 _NavItem(
-                  icon: Icons.donut_large_rounded,
+                  icon: Icons.autorenew_rounded,
                   label: 'Spin',
                   isActive: _currentIndex == 2,
                   onTap: () => setState(() => _currentIndex = 2),
@@ -456,6 +456,7 @@ class HomeTab extends StatelessWidget {
             Icons.donut_large_rounded,
             const [Color(0xFFF66B06), Color(0xFFB34700)],
             badge: 'FREE',
+            image: 'assets/wheel.png',
             onTap: () => _proPush(context, const SpinScreen()),
           ),
         ),
@@ -467,6 +468,7 @@ class HomeTab extends StatelessWidget {
             'BONUS COINS',
             Icons.group_add_rounded,
             const [Color(0xFFF59E0B), Color(0xFFB45309)],
+            image: 'assets/app_icon.jpg',
             onTap: () => _proPush(context, const ReferScreen()),
           ),
         ),
@@ -488,7 +490,7 @@ class HomeTab extends StatelessWidget {
 
   Widget _proPromoCard(BuildContext context, String title, String sub,
       IconData icon, List<Color> gradient,
-      {String? badge, required VoidCallback onTap}) {
+      {String? badge, String? image, required VoidCallback onTap}) {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -510,7 +512,23 @@ class HomeTab extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                Icon(icon, color: Colors.white.withOpacity(0.85), size: 26),
+                if (image != null)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.asset(image,
+                        width: 52,
+                        height: 52,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                            icon,
+                            color:
+                                Colors.white.withOpacity(0.85),
+                            size: 26)),
+                  )
+                else
+                  Icon(icon,
+                      color: Colors.white.withOpacity(0.85),
+                      size: 26),
                 const SizedBox(height: 6),
                 Text(title,
                     style: const TextStyle(
@@ -580,50 +598,75 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  /// Featured surveys: horizontal coin cards (kit).
+  /// Featured Surveys - own style: provider logo cards with coins.
   Widget _proSurveyRow(BuildContext context) {
     const cards = [
-      ['1050', '1.3k earned'],
-      ['1233', '2.4k earned'],
-      ['1050', '787 earned'],
+      ['BitLabs', 100, '8 min'],
+      ['CPX Research', 75, '5 min'],
+      ['Pollfish', 150, '12 min'],
+      ['Cint', 60, '4 min'],
+      ['TimeWall', 45, '3 min'],
     ];
     return SizedBox(
-      height: 108,
+      height: 132,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: cards.length,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (_, i) {
+          final provider = cards[i][0] as String;
+          final coins = cards[i][1] as int;
+          final time = cards[i][2] as String;
+          final color = ProviderLogos.colorFor(provider);
           return InkWell(
-            onTap: () => _proPush(context, const EarnScreen()),
-            borderRadius: BorderRadius.circular(14),
+            onTap: () => _proPush(
+                context, const SurveysScreen()),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
-              width: 108,
-              padding: const EdgeInsets.all(10),
+              width: 150,
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color(0xFF17171F),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: AppColors.gold.withOpacity(0.4)),
+                borderRadius: BorderRadius.circular(16),
+                border:
+                    Border.all(color: color.withOpacity(0.5)),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text('EARN',
-                      style: TextStyle(
-                          color: Colors.white54, fontSize: 9)),
-                  Text(cards[i][0],
+                  Row(
+                    children: [
+                      ProviderLogo(provider,
+                          size: 38, radius: 10),
+                      const Spacer(),
+                      const Icon(
+                          Icons.chevron_right_rounded,
+                          color: Colors.white38,
+                          size: 20),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(
+                          Icons.monetization_on_rounded,
+                          color: AppColors.gold,
+                          size: 15),
+                      const SizedBox(width: 3),
+                      Text('$coins coins',
+                          style: const TextStyle(
+                              color: AppColors.gold,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                  Text('$provider • $time',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800)),
-                  const Text('COINS',
-                      style: TextStyle(
-                          color: Colors.white54, fontSize: 9)),
-                  const SizedBox(height: 2),
-                  Text(cards[i][1],
-                      style: const TextStyle(
-                          color: AppColors.gold, fontSize: 10)),
+                          color: Colors.white54,
+                          fontSize: 10)),
                 ],
               ),
             ),
@@ -743,23 +786,42 @@ class HomeTab extends StatelessWidget {
                 ),
                 child: Column(
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            color,
-                            color.withOpacity(0.55)
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                    if ((t['label'] as String) == 'Spin')
+                      Container(
+                        width: 52,
+                        height: 52,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                              color: AppColors.gold, width: 2),
                         ),
-                        shape: BoxShape.circle,
+                        child: ClipOval(
+                          child: Image.asset('assets/wheel.png',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  Icon(t['icon'] as IconData,
+                                      color: Colors.white,
+                                      size: 24)),
+                        ),
+                      )
+                    else
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              color,
+                              color.withOpacity(0.55)
+                            ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(t['icon'] as IconData,
+                            color: Colors.white, size: 24),
                       ),
-                      child: Icon(t['icon'] as IconData,
-                          color: Colors.white, size: 24),
-                    ),
                     const SizedBox(height: 6),
                     Text(t['label'] as String,
                         style: const TextStyle(

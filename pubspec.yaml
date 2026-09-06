@@ -26,4 +26,5 @@ flutter:
   assets:
     - assets/app_icon.jpg
     - assets/app_icon_name.png
+    - assets/wheel.png
     - assets/logos/
