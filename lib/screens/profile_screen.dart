@@ -319,69 +319,88 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  /// 2-column grid menu (own style, not rows).
+  /// Vertical list rows (text-based, not square grid).
   Widget _gridMenu() {
     final items = [
-      ['History', Icons.history_rounded, const Color(0xFF14B8A6),
+      ['History', 'View all tasks & payouts',
+        Icons.history_rounded, const Color(0xFF14B8A6),
         const HistoryScreen()],
-      ['Payouts', Icons.payments_rounded, AppColors.primary,
+      ['Payouts', 'Withdrawal transactions',
+        Icons.payments_rounded, AppColors.primary,
         const HistoryScreen(initialTab: 'Payouts')],
-      ['Ranks', Icons.emoji_events_rounded, AppColors.gold,
+      ['Ranks', 'Leaderboard standings',
+        Icons.emoji_events_rounded, AppColors.gold,
         const LeaderboardScreen()],
-      ['Refer', Icons.group_add_rounded, const Color(0xFFEC4899),
+      ['Refer & Earn', 'Invite friends, bonus coins',
+        Icons.group_add_rounded, const Color(0xFFEC4899),
         const ReferScreen()],
-      ['Earn', Icons.task_alt_rounded, const Color(0xFF3B82F6),
+      ['Earn More', 'Tasks & offers',
+        Icons.task_alt_rounded, const Color(0xFF3B82F6),
         const EarnScreen()],
-      ['Withdraw', Icons.account_balance_wallet_rounded,
+      ['Withdraw', 'Request payout',
+        Icons.account_balance_wallet_rounded,
         AppColors.primary, const WithdrawScreen()],
-      ['Alerts', Icons.notifications_rounded, const Color(0xFFF59E0B),
+      ['Notifications', 'Alerts & updates',
+        Icons.notifications_rounded, const Color(0xFFF59E0B),
         const NotificationsScreen()],
     ];
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 1.05,
+    return Column(
       children: [
-        ...items.map((e) => _tile(e[0] as String, e[1] as IconData,
-            e[2] as Color, () => _push(e[3] as Widget))),
-        _tile('Logout', Icons.logout_rounded,
+        ...items.map((e) => _row(
+            e[0] as String, e[1] as String, e[2] as IconData,
+            e[3] as Color, () => _push(e[4] as Widget))),
+        _row('Logout', 'Sign out', Icons.logout_rounded,
             const Color(0xFFEF4444), _signOut),
       ],
     );
   }
 
-  Widget _tile(
-      String label, IconData icon, Color color, VoidCallback onTap) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        decoration: BoxDecoration(
-          color: _card,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white10),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
-                shape: BoxShape.circle,
+  Widget _row(String title, String sub, IconData icon, Color color,
+      VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+              horizontal: 14, vertical: 14),
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 20),
               ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(height: 6),
-            Text(label,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700)),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700)),
+                    Text(sub,
+                        style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 11)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right_rounded,
+                  color: Colors.white38),
+            ],
+          ),
         ),
       ),
     );

@@ -6,14 +6,21 @@ import '../core/provider_logos.dart';
 /// Surveys tab screen - ONLY surveys: providers strip on top,
 /// all surveys below with company logos (own CoinVault style).
 class SurveysScreen extends StatefulWidget {
-  const SurveysScreen({super.key});
+  final String? initialProvider;
+  const SurveysScreen({super.key, this.initialProvider});
 
   @override
   State<SurveysScreen> createState() => _SurveysScreenState();
 }
 
 class _SurveysScreenState extends State<SurveysScreen> {
-  String _selected = 'All';
+  late String _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = widget.initialProvider ?? 'All';
+  }
 
   static const _bg = Color(0xFF0B0B12);
   static const _card = Color(0xFF17171F);

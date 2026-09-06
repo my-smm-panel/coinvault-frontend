@@ -287,15 +287,19 @@ class HomeTab extends StatelessWidget {
             children: [
               _proTopBar(context, user),
               const SizedBox(height: 12),
-              _proWalletBar(context, user, remainingSpins),
-              const SizedBox(height: 12),
               _proPromoRow(context),
               const SizedBox(height: 18),
-              _proSectionTitle('FEATURED SURVEYS'),
+              _proSectionTitle('FEATURED SURVEYS',
+                  action: 'See more',
+                  onAction: () => _proPush(
+                      context, const SurveysScreen())),
               const SizedBox(height: 10),
               _proSurveyRow(context),
               const SizedBox(height: 18),
-              _proSectionTitle('TASKS OF THE DAY'),
+              _proSectionTitle('TASKS OF THE DAY',
+                  action: 'See more',
+                  onAction: () => _proPush(
+                      context, const EarnScreen())),
               const SizedBox(height: 10),
               _proTasksList(context),
               const SizedBox(height: 18),
@@ -318,7 +322,7 @@ class HomeTab extends StatelessWidget {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
-  /// Pro top bar: bear logo + CoinVault + Tutorials / Notification / Profile.
+  /// Pro top bar: bear logo + CoinVault + wallet pill (tap = Withdraw) + icons.
   Widget _proTopBar(BuildContext context, UserModel? user) {
     return Row(
       children: [
@@ -350,10 +354,35 @@ class HomeTab extends StatelessWidget {
           ),
         ),
         const Spacer(),
-        _proTopIcon(context, Icons.play_arrow_rounded,
-            const Color(0xFFE53935), 'Tutorials', const HelpScreen()),
+        InkWell(
+          onTap: () => _proPush(context, const WithdrawScreen()),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: AppColors.primary.withOpacity(0.5)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.monetization_on_rounded,
+                    color: AppColors.gold, size: 16),
+                const SizedBox(width: 4),
+                Text('${user?.coins ?? 0}',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
         _proTopIcon(context, Icons.notifications_rounded,
-            AppColors.primary, 'Notification', const NotificationsScreen()),
+            AppColors.primary, 'Alerts', const NotificationsScreen()),
         _proTopIcon(context, Icons.person_rounded,
             AppColors.primary, 'Profile', const ProfileScreen()),
       ],
@@ -611,7 +640,8 @@ class HomeTab extends StatelessWidget {
           final color = ProviderLogos.colorFor(provider);
           return InkWell(
             onTap: () => _proPush(
-                context, const SurveysScreen()),
+                context,
+                SurveysScreen(initialProvider: provider)),
             borderRadius: BorderRadius.circular(16),
             child: Container(
               width: 150,
@@ -1234,46 +1264,36 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  /// Scratch teaser (kit): reveals today's luck, leads to Spin Wheel.
-  /// No coins granted here - rewards only come from the server.
+  /// Real scratch card: finger-erase to reveal (no coins minted here -
+  /// rewards only come from the server spin wheel).
   void _showScratchDialog(BuildContext context) {
     showDialog(
       context: context,
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
-          padding: const EdgeInsets.all(AppSpacing.xl),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.xl),
+            color: const Color(0xFF17171F),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+                color: AppColors.gold.withOpacity(0.5)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                child: Image.asset(
-                  'assets/app_icon_name.png',
-                  height: 120,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const Icon(
-                    Icons.card_giftcard_rounded,
-                    size: 80,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text('Today\'s Luck Card', style: AppTextStyles.titleMedium),
-              const SizedBox(height: AppSpacing.xs),
-              Text(
-                'Feeling lucky? Your spins are waiting on the wheel.',
-                style: AppTextStyles.bodyMedium.copyWith(
-                  color: AppColors.textSecondary,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.lg),
+              const Text('Scratch Card',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              const Text('Scratch with your finger!',
+                  style: TextStyle(
+                      color: Colors.white54, fontSize: 12)),
+              const SizedBox(height: 14),
+              const _ScratchCard(),
+              const SizedBox(height: 14),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -1281,14 +1301,16 @@ class HomeTab extends StatelessWidget {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (_) => const SpinScreen()),
+                      MaterialPageRoute(
+                          builder: (_) => const SpinScreen()),
                     );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.full),
+                      borderRadius:
+                          BorderRadius.circular(AppRadius.full),
                     ),
                   ),
                   child: const Text('Go to Spin Wheel'),
@@ -1758,4 +1780,146 @@ class _ActionCard extends StatelessWidget {
       ),
     );
   }
+}
+/// True scratch-off card: drag finger to erase the gold cover
+/// and reveal the luck message underneath.
+/// True scratch-off card (finger erase).
+class _ScratchCard extends StatefulWidget {
+  const _ScratchCard();
+
+  @override
+  State<_ScratchCard> createState() => _ScratchCardState();
+}
+
+class _ScratchCardState extends State<_ScratchCard> {
+  final List<Offset> _points = [];
+  bool _revealed = false;
+
+  void _onPan(DragUpdateDetails d, BuildContext ctx) {
+    final box = ctx.findRenderObject() as RenderBox?;
+    if (box == null) return;
+    final p = box.globalToLocal(d.globalPosition);
+    setState(() {
+      _points.add(p);
+      if (_points.length > 140) _revealed = true;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Builder(builder: (ctx) {
+      return GestureDetector(
+        onPanUpdate: (d) => _onPan(d, ctx),
+        onPanEnd: (_) {
+          if (_points.length > 60) {
+            setState(() => _revealed = true);
+          }
+        },
+        child: Container(
+          width: double.infinity,
+          height: 170,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+                color: AppColors.gold.withOpacity(0.5)),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                // Prize underneath
+                Container(
+                  color: const Color(0xFF0B0B12),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Image.asset('assets/coin.png',
+                          width: 52,
+                          height: 52,
+                          errorBuilder: (_, __, ___) =>
+                              const Icon(
+                                  Icons.monetization_on_rounded,
+                                  color: AppColors.gold,
+                                  size: 44)),
+                      const SizedBox(height: 6),
+                      const Text("YOU'RE LUCKY!",
+                          style: TextStyle(
+                              color: AppColors.gold,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900)),
+                      const Text('Spin the wheel to claim',
+                          style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 12)),
+                    ],
+                  ),
+                ),
+                // Scratch cover
+                if (!_revealed)
+                  CustomPaint(
+                    painter: _ScratchCoverPainter(_points),
+                    child: Container(),
+                  )
+                else
+                  const SizedBox.shrink(),
+              ],
+            ),
+          ),
+        ),
+      );
+    });
+  }
+}
+
+class _ScratchCoverPainter extends CustomPainter {
+  final List<Offset> points;
+  _ScratchCoverPainter(this.points);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.saveLayer(Rect.fromLTWH(0, 0, size.width, size.height),
+        Paint());
+    // gold cover
+    final cover = Paint()..color = const Color(0xFFC98A1B);
+    canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.width, size.height), cover);
+    // diagonal shine lines
+    final shine = Paint()
+      ..color = const Color(0xFFE8B93E)
+      ..strokeWidth = 10;
+    for (var i = -size.height;
+        i < size.width + size.height;
+        i += 34) {
+      canvas.drawLine(Offset(i.toDouble(), 0),
+          Offset(i + size.height, size.height), shine);
+    }
+    // erase where finger passed
+    final clear = Paint()..blendMode = BlendMode.clear;
+    for (final p in points) {
+      canvas.drawCircle(p, 22, clear);
+    }
+    canvas.restore();
+    // hint text on cover
+    if (points.isEmpty) {
+      final tp = TextPainter(
+        text: const TextSpan(
+            text: 'SCRATCH HERE',
+            style: TextStyle(
+                color: Color(0xFF7A4d00),
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 2)),
+        textDirection: TextDirection.ltr,
+      );
+      tp.layout();
+      tp.paint(
+          canvas,
+          Offset((size.width - tp.width) / 2,
+              (size.height - tp.height) / 2));
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ScratchCoverPainter old) => true;
 }
