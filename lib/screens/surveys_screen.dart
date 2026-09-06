@@ -176,34 +176,18 @@ class _SurveysScreenState extends State<SurveysScreen> {
           final color = ProviderLogos.colorFor(p);
           return InkWell(
             onTap: () => setState(() => _selected = p),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             child: Container(
-              width: 72,
+              width: 76,
               decoration: BoxDecoration(
                 color: _card,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                     color: active ? color : Colors.white10,
                     width: active ? 2 : 1),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ProviderLogo(p, size: 36, radius: 18),
-                  const SizedBox(height: 4),
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 4),
-                    child: Text(p,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700)),
-                  ),
-                ],
+              child: Center(
+                child: ProviderLogo(p, size: 56, radius: 14),
               ),
             ),
           );

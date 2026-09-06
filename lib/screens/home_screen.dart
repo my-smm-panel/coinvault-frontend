@@ -37,7 +37,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _screens.addAll([
       const HomeTab(),
       const EarnScreen(),
-      const SpinScreen(),
+      const LeaderboardScreen(),
       const SurveysScreen(),
       const ProfileScreen(),
     ]);
@@ -100,12 +100,59 @@ class _HomeScreenState extends State<HomeScreen> {
                   isActive: _currentIndex == 1,
                   onTap: () => setState(() => _currentIndex = 1),
                 ),
-                _NavItem(
-                  icon: Icons.autorenew_rounded,
-                  label: 'Spin',
-                  isActive: _currentIndex == 2,
-                  onTap: () => setState(() => _currentIndex = 2),
-                  badge: _user?.remainingSpins() ?? 2,
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _currentIndex = 2),
+                    borderRadius: BorderRadius.circular(28),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          margin:
+                              const EdgeInsets.only(top: 2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                                color: _currentIndex == 2
+                                    ? AppColors.gold
+                                    : AppColors.primary,
+                                width: 3),
+                            boxShadow: [
+                              BoxShadow(
+                                color: AppColors.primary
+                                    .withOpacity(0.5),
+                                blurRadius: 14,
+                              ),
+                            ],
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/app_icon.jpg',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  const Icon(
+                                      Icons
+                                          .emoji_events_rounded,
+                                      color: AppColors.gold,
+                                      size: 28),
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'Ranks',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: _currentIndex == 2
+                                ? AppColors.gold
+                                : AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 _NavItem(
                   icon: Icons.assignment_rounded,
@@ -973,7 +1020,7 @@ class HomeTab extends StatelessWidget {
     );
   }
 
-  /// All earning providers on Home (horizontal scroll, real logos).
+  /// Earning providers: big icons only, no text.
   Widget _proProvidersRow(BuildContext context) {
     const providers = [
       'Cint',
@@ -988,7 +1035,7 @@ class HomeTab extends StatelessWidget {
       'CPI Droid',
     ];
     return SizedBox(
-      height: 104,
+      height: 88,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: providers.length,
@@ -998,30 +1045,17 @@ class HomeTab extends StatelessWidget {
           final color = ProviderLogos.colorFor(name);
           return InkWell(
             onTap: () => _proPush(context, const EarnScreen()),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(18),
             child: Container(
-              width: 96,
-              padding: const EdgeInsets.all(8),
+              width: 88,
               decoration: BoxDecoration(
                 color: const Color(0xFF17171F),
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(18),
                 border:
                     Border.all(color: color.withOpacity(0.45)),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ProviderLogo(name, size: 40, radius: 20),
-                  const SizedBox(height: 6),
-                  Text(name,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700)),
-                ],
+              child: Center(
+                child: ProviderLogo(name, size: 62, radius: 14),
               ),
             ),
           );

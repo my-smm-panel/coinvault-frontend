@@ -156,49 +156,15 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
         return InkWell(
           onTap: () => _showProviderSurveys(
               p['name'] as String, context),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(16),
           child: Container(
             decoration: BoxDecoration(
               color: const Color(0xFF17171F),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(16),
               border: Border.all(color: color.withOpacity(0.45)),
             ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if ((p['bonus'] as String).isNotEmpty)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 6),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(p['bonus'] as String,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 8,
-                            fontWeight: FontWeight.w800)),
-                  ),
-                ProviderLogo(p['name'] as String, size: 46),
-                const SizedBox(height: 4),
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6),
-                  child: Text(p['name'] as String,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700)),
-                ),
-                Text('$count surveys',
-                    style: const TextStyle(
-                        color: Colors.white54, fontSize: 10)),
-              ],
+            child: Center(
+              child: ProviderLogo(p['name'] as String, size: 58),
             ),
           ),
         );

@@ -25,6 +25,7 @@ class _SpinScreenState extends State<SpinScreen>
   bool _redeeming = false; // server redeem in-flight: block second spin
   bool _showResult = false;
   int _remainingSpins = 2;
+  int _totalWon = 0;
   String _statusMessage = 'You have 2 free spins';
 
   // 8-slice wheel, values mirror real payouts (10/2/3). Server decides reward.
@@ -47,6 +48,7 @@ class _SpinScreenState extends State<SpinScreen>
 
   Future<void> _loadSpins() async {
     // Server is source of truth for remaining spins (backend enforces limit).
+    var serverOk = false;
     try {
       final status = await AppRepository.instance.spinStatus();
       if (status != null && mounted) {
@@ -59,10 +61,19 @@ class _SpinScreenState extends State<SpinScreen>
               ? 'You have $left free spin${left > 1 ? 's' : ''}'
               : 'No spins left today';
         });
-        return;
+        serverOk = true;
       }
     } catch (_) {}
-    if (!mounted) return;
+    // Total ever won (real backend history).
+    try {
+      final h = await AppRepository.instance.spinHistoryList();
+      var sum = 0;
+      for (final e in h) {
+        if (e is Map) sum += (((e['reward'] ?? 0) as num).toInt());
+      }
+      if (mounted) setState(() => _totalWon = sum);
+    } catch (_) {}
+    if (!mounted || serverOk) return;
     final auth = AuthService();
     setState(() {
       _remainingSpins = auth.getRemainingSpins();
@@ -193,6 +204,15 @@ class _SpinScreenState extends State<SpinScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (won)
+                Image.asset(
+                  'assets/coin.png',
+                  width: 76,
+                  height: 76,
+                  errorBuilder: (_, __, ___) =>
+                      const SizedBox.shrink(),
+                ),
+              if (won) const SizedBox(height: AppSpacing.md),
               // Reward animation
               Container(
                 width: 100,
@@ -276,21 +296,53 @@ class _SpinScreenState extends State<SpinScreen>
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          children: [
-            // Bear mascot (kit)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppRadius.xl),
-              child: Image.asset(
-                'assets/app_icon_name.png',
-                height: 110,
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-              ),
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: Image.asset(
+              'assets/spin_bg.png',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  const SizedBox.shrink(),
             ),
-            const SizedBox(height: AppSpacing.md),
+          ),
+          SingleChildScrollView(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            children: [
+              // Bear mascot
+              ClipRRect(
+                borderRadius:
+                    BorderRadius.circular(AppRadius.xl),
+                child: Image.asset(
+                  'assets/app_icon_name.png',
+                  height: 110,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, __, ___) =>
+                      const SizedBox.shrink(),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              // Stats: spins left + total won (real data)
+              Row(
+                children: [
+                  Expanded(
+                    child: _spinStat(
+                        Icons.donut_large_rounded,
+                        '$_remainingSpins',
+                        'Spins Left',
+                        AppColors.primary),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _spinStatImage(
+                        'assets/coin.png',
+                        '$_totalWon',
+                        'Total Won'),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
             // Status message
             Container(
               width: double.infinity,
@@ -405,6 +457,80 @@ class _SpinScreenState extends State<SpinScreen>
             _buildHowItWorks(),
           ],
         ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Small stat card for the spin header (icon version).
+  Widget _spinStat(
+      IconData icon, String value, String label, Color color) {
+    return Container(
+      padding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.spinCard.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 26),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800)),
+              Text(label,
+                  style: const TextStyle(
+                      color: Colors.white54, fontSize: 11)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Small stat card for the spin header (image version).
+  Widget _spinStatImage(String asset, String value, String label) {
+    return Container(
+      padding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.spinCard.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(14),
+        border:
+            Border.all(color: AppColors.gold.withOpacity(0.4)),
+      ),
+      child: Row(
+        children: [
+          Image.asset(asset,
+              width: 26,
+              height: 26,
+              errorBuilder: (_, __, ___) => const Icon(
+                  Icons.monetization_on_rounded,
+                  color: AppColors.gold,
+                  size: 26)),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value,
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800)),
+              Text(label,
+                  style: const TextStyle(
+                      color: Colors.white54, fontSize: 11)),
+            ],
+          ),
+        ],
       ),
     );
   }
