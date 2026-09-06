@@ -254,6 +254,13 @@ class HomeTab extends StatelessWidget {
               const SizedBox(height: 10),
               _proTasksList(context),
               const SizedBox(height: 18),
+              _proSectionTitle('EARNING PARTNERS',
+                  action: 'Earn',
+                  onAction: () =>
+                      _proPush(context, const EarnScreen())),
+              const SizedBox(height: 10),
+              _proProvidersRow(context),
+              const SizedBox(height: 18),
               _proMegaBanner(context),
               const SizedBox(height: 12),
             ],
@@ -681,6 +688,77 @@ class HomeTab extends StatelessWidget {
           ),
         );
       }).toList(),
+    );
+  }
+
+  /// All earning providers on Home (horizontal scroll, own dark style).
+  Widget _proProvidersRow(BuildContext context) {
+    const providers = [
+      ['Cint', Color(0xFF8B5CF6)],
+      ['Prime Surveys', Color(0xFF3B82F6)],
+      ['TimeWall', Color(0xFF10B981)],
+      ['BitLabs', Color(0xFF8B5CF6)],
+      ['CPX Research', Color(0xFF3B82F6)],
+      ['Pollfish', Color(0xFF14B8A6)],
+      ['PubScale', Color(0xFFF66B06)],
+      ['OfferPro', Color(0xFFEC4899)],
+      ['GrowDeck', Color(0xFFF59E0B)],
+      ['CPI Droid', Color(0xFF10B981)],
+    ];
+    return SizedBox(
+      height: 104,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: providers.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, i) {
+          final name = providers[i][0] as String;
+          final color = providers[i][1] as Color;
+          return InkWell(
+            onTap: () => _proPush(context, const EarnScreen()),
+            borderRadius: BorderRadius.circular(14),
+            child: Container(
+              width: 96,
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF17171F),
+                borderRadius: BorderRadius.circular(14),
+                border:
+                    Border.all(color: color.withOpacity(0.45)),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(name[0],
+                          style: TextStyle(
+                              color: color,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(name,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 

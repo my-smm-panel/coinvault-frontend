@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
 
-/// Earning History - exact kit style: purple header, white pill tabs,
-/// Ongoing/Completed/Expired/Rejected sub-tabs, white cards with
-/// status pill + progress line + bottom progress bar + logo tile.
+/// History - own CoinVault style (NOT ProRewards):
+/// orange header, orange segment control, filter chips,
+/// dark cards with gold coin figures and status dots.
 class HistoryScreen extends StatefulWidget {
   final String initialTab; // 'Tasks' or 'Payouts'
   const HistoryScreen({super.key, this.initialTab = 'Tasks'});
@@ -16,19 +16,18 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   late String _tab;
-  String _sub = 'Ongoing';
+  String _filter = 'All';
   List<dynamic> _withdrawals = [];
   List<dynamic> _tasks = [];
   bool _loading = true;
 
   static const _bg = Color(0xFF0B0B12);
-  static const _red = Color(0xFFF04438);
-  static const _blue = Color(0xFF2E90FA);
+  static const _card = Color(0xFF17171F);
 
-  static const _logoColors = [
-    Color(0xFF3B82F6),
+  static const _tileColors = [
     Color(0xFFF66B06),
-    Color(0xFF8B5CF6),
+    Color(0xFFF59E0B),
+    Color(0xFF3B82F6),
     Color(0xFF10B981),
     Color(0xFFEC4899),
     Color(0xFF14B8A6),
@@ -56,14 +55,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final total = _withdrawals.length + _tasks.length;
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
         child: Column(
           children: [
-            _header(),
-            _pillTabs(),
-            _subTabs(),
+            _header(total),
+            _segment(),
+            _filters(),
             Expanded(
               child: _loading
                   ? const Center(
@@ -77,9 +77,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     )
                   : RefreshIndicator(
                       color: AppColors.primary,
-                      backgroundColor: Colors.white,
+                      backgroundColor: _card,
                       onRefresh: _load,
-                      child: _currentTab(),
+                      child: _tab == 'Payouts'
+                          ? _payoutsList()
+                          : _tasksList(),
                     ),
             ),
           ],
@@ -88,7 +90,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _header() {
+  Widget _header(int total) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: const BoxDecoration(
@@ -102,7 +104,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
             child: Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.2),
+                color: Colors.black.withOpacity(0.25),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.arrow_back_rounded,
@@ -110,173 +112,165 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
           ),
           const SizedBox(width: 12),
-          const Text('Earning History',
+          const Text('History',
               style: TextStyle(
                   color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.w800)),
+          const Spacer(),
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.black.withOpacity(0.25),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.monetization_on_rounded,
+                    color: AppColors.goldLight, size: 16),
+                const SizedBox(width: 4),
+                Text('$total',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _pillTabs() {
-    const tabs = ['Tasks', 'Payouts'];
+  /// Orange segment control (own style, not pill tabs).
+  Widget _segment() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-      child: Row(
-        children: tabs.map((t) {
-          final active = _tab == t;
-          return Padding(
-            padding: const EdgeInsets.only(right: 10),
-            child: InkWell(
-              onTap: () => setState(() => _tab = t),
-              borderRadius: BorderRadius.circular(24),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 22, vertical: 9),
-                decoration: BoxDecoration(
-                  color: active ? Colors.white : Colors.transparent,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                      color: active ? Colors.white : Colors.white24),
+      child: Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: _card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: Row(
+          children: ['Tasks', 'Payouts'].map((t) {
+            final active = _tab == t;
+            return Expanded(
+              child: InkWell(
+                onTap: () => setState(() => _tab = t),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: active
+                        ? AppColors.primaryGradient
+                        : null,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                          t == 'Tasks'
+                              ? Icons.task_alt_rounded
+                              : Icons.payments_rounded,
+                          size: 16,
+                          color: active
+                              ? Colors.white
+                              : Colors.white54),
+                      const SizedBox(width: 6),
+                      Text(t,
+                          style: TextStyle(
+                              color: active
+                                  ? Colors.white
+                                  : Colors.white54,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800)),
+                    ],
+                  ),
                 ),
-                child: Text(t,
-                    style: TextStyle(
-                        color: active
-                            ? const Color(0xFF1A1A22)
-                            : Colors.white54,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700)),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 
-  Widget _subTabs() {
-    const subs = ['Ongoing', 'Completed', 'Expired', 'Rejected'];
+  Widget _filters() {
+    const fs = ['All', 'Ongoing', 'Completed', 'Expired', 'Rejected'];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 10, 6, 0),
-      child: Row(
-        children: subs.map((s) {
-          final active = _sub == s;
-          return Expanded(
-            child: InkWell(
-              onTap: () => setState(() => _sub = s),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(s,
-                        style: TextStyle(
-                            color: active ? Colors.white : Colors.white60,
-                            fontSize: 14,
-                            fontWeight: active
-                                ? FontWeight.w800
-                                : FontWeight.w500)),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 2),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: fs.map((f) {
+            final active = _filter == f;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: InkWell(
+                onTap: () => setState(() => _filter = f),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: active
+                        ? AppColors.primary.withOpacity(0.18)
+                        : _card,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                        color: active
+                            ? AppColors.primary
+                            : Colors.white10),
                   ),
-                  Container(
-                    height: 3,
-                    margin:
-                        const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: active
-                          ? Colors.white
-                          : Colors.transparent,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                ],
+                  child: Text(f,
+                      style: TextStyle(
+                          color: active
+                              ? AppColors.primaryLight
+                              : Colors.white60,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700)),
+                ),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
 
-  Widget _currentTab() {
-    if (_tab == 'Payouts') return _payoutsList();
-    return _tasksList();
-  }
+  // ---------------- FILTER ----------------
 
-  // ---------------- DATA ----------------
+  bool _pass(String bucket) => _filter == 'All' || bucket == _filter;
 
-  /// Normalize any backend item into kit card fields.
-  /// Returns null when it does not belong in the active sub-tab.
-  Map<String, dynamic>? _kitTask(Map m) {
-    final offer = m['offer'];
-    final title =
-        offer is Map ? (offer['title'] ?? 'Task').toString() : 'Task';
-    final status = (m['status'] ?? 'PENDING').toString().toUpperCase();
-    final coins = ((m['coinsEarned'] ?? 0) as num).toInt();
-    String bucket;
-    if (status == 'VERIFIED' ||
-        status == 'APPROVED' ||
-        status == 'COMPLETED') {
-      bucket = 'Completed';
-    } else if (status == 'REJECTED') {
-      bucket = 'Rejected';
-    } else if (status == 'EXPIRED') {
-      bucket = 'Expired';
-    } else {
-      bucket = 'Ongoing';
+  String _taskBucket(String status) {
+    final s = status.toUpperCase();
+    if (s == 'VERIFIED' || s == 'APPROVED' || s == 'COMPLETED') {
+      return 'Completed';
+    } else if (s == 'REJECTED') {
+      return 'Rejected';
+    } else if (s == 'EXPIRED') {
+      return 'Expired';
     }
-    if (bucket != _sub) return null;
-    final done = bucket == 'Completed';
-    return {
-      'title': title,
-      'pill': done ? 'Coins earned  $coins' : _ongoingLabel(status),
-      'pillBlue': done,
-      'progress': done ? '100% Completed' : '50% Completed',
-      'pct': done ? 1.0 : 0.5,
-      'barBlue': done,
-      'date': _date(m),
-    };
+    return 'Ongoing';
   }
 
-
-  Map<String, dynamic>? _kitPayout(Map m) {
-    final status = (m['status'] ?? 'PENDING').toString().toUpperCase();
-    final amount = (m['amount'] ?? 0).toString();
-    final rupees = (m['rupeeAmount'] ?? 0).toString();
-    String bucket;
-    if (status == 'COMPLETED' || status == 'PAID') {
-      bucket = 'Completed';
-    } else if (status == 'REJECTED') {
-      bucket = 'Rejected';
-    } else if (status == 'EXPIRED') {
-      bucket = 'Expired';
-    } else {
-      bucket = 'Ongoing';
-    }
-    if (bucket != _sub) return null;
-    final done = bucket == 'Completed';
-    return {
-      'title': '$amount coins • ₹$rupees',
-      'pill': done ? 'Paid  ₹$rupees' : _ongoingLabel(status),
-      'pillBlue': done,
-      'progress': done ? '100% Completed' : '50% Completed',
-      'pct': done ? 1.0 : 0.5,
-      'barBlue': done,
-      'date': _date(m),
-    };
-  }
-
-  String _ongoingLabel(String status) {
-    if (status == 'PENDING' || status == 'PROCESSING') return 'Ongoing';
-    if (status == 'DISQUALIFIED') return 'Disqualified';
-    if (status.isEmpty) return 'Ongoing';
-    final s = status[0] + status.substring(1).toLowerCase();
-    return s.replaceAll('_', ' ');
+  String _payoutBucket(String status) {
+    final s = status.toUpperCase();
+    if (s == 'COMPLETED' || s == 'PAID') return 'Completed';
+    if (s == 'REJECTED') return 'Rejected';
+    if (s == 'EXPIRED') return 'Expired';
+    return 'Ongoing';
   }
 
   String _date(Map m) {
-    final raw = (m['createdAt'] ?? m['date'] ?? m['completedAt'] ?? '')
-        .toString();
+    final raw =
+        (m['createdAt'] ?? m['date'] ?? m['completedAt'] ?? '')
+            .toString();
     if (raw.isEmpty) return '';
     try {
       final d = DateTime.parse(raw).toLocal();
@@ -295,133 +289,168 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Widget _tasksList() {
     final items = _tasks
         .map((e) => Map<String, dynamic>.from(e as Map))
-        .map(_kitTask)
-        .whereType<Map<String, dynamic>>()
+        .where((m) => _pass(_taskBucket(
+            (m['status'] ?? '').toString())))
         .toList();
-    if (items.isEmpty) return _empty('Nothing here yet');
+    if (items.isEmpty) return _empty('No tasks here yet');
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 20),
       itemCount: items.length,
-      itemBuilder: (_, i) => _kitCard(items[i]),
+      itemBuilder: (_, i) {
+        final m = items[i];
+        final offer = m['offer'];
+        final title = offer is Map
+            ? (offer['title'] ?? 'Task').toString()
+            : 'Task';
+        final status = (m['status'] ?? '').toString();
+        final bucket = _taskBucket(status);
+        final coins = ((m['coinsEarned'] ?? 0) as num).toInt();
+        final date = _date(m);
+        return _darkTile(
+          title: title,
+          sub: date.isEmpty ? bucket : '$bucket • $date',
+          coinsText: '+$coins',
+          bucket: bucket,
+          icon: Icons.task_alt_rounded,
+          color: _tileColors[title.hashCode.abs() % _tileColors.length],
+        );
+      },
     );
   }
-
 
   Widget _payoutsList() {
     final items = _withdrawals
         .map((e) => Map<String, dynamic>.from(e as Map))
-        .map(_kitPayout)
-        .whereType<Map<String, dynamic>>()
+        .where((m) => _pass(_payoutBucket(
+            (m['status'] ?? 'PENDING').toString())))
         .toList();
-    if (items.isEmpty) return _empty('Nothing here yet');
+    if (items.isEmpty) return _empty('No payouts here yet');
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 12, 12, 20),
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 20),
       itemCount: items.length,
-      itemBuilder: (_, i) => _kitCard(items[i]),
+      itemBuilder: (_, i) {
+        final m = items[i];
+        final status =
+            (m['status'] ?? 'PENDING').toString();
+        final bucket = _payoutBucket(status);
+        final amount = (m['amount'] ?? 0).toString();
+        final rupees = (m['rupeeAmount'] ?? 0).toString();
+        final method =
+            (m['method'] ?? '').toString().replaceAll('_', ' ');
+        final date = _date(m);
+        final sub =
+            '${method.isEmpty ? 'Withdrawal' : method}${date.isEmpty ? '' : ' • $date'}';
+        return _darkTile(
+          title: '$amount coins  →  ₹$rupees',
+          sub: '$bucket • $sub',
+          coinsText: '₹$rupees',
+          bucket: bucket,
+          icon: Icons.payments_rounded,
+          color: AppColors.primary,
+        );
+      },
     );
   }
 
+  // ---------------- OWN DARK TILE ----------------
 
-  // ---------------- KIT CARD ----------------
-
-  Widget _kitCard(Map<String, dynamic> k) {
-    final title = (k['title'] ?? '').toString();
-    final pill = (k['pill'] ?? '').toString();
-    final pillBlue = k['pillBlue'] as bool;
-    final progress = (k['progress'] ?? '').toString();
-    final pct = (k['pct'] as num).toDouble().clamp(0.0, 1.0);
-    final barBlue = k['barBlue'] as bool;
-    final date = (k['date'] ?? '').toString();
-    final pillColor = pillBlue ? _blue : _red;
-    final logoColor =
-        _logoColors[title.hashCode.abs() % _logoColors.length];
-    final line = date.isEmpty ? progress : '$progress | $date';
-
+  Widget _darkTile({
+    required String title,
+    required String sub,
+    required String coinsText,
+    required String bucket,
+    required IconData icon,
+    required Color color,
+  }) {
+    final ok = bucket == 'Completed';
+    final dot = ok
+        ? const Color(0xFF10B981)
+        : bucket == 'Ongoing'
+            ? AppColors.primary
+            : const Color(0xFFEF4444);
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: _card,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [color, color.withOpacity(0.55)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 14),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Container(
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                          color: dot, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 5),
+                    Expanded(
+                      child: Text(sub,
+                          style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 11),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title,
-                            style: const TextStyle(
-                                color: Color(0xFF1A1A22),
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: pillColor,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(pill,
-                              style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700)),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(line,
-                            style: TextStyle(
-                                color: pillColor,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      color: logoColor.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: Text(
-                          title.isNotEmpty
-                              ? title[0].toUpperCase()
-                              : 'C',
-                          style: TextStyle(
-                              color: logoColor,
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800)),
-                    ),
-                  ),
+                  const Icon(Icons.monetization_on_rounded,
+                      color: AppColors.gold, size: 15),
+                  const SizedBox(width: 3),
+                  Text(coinsText,
+                      style: const TextStyle(
+                          color: AppColors.gold,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14)),
                 ],
               ),
-            ),
-            FractionallySizedBox(
-              widthFactor: pct <= 0 ? 0.02 : pct,
-              child: Container(
-                height: 4,
-                decoration: BoxDecoration(
-                  color: barBlue ? _blue : _red,
-                  borderRadius: const BorderRadius.only(
-                    topRight: Radius.circular(2),
-                    bottomRight: Radius.circular(2),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+              Text(bucket,
+                  style: TextStyle(
+                      color: dot,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ],
       ),
     );
   }
