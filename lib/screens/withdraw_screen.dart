@@ -326,6 +326,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
             if (_selectedMethod == 'upi') ...[
               TextField(
                 controller: _upiController,
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: 'UPI ID',
                   hintText: 'yourname@upi',
@@ -338,6 +339,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
             ] else ...[
               TextField(
                 controller: _bankController,
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: 'Bank Details',
                   hintText: 'Account Holder Name, Account Number, IFSC',
@@ -360,6 +362,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                   : '';
               return TextField(
                 controller: _amountController,
+                style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   labelText: 'Amount (₹)',
                   hintText: 'Enter amount — e.g. 10, 50, 100',

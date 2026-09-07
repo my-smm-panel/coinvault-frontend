@@ -100,7 +100,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
   ];
 
   Widget _buildTaskList() {
-    // Top: big square provider logos (no border line), below: quick tasks — all scroll together
+    // Top: big square provider logos — tightly packed (little gap, thin line keeps rows)
     final quickTasks = [
       {'title': 'Ludo Supreme — Play 5 games', 'coins': 500, 'provider': 'PubScale'},
       {'title': 'MPL — Install & Play', 'coins': 350, 'provider': 'CPI Droid'},
@@ -110,7 +110,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
       {'title': 'Rate App on Play Store', 'coins': 30, 'provider': 'OfferPro'},
     ];
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(8, 12, 8, 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -119,8 +119,8 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
             physics: const NeverScrollableScrollPhysics(),
             gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
-              mainAxisSpacing: 12,
-              crossAxisSpacing: 12,
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 6,
               childAspectRatio: 1,
             ),
             itemCount: _taskProviders.length,
@@ -136,44 +136,79 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
                   decoration: BoxDecoration(
                     color: const Color(0xFF17171F),
                     borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withOpacity(0.06), width: 1),
                   ),
                   child: Center(
-                    child: ProviderLogo(name, size: 72),
+                    child: ProviderLogo(name, size: 82),
                   ),
                 ),
               );
             },
           ),
           const SizedBox(height: 18),
-          const Text('Popular Tasks', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 6),
+            child: Text('Popular Tasks', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+          ),
           const SizedBox(height: 10),
           ...quickTasks.map((t) => Container(
                 margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: const Color(0xFF17171F),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withOpacity(0.06)),
                 ),
-                child: InkWell(
-                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProviderTasksScreen(provider: t['provider'] as String))),
-                  child: Row(
-                    children: [
-                      ProviderLogo(t['provider'] as String, size: 46),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(t['title'] as String, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
-                            Text(t['provider'] as String, style: TextStyle(color: ProviderLogos.colorFor(t['provider'] as String), fontSize: 11, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProviderTasksScreen(provider: t['provider'] as String))),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            padding: const EdgeInsets.all(6),
+                            child: ProviderLogo(t['provider'] as String, size: 42),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(t['title'] as String, style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                const SizedBox(height: 2),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(color: ProviderLogos.colorFor(t['provider'] as String).withOpacity(0.18), borderRadius: BorderRadius.circular(6)),
+                                      child: Text(t['provider'] as String, style: TextStyle(color: ProviderLogos.colorFor(t['provider'] as String), fontSize: 10, fontWeight: FontWeight.w700)),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    const Icon(Icons.monetization_on_rounded, size: 14, color: AppColors.gold),
+                                    const SizedBox(width: 2),
+                                    Text('+${t['coins']}', style: const TextStyle(color: AppColors.gold, fontSize: 12, fontWeight: FontWeight.w800)),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.18), shape: BoxShape.circle),
+                            child: const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 18),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Text('+${t['coins']}', style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w800)),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.chevron_right_rounded, color: Colors.white38, size: 20),
-                    ],
+                    ),
                   ),
                 ),
               )),
@@ -207,11 +242,11 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
   /// Surveys tab shows ONLY providers; tap opens that provider's surveys.
   Widget _buildSurveyList() {
     return GridView.builder(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(8, 12, 8, 16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 3,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
+        mainAxisSpacing: 6,
+        crossAxisSpacing: 6,
         childAspectRatio: 1,
       ),
       itemCount: _providers.length,
@@ -225,9 +260,10 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
             decoration: BoxDecoration(
               color: const Color(0xFF17171F),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withOpacity(0.06), width: 1),
             ),
             child: Center(
-              child: ProviderLogo(p['name'] as String, size: 72),
+              child: ProviderLogo(p['name'] as String, size: 82),
             ),
           ),
         );
