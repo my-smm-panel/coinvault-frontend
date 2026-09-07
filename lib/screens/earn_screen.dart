@@ -100,38 +100,85 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
   ];
 
   Widget _buildTaskList() {
-    return GridView.builder(
+    // Top: big square provider logos (no border line), below: quick tasks — all scroll together
+    final quickTasks = [
+      {'title': 'Ludo Supreme — Play 5 games', 'coins': 500, 'provider': 'PubScale'},
+      {'title': 'MPL — Install & Play', 'coins': 350, 'provider': 'CPI Droid'},
+      {'title': 'Rummy Circle — 3 rounds', 'coins': 300, 'provider': 'PubScale'},
+      {'title': 'Watch & Earn — 3 videos', 'coins': 30, 'provider': 'Lootably'},
+      {'title': 'Daily Check-in', 'coins': 25, 'provider': 'TimeWall'},
+      {'title': 'Rate App on Play Store', 'coins': 30, 'provider': 'OfferPro'},
+    ];
+    return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.9,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1,
+            ),
+            itemCount: _taskProviders.length,
+            itemBuilder: (context, index) {
+              final name = _taskProviders[index];
+              return InkWell(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => ProviderTasksScreen(provider: name)),
+                ),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF17171F),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Center(
+                    child: ProviderLogo(name, size: 72),
+                  ),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 18),
+          const Text('Popular Tasks', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          ...quickTasks.map((t) => Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF17171F),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: InkWell(
+                  onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProviderTasksScreen(provider: t['provider'] as String))),
+                  child: Row(
+                    children: [
+                      ProviderLogo(t['provider'] as String, size: 46),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(t['title'] as String, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                            Text(t['provider'] as String, style: TextStyle(color: ProviderLogos.colorFor(t['provider'] as String), fontSize: 11, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text('+${t['coins']}', style: const TextStyle(color: AppColors.gold, fontWeight: FontWeight.w800)),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right_rounded, color: Colors.white38, size: 20),
+                    ],
+                  ),
+                ),
+              )),
+        ],
       ),
-      itemCount: _taskProviders.length,
-      itemBuilder: (context, index) {
-        final name = _taskProviders[index];
-        final color = ProviderLogos.colorFor(name);
-        return InkWell(
-          onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (_) =>
-                    ProviderTasksScreen(provider: name)),
-          ),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF17171F),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: color.withOpacity(0.45)),
-            ),
-            child: Center(
-              child: ProviderLogo(name, size: 58),
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -165,15 +212,11 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
         crossAxisCount: 3,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        childAspectRatio: 0.85,
+        childAspectRatio: 1,
       ),
       itemCount: _providers.length,
       itemBuilder: (context, index) {
         final p = _providers[index];
-        final color = p['color'] as Color;
-        final count = _allSurveys
-            .where((s) => s['provider'] == p['name'])
-            .length;
         return InkWell(
           onTap: () => _showProviderSurveys(
               p['name'] as String, context),
@@ -182,10 +225,9 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
             decoration: BoxDecoration(
               color: const Color(0xFF17171F),
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: color.withOpacity(0.45)),
             ),
             child: Center(
-              child: ProviderLogo(p['name'] as String, size: 58),
+              child: ProviderLogo(p['name'] as String, size: 72),
             ),
           ),
         );
