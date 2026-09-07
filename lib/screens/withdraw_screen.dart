@@ -57,29 +57,31 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   }
 
   void _onAmountChange(String value) {
-    final coins = int.tryParse(value) ?? 0;
-    if (coins % 100 != 0 && value.isNotEmpty) {
-      _amountController.value = _amountController.value.copyWith(
-        text: (coins ~/ 100 * 100).toString(),
-        selection: TextSelection.collapsed(offset: value.length),
-      );
-    }
+    // Live conversion preview only — do not auto-correct while typing.
+    setState(() {});
   }
 
   Future<void> _submitWithdrawal() async {
     if (_user == null) return;
-    
-    final coins = int.tryParse(_amountController.text) ?? 0;
-    if (coins < 100) {
-      _showSnackBar('Minimum withdrawal is 100 coins (₹10)');
+
+    // Amount entered is in ₹ — convert to coins (₹1 = 10 coins).
+    final rupeesText = _amountController.text.trim();
+    final rupees = double.tryParse(rupeesText);
+    if (rupees == null || rupeesText.isEmpty) {
+      _showSnackBar('Enter amount in ₹ (e.g. 10, 50, 100)');
+      return;
+    }
+    final coins = (rupees * 10).round();
+    if (rupees < 10) {
+      _showSnackBar('Minimum withdrawal is ₹10 (100 coins)');
+      return;
+    }
+    if (rupees % 10 != 0) {
+      _showSnackBar('Amount must be in multiples of ₹10');
       return;
     }
     if (coins > _user!.coins) {
-      _showSnackBar('Insufficient coins');
-      return;
-    }
-    if (coins % 100 != 0) {
-      _showSnackBar('Amount must be in multiples of 100 coins');
+      _showSnackBar('Insufficient balance');
       return;
     }
 
@@ -349,19 +351,26 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
             
             const SizedBox(height: AppSpacing.lg),
             
-            // Amount Input
-            TextField(
-              controller: _amountController,
-              decoration: InputDecoration(
-                labelText: 'Amount (Coins)',
-                hintText: 'Enter in multiples of 100',
-                prefixIcon: const Icon(Icons.monetization_on_rounded),
-                helperText: 'Available: ${_maxWithdrawableCoins} coins (₹${_maxWithdrawableRupees.toStringAsFixed(1)})',
-              ),
-              keyboardType: TextInputType.number,
-              onChanged: _onAmountChange,
-              textInputAction: TextInputAction.done,
-            ),
+            // Amount Input (₹ — direct paisa, converted to coins on submit)
+            Builder(builder: (_) {
+              final t = _amountController.text.trim();
+              final r = double.tryParse(t);
+              final preview = (r != null && t.isNotEmpty)
+                  ? ' ≈ ${(r * 10).round()} coins'
+                  : '';
+              return TextField(
+                controller: _amountController,
+                decoration: InputDecoration(
+                  labelText: 'Amount (₹)',
+                  hintText: 'Enter amount — e.g. 10, 50, 100',
+                  prefixIcon: const Icon(Icons.currency_rupee_rounded),
+                  helperText: 'Available: ₹${_maxWithdrawableRupees.toStringAsFixed(1)}${preview.isEmpty ? '' : ' • You entered:$preview'}',
+                ),
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                onChanged: _onAmountChange,
+                textInputAction: TextInputAction.done,
+              );
+            }),
             
             const SizedBox(height: AppSpacing.lg),
             
