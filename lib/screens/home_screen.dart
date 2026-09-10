@@ -1323,34 +1323,34 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  /// QUICK PLAY: compact icon tiles (small, own style, not big image cards).
+  /// QUICK PLAY: compact tiles with real asset images (own style).
   Widget _proQuickPlay(BuildContext context, int remainingSpins) {
     final tiles = [
       {
         'label': 'Spin',
         'sub': '$remainingSpins left',
-        'icon': Icons.donut_large_rounded,
+        'image': 'assets/wheel.png',
         'color': AppColors.primary,
         'onTap': () => _proPush(context, const SpinScreen()),
       },
       {
         'label': 'Scratch',
         'sub': 'Win coins',
-        'icon': Icons.brush_rounded,
+        'image': 'assets/scratch.png',
         'color': AppColors.gold,
         'onTap': () => _showScratchDialog(context),
       },
       {
         'label': 'Challenges',
         'sub': 'Bonus',
-        'icon': Icons.emoji_events_rounded,
+        'image': 'assets/trophy.png',
         'color': const Color(0xFF10B981),
         'onTap': () => _showChallenges(context, remainingSpins),
       },
       {
         'label': 'Refer',
         'sub': 'Invite',
-        'icon': Icons.group_add_rounded,
+        'image': 'assets/app_icon.jpg',
         'color': const Color(0xFF3B82F6),
         'onTap': () => _proPush(context, const ReferScreen()),
       },
@@ -1373,16 +1373,26 @@ class _HomeTabState extends State<HomeTab> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 46,
-                    height: 46,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: color.withOpacity(0.14),
+                      color: color.withOpacity(0.12),
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: color.withOpacity(0.35)),
+                          color: color.withOpacity(0.3)),
                     ),
-                    child: Icon(t['icon'] as IconData,
-                        color: color, size: 22),
+                    child: ClipOval(
+                      child: Image.asset(
+                        t['image'] as String,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Icon(
+                            Icons.star_rounded,
+                            color: color,
+                            size: 22),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(t['label'] as String,
