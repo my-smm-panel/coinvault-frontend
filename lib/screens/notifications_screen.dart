@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
+import '../widgets/state_views.dart';
 
 /// Notifications inbox (kit screen 13).
 class NotificationsScreen extends StatefulWidget {
@@ -68,8 +69,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         ],
       ),
       body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary))
+          ? const ShimmerCardList(rows: 5)
           : _items.isEmpty
               ? Center(
                   child: Text('No notifications yet',

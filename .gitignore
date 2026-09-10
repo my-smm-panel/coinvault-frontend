@@ -46,3 +46,4 @@ credentials/
 Thumbs.db
 *.session
 *.session-journal
+android/app/src/main/java/io/flutter/plugins/

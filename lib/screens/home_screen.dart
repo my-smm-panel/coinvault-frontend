@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
 import '../services/auth_service.dart';
+import '../services/app_repository.dart';
 import '../models/app_models.dart';
 import 'earn_screen.dart';
 import 'spin_screen.dart';
@@ -263,9 +264,73 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-/// Home Tab - Main dashboard
-class HomeTab extends StatelessWidget {
+/// Home Tab - Main dashboard.
+/// Surveys + tasks come from the REAL backend (GET /api/surveys, /api/offers).
+class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
+
+  @override
+  State<HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<HomeTab> {
+  List<dynamic> _surveys = [];
+  List<dynamic> _tasks = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadHomeData();
+  }
+
+  Future<void> _loadHomeData() async {
+    final repo = AppRepository.instance;
+    final results = await Future.wait([
+      repo.fetchSurveys(),
+      repo.fetchOffers(),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _surveys = results[0] ?? [];
+      // Tasks row = install-type offers from the real backend,
+      // mapped to the shape the task cards expect.
+      _tasks = (results[1] ?? [])
+          .where((o) => ((o as Map)['type'] ?? '').toString().startsWith('INSTALL'))
+          .take(6)
+          .map((o) {
+        final m = o as Map;
+        return <String, dynamic>{
+          'title': (m['title'] ?? '').toString(),
+          'sub': (m['shortDesc'] ?? '').toString(),
+          'coins': ((m['coins'] ?? 0) as num).toInt(),
+          'provider':
+              _categoryLabel((m['category'] ?? 'OTHER').toString()),
+          'steps': ((m['instructions'] ?? []) as List)
+              .map((e) => e.toString())
+              .toList(),
+        };
+      }).toList();
+    });
+  }
+
+  static String _categoryLabel(String c) {
+    switch (c) {
+      case 'GAME':
+        return 'Games';
+      case 'APP':
+        return 'Apps';
+      case 'FINANCE':
+        return 'Finance';
+      case 'SHOPPING':
+        return 'Shopping';
+      case 'ENTERTAINMENT':
+        return 'Fun';
+      case 'SURVEY':
+        return 'Surveys';
+      default:
+        return 'Tasks';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -619,14 +684,29 @@ class HomeTab extends StatelessWidget {
   }
 
   /// Featured Surveys - own style: provider logo cards with coins.
+  /// Data comes from the live backend (GET /api/surveys).
   Widget _proSurveyRow(BuildContext context) {
-    const cards = [
-      ['BitLabs', 100, '8 min'],
-      ['CPX Research', 75, '5 min'],
-      ['Pollfish', 150, '12 min'],
-      ['Cint', 60, '4 min'],
-      ['TimeWall', 45, '3 min'],
-    ];
+    final cards = _surveys.take(5).map((s) {
+      final m = s as Map;
+      return [
+        (m['provider'] ?? 'Survey').toString(),
+        ((m['coins'] ?? 0) as num).toInt(),
+        (m['duration'] ?? '').toString(),
+      ];
+    }).toList();
+    if (cards.isEmpty) {
+      return Container(
+        height: 132,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFF17171F),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: const Text('New surveys coming soon',
+            style: TextStyle(color: Colors.white38, fontSize: 13)),
+      );
+    }
     return SizedBox(
       height: 132,
       child: ListView.separated(
@@ -700,69 +780,7 @@ class HomeTab extends StatelessWidget {
   /// Tasks of the day: rich app-install / game-play cards
   /// with provider logo, direct tap = full steps.
   Widget _proTasksList(BuildContext context) {
-    const tasks = [
-      {
-        'title': 'Ludo Supreme',
-        'sub': 'Install & play 5 games',
-        'coins': 500,
-        'provider': 'PubScale',
-        'steps': [
-          'Install Ludo Supreme from Play Store',
-          'Open & create account',
-          'Play 5 Ludo matches',
-          'Reach level 3 — Coins credited'
-        ]
-      },
-      {
-        'title': 'MPL Ludo',
-        'sub': 'Install & play 5 games',
-        'coins': 350,
-        'provider': 'CPI Droid',
-        'steps': [
-          'Install MPL',
-          'Open & sign up',
-          'Play 5 Ludo games',
-          'Coins credited in 24h'
-        ]
-      },
-      {
-        'title': 'Rummy Circle',
-        'sub': 'Install & play 3 rounds',
-        'coins': 300,
-        'provider': 'PubScale',
-        'steps': [
-          'Install Rummy Circle',
-          'Register with mobile',
-          'Play 3 cash games',
-          'Complete KYC — Coins credited'
-        ]
-      },
-      {
-        'title': 'Dream11',
-        'sub': 'Install & create team',
-        'coins': 200,
-        'provider': 'CPI Droid',
-        'steps': [
-          'Install Dream11',
-          'Create your first team',
-          'Join 1 contest — Coins credited'
-        ]
-      },
-      {
-        'title': 'Watch Video Ad',
-        'sub': 'Watch 30-sec video',
-        'coins': 10,
-        'provider': 'Lootably',
-        'steps': ['Tap Start', 'Watch video till end', 'Coins credited']
-      },
-      {
-        'title': 'Daily Check-in',
-        'sub': 'Open app today',
-        'coins': 25,
-        'provider': 'TimeWall',
-        'steps': ['Open CoinVault today', 'Tap Check-in — Coins credited']
-      },
-    ];
+    final tasks = _tasks;
     return SizedBox(
       height: 148,
       child: ListView.separated(
@@ -917,7 +935,7 @@ class HomeTab extends StatelessWidget {
                           shape: BoxShape.circle,
                         ),
                         child: Center(
-                          child: Text('\${e.key + 1}',
+                          child: Text('${e.key + 1}',
                               style: TextStyle(
                                   color: color,
                                   fontSize: 12,

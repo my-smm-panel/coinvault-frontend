@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
+import '../widgets/state_views.dart';
 
 /// Refer & Earn (kit screen 12): code card, copy buttons, stats.
 class ReferScreen extends StatefulWidget {
@@ -52,8 +53,7 @@ class _ReferScreenState extends State<ReferScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(title: const Text('Refer & Earn')),
       body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary))
+          ? const ShimmerCardList(rows: 4)
           : RefreshIndicator(
               color: AppColors.primary,
               onRefresh: _load,

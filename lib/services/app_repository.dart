@@ -72,8 +72,9 @@ class AppRepository {
     }
   }
 
-  /// Fetch offers list.
-  Future<List<dynamic>> fetchOffers() async {
+  /// Fetch offers list. Returns null when the API is unreachable so the
+  /// UI can show a proper error state instead of silently going empty.
+  Future<List<dynamic>?> fetchOffers() async {
     try {
       final res = await _api.get('/api/offers', auth: false);
       if (res is Map && res['data'] is Map) {
@@ -82,7 +83,7 @@ class AppRepository {
       }
       return [];
     } catch (_) {
-      return [];
+      return null;
     }
   }
 
@@ -254,6 +255,35 @@ class AppRepository {
     if (ac != null) out['accountNumber'] = ac.group(0)!;
     out['accountHolder'] = details.length > 100 ? details.substring(0, 100) : details;
     return out;
+  }
+
+  /// Surveys list from backend (real endpoint: GET /api/surveys).
+  /// Returns null when the API is unreachable (so UI can show an error state
+  /// instead of silently rendering nothing).
+  Future<List<dynamic>?> fetchSurveys() async {
+    try {
+      final res = await _api.get('/api/surveys', auth: false);
+      if (res is Map && res['success'] == true) {
+        final d = res['data'];
+        return d is List ? d : [];
+      }
+      return [];
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Start a survey (registers IN_PROGRESS completion; server returns externalUrl).
+  Future<Map<String, dynamic>?> startSurvey(String id) async {
+    try {
+      final res = await _api.post('/api/surveys/$id/start', {});
+      if (res is Map && res['success'] == true && res['data'] is Map) {
+        return Map<String, dynamic>.from(res['data'] as Map);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Fetch withdrawal history for user (real endpoint: GET /api/withdrawals/my).

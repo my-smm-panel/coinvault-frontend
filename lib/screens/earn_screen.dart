@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
 import '../services/app_repository.dart';
+import '../widgets/state_views.dart';
 import 'provider_tasks_screen.dart';
 
 class EarnScreen extends StatefulWidget {
@@ -17,6 +18,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
   late TabController _tabController;
   List<dynamic> _offers = [];
   bool _loading = true;
+  bool _offersFailed = false;
 
   @override
   void initState() {
@@ -26,11 +28,16 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _loadOffers() async {
+    setState(() {
+      _loading = true;
+      _offersFailed = false;
+    });
     final repo = AppRepository.instance;
     final offers = await repo.fetchOffers();
     if (mounted) {
       setState(() {
-        _offers = offers;
+        _offers = offers ?? [];
+        _offersFailed = offers == null;
         _loading = false;
       });
     }
@@ -63,7 +70,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
         ),
       ),
       body: _loading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          ? const ShimmerCardList(rows: 6)
           : TabBarView(
               controller: _tabController,
               children: [
@@ -217,17 +224,6 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
     );
   }
 
-  /// All surveys (grouped by provider on the Surveys tab).
-  static const List<Map<String, dynamic>> _allSurveys = [
-    {'title': 'Consumer Habits Survey', 'coins': 100, 'time': '8 min', 'provider': 'BitLabs'},
-    {'title': 'Tech Preferences', 'coins': 75, 'time': '5 min', 'provider': 'CPX Research'},
-    {'title': 'Shopping Behavior', 'coins': 150, 'time': '12 min', 'provider': 'Pollfish'},
-    {'title': 'Mobile Gaming Survey', 'coins': 80, 'time': '6 min', 'provider': 'BitLabs'},
-    {'title': 'Finance & Banking', 'coins': 120, 'time': '10 min', 'provider': 'CPX Research'},
-    {'title': 'Lifestyle Poll', 'coins': 60, 'time': '4 min', 'provider': 'Cint'},
-    {'title': 'Product Feedback', 'coins': 90, 'time': '7 min', 'provider': 'Prime Surveys'},
-    {'title': 'Daily Opinion', 'coins': 45, 'time': '3 min', 'provider': 'TimeWall'},
-  ];
 
   /// Survey providers only (kit style grid).
   static const List<Map<String, dynamic>> _providers = [
@@ -272,89 +268,101 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
   }
 
   void _showProviderSurveys(String provider, BuildContext context) {
-    final list = _allSurveys
-        .where((s) => s['provider'] == provider)
-        .toList();
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Color(0xFF17171F),
-          borderRadius:
-              BorderRadius.vertical(top: Radius.circular(24)),
-          border: Border(top: BorderSide(color: Colors.white10)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(provider,
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800)),
-            const SizedBox(height: 4),
-            Text('${list.length} surveys available',
-                style: const TextStyle(
-                    color: Colors.white54, fontSize: 12)),
-            const SizedBox(height: 12),
-            Flexible(
-              child: ListView.builder(
-                shrinkWrap: true,
-                itemCount: list.length,
-                itemBuilder: (_, i) {
-                  final s = list[i];
-                  return _SurveyCard(
-                    title: s['title'] as String,
-                    coins: s['coins'] as int,
-                    time: s['time'] as String,
-                    provider: s['provider'] as String,
-                  );
-                },
-              ),
+      builder: (_) => FutureBuilder<List<dynamic>?>(
+        future: AppRepository.instance.fetchSurveys(),
+        builder: (context, snap) {
+          final all = snap.data ?? [];
+          final list = all
+              .where((s) => ((s as Map)['provider'] ?? '') == provider)
+              .toList();
+          return Container(
+            padding: const EdgeInsets.all(20),
+            decoration: const BoxDecoration(
+              color: Color(0xFF17171F),
+              borderRadius:
+                  BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border(top: BorderSide(color: Colors.white10)),
             ),
-          ],
-        ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(provider,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Text(
+                    snap.connectionState == ConnectionState.waiting
+                        ? 'Loading surveys…'
+                        : snap.data == null
+                            ? 'Could not load surveys'
+                            : '${list.length} surveys available',
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 12)),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: list.isEmpty
+                      ? const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 24),
+                          child: Center(
+                            child: Text('No surveys from this provider yet',
+                                style: TextStyle(
+                                    color: Colors.white38, fontSize: 13)),
+                          ),
+                        )
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: list.length,
+                          itemBuilder: (_, i) {
+                            final s =
+                                Map<String, dynamic>.from(list[i] as Map);
+                            return _SurveyCard(
+                              title: (s['title'] ?? '').toString(),
+                              coins: ((s['coins'] ?? 0) as num).toInt(),
+                              time: (s['duration'] ?? '').toString(),
+                              provider: (s['provider'] ?? '').toString(),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildOfferList() {
-    if (_offers.isNotEmpty) {
-      return ListView.builder(
+    if (_offersFailed) {
+      return ErrorState(
+        message: 'Offers could not be loaded. Check your connection.',
+        onRetry: _loadOffers,
+      );
+    }
+    if (_offers.isEmpty) {
+      return const EmptyState(
+        icon: Icons.local_offer_outlined,
+        title: 'No offers right now',
+        subtitle: 'New offers are added daily — check back soon.',
+      );
+    }
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _loadOffers,
+      child: ListView.builder(
         padding: const EdgeInsets.all(AppSpacing.md),
         itemCount: _offers.length,
         itemBuilder: (context, index) {
-          final offer = _offers[index] as Map<String, dynamic>;
+          final offer = Map<String, dynamic>.from(_offers[index] as Map);
           return _OfferCard(offer: offer);
         },
-      );
-    }
-
-    // Mock offers when API unavailable
-    final offers = [
-      {'title': 'Install Partner App & Reach Level 10', 'coins': 500, 'icon': Icons.apps_rounded, 'color': AppColors.primary},
-      {'title': 'Sign up for Newsletter', 'coins': 50, 'icon': Icons.email_rounded, 'color': AppColors.success},
-      {'title': 'Create Account on Partner Site', 'coins': 200, 'icon': Icons.person_add_rounded, 'color': AppColors.warning},
-      {'title': 'Subscribe to YouTube Channel', 'coins': 75, 'icon': Icons.play_circle_rounded, 'color': AppColors.error},
-    ];
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(AppSpacing.md),
-      itemCount: offers.length,
-      itemBuilder: (context, index) {
-        final o = offers[index];
-        return _OfferCard(
-          offer: {
-            'title': o['title'],
-            'coins': o['coins'],
-            'icon': o['icon'],
-            'color': o['color'],
-          },
-        );
-      },
+      ),
     );
   }
 
@@ -605,70 +613,155 @@ class _SurveyCard extends StatelessWidget {
   }
 }
 
+/// Production offer card: renders real backend offer fields
+/// (title/shortDesc/coins/timeEstimate/isHot/isNew) with HOT/NEW badges.
 class _OfferCard extends StatelessWidget {
   final Map<String, dynamic> offer;
 
   const _OfferCard({required this.offer});
 
+  IconData get _typeIcon {
+    switch ((offer['type'] ?? '').toString()) {
+      case 'INSTALL':
+      case 'INSTALL_AND_USE':
+      case 'INSTALL_AND_REACH_LEVEL':
+      case 'INSTALL_AND_DEPOSIT':
+      case 'INSTALL_AND_KYC':
+        return Icons.download_rounded;
+      case 'VIDEO':
+        return Icons.play_circle_fill_rounded;
+      case 'SURVEY':
+        return Icons.assignment_rounded;
+      case 'SIGNUP':
+        return Icons.person_add_rounded;
+      case 'SHARE':
+        return Icons.share_rounded;
+      default:
+        return Icons.star_rounded;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final color = offer['color'] as Color? ?? AppColors.primary;
-    final icon = offer['icon'] as IconData? ?? Icons.star_rounded;
+    final isHot = offer['isHot'] == true;
+    final isNew = offer['isNew'] == true;
+    final coins = ((offer['coins'] ?? 0) as num).toInt();
+    final title = (offer['title'] ?? '').toString();
+    final sub = (offer['shortDesc'] ?? 'Complete to earn').toString();
+    final time = (offer['timeEstimate'] ?? '').toString();
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: InkWell(
-        onTap: () {},
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-                child: Icon(icon, color: color, size: 28),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(offer['title'] as String, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Text('Complete to earn', style: AppTextStyles.bodySmall),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(bottom: AppSpacing.md),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: InkWell(
+            onTap: () {},
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            child: Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Row(
                 children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.monetization_on_rounded, size: 18, color: AppColors.gold),
-                      Text('${offer['coins']}', style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.gold, fontWeight: FontWeight.w700,
-                      )),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  OutlinedButton(
-                    onPressed: () {},
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(AppRadius.md),
                     ),
-                    child: const Text('Go'),
+                    child: Icon(_typeIcon, color: AppColors.primary, size: 26),
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            style: AppTextStyles.bodyMedium
+                                .copyWith(fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 2),
+                        Text(sub,
+                            style: AppTextStyles.bodySmall,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis),
+                        if (time.isNotEmpty) ...[
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              const Icon(Icons.schedule_rounded,
+                                  size: 12, color: AppColors.textTertiary),
+                              const SizedBox(width: 3),
+                              Text(time, style: AppTextStyles.bodySmall),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.monetization_on_rounded,
+                              size: 16, color: AppColors.gold),
+                          const SizedBox(width: 2),
+                          Text('$coins',
+                              style: AppTextStyles.bodyMedium.copyWith(
+                                color: AppColors.gold,
+                                fontWeight: FontWeight.w800,
+                              )),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          gradient: AppColors.primaryGradient,
+                          borderRadius: BorderRadius.circular(AppRadius.sm),
+                        ),
+                        child: const Text('GO',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800)),
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
-      ),
+        if (isHot || isNew)
+          Positioned(
+            top: -7,
+            right: 14,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: isHot ? AppColors.error : AppColors.success,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Text(isHot ? 'HOT' : 'NEW',
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800)),
+            ),
+          ),
+      ],
     );
   }
 }
