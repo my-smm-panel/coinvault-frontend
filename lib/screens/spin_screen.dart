@@ -26,6 +26,7 @@ class _SpinScreenState extends State<SpinScreen>
   bool _showResult = false;
   int _remainingSpins = 2;
   int _totalWon = 0;
+  List<dynamic> _recentWins = [];
   String _statusMessage = 'You have 2 free spins';
 
   // 8-slice wheel, values mirror real payouts (10/2/3). Server decides reward.
@@ -71,7 +72,10 @@ class _SpinScreenState extends State<SpinScreen>
       for (final e in h) {
         if (e is Map) sum += (((e['reward'] ?? 0) as num).toInt());
       }
-      if (mounted) setState(() => _totalWon = sum);
+      if (mounted) setState(() {
+        _totalWon = sum;
+        _recentWins = h.take(5).toList();
+      });
     } catch (_) {}
     if (!mounted || serverOk) return;
     final auth = AuthService();
@@ -455,12 +459,190 @@ class _SpinScreenState extends State<SpinScreen>
             
             // How it works
             _buildHowItWorks(),
+
+            const SizedBox(height: AppSpacing.xl),
+
+            // Recent Wins (real history)
+            _buildRecentWins(),
           ],
         ),
           ),
         ],
       ),
     );
+  }
+
+  /// Recent wins preview — real spin history from the backend.
+  Widget _buildRecentWins() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('Recent Wins',
+                style: AppTextStyles.titleMedium
+                    .copyWith(color: Colors.white)),
+            const Spacer(),
+            InkWell(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => const HistoryScreen()),
+              ),
+              child: Text('View all',
+                  style: AppTextStyles.bodySmall.copyWith(
+                      color: AppColors.primaryLight,
+                      fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        if (_recentWins.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: AppColors.spinCard,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.history_rounded,
+                    color: Colors.white38, size: 20),
+                const SizedBox(width: AppSpacing.sm),
+                const Expanded(
+                  child: Text(
+                    'No spins yet — your wins will show here',
+                    style:
+                        TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          )
+        else
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.spinCard,
+              borderRadius: BorderRadius.circular(AppRadius.lg),
+              border: Border.all(color: Colors.white12),
+            ),
+            child: Column(
+              children: List.generate(_recentWins.length, (i) {
+                final w = _recentWins[i] as Map;
+                final reward =
+                    ((w['reward'] ?? 0) as num).toInt();
+                final when = (w['createdAt'] ??
+                        w['created_at'] ??
+                        '')
+                    .toString();
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 30,
+                        height: 30,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: reward > 0
+                              ? AppColors.gold.withOpacity(0.15)
+                              : Colors.white10,
+                        ),
+                        child: Icon(
+                          reward > 0
+                              ? Icons.monetization_on_rounded
+                              : Icons.close_rounded,
+                          size: 16,
+                          color: reward > 0
+                              ? AppColors.gold
+                              : Colors.white38,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.md),
+                      Expanded(
+                        child: Text(
+                          reward > 0
+                              ? 'Won $reward coins'
+                              : 'No reward',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      Text(
+                        _shortDate(when),
+                        style: const TextStyle(
+                            color: Colors.white38, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+            ),
+          ),
+        const SizedBox(height: AppSpacing.lg),
+        // Daily tip card (own, not a copy)
+        Container(
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppColors.primary.withOpacity(0.18),
+                AppColors.spinCard,
+              ],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border:
+                Border.all(color: AppColors.primary.withOpacity(0.35)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.lightbulb_rounded,
+                    color: AppColors.gold, size: 20),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              const Expanded(
+                child: Text(
+                  'Tip: 2 free spins every day. Use them before midnight — they don\'t carry over!',
+                  style:
+                      TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+      ],
+    );
+  }
+
+  String _shortDate(String iso) {
+    if (iso.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(iso).toLocal();
+      final now = DateTime.now();
+      if (dt.year == now.year &&
+          dt.month == now.month &&
+          dt.day == now.day) {
+        final h = dt.hour.toString().padLeft(2, '0');
+        final m = dt.minute.toString().padLeft(2, '0');
+        return '$h:$m';
+      }
+      return '${dt.day}/${dt.month}';
+    } catch (_) {
+      return '';
+    }
   }
 
   /// Small stat card for the spin header (icon version).

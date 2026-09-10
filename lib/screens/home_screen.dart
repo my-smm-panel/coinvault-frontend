@@ -276,11 +276,23 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> {
   List<dynamic> _surveys = [];
   List<dynamic> _tasks = [];
+  List<dynamic> _topEarners = [];
 
   @override
   void initState() {
     super.initState();
     _loadHomeData();
+    _loadTopEarners();
+  }
+
+  Future<void> _loadTopEarners() async {
+    final data =
+        await AppRepository.instance.fetchLeaderboard('WEEKLY');
+    final top = data['top'];
+    if (!mounted) return;
+    if (top is List && top.isNotEmpty) {
+      setState(() => _topEarners = top.take(3).toList());
+    }
   }
 
   Future<void> _loadHomeData() async {
@@ -351,7 +363,16 @@ class _HomeTabState extends State<HomeTab> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _proTopBar(context, user),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
+              // Wallet hero: own orange card with coins + ₹ value + withdraw
+              _buildBalanceCard(context, user),
+              const SizedBox(height: 16),
+              // Quick Play first — the fun stuff right under balance
+              _proSectionTitle('PLAY & EARN'),
+              const SizedBox(height: 10),
+              _proQuickPlay(context, remainingSpins),
+              const SizedBox(height: 18),
+              // Promo trio
               _proPromoRow(context),
               const SizedBox(height: 18),
               _proSectionTitle('FEATURED SURVEYS',
@@ -368,12 +389,25 @@ class _HomeTabState extends State<HomeTab> {
               const SizedBox(height: 10),
               _proTasksList(context),
               const SizedBox(height: 18),
-              _proSectionTitle('QUICK PLAY'),
+              // Top earners preview (real leaderboard data)
+              _proSectionTitle('TOP EARNERS',
+                  action: 'Ranks',
+                  onAction: () => _proPush(
+                      context, const LeaderboardScreen())),
               const SizedBox(height: 10),
-              _proQuickPlay(context, remainingSpins),
+              _proTopEarners(context),
               const SizedBox(height: 18),
               _proMegaBanner(context),
-              const SizedBox(height: 12),
+              const SizedBox(height: 20),
+              // Small footer so the page feels finished, not clipped
+              Center(
+                child: Text(
+                  'CoinVault • Earn coins daily',
+                  style: TextStyle(
+                      color: Colors.white24, fontSize: 11),
+                ),
+              ),
+              const SizedBox(height: 8),
             ],
           ),
         ),
@@ -445,37 +479,26 @@ class _HomeTabState extends State<HomeTab> {
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        _proTopIcon(context, Icons.notifications_rounded,
-            AppColors.primary, 'Alerts', const NotificationsScreen()),
-        _proTopIcon(context, Icons.person_rounded,
-            AppColors.primary, 'Profile', const ProfileScreen()),
-      ],
-    );
-  }
-
-  Widget _proTopIcon(BuildContext context, IconData icon, Color color,
-      String label, Widget page) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 10),
-      child: InkWell(
-        onTap: () => _proPush(context, page),
-        borderRadius: BorderRadius.circular(20),
-        child: Column(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration:
-                  BoxDecoration(color: color, shape: BoxShape.circle),
-              child: Icon(icon, color: Colors.white, size: 22),
+        const SizedBox(width: 12),
+        // Own bell: soft orange bubble, unread dot, NO text label
+        // (killed the ProRewards-style labeled icon circles).
+        InkWell(
+          onTap: () => _proPush(context, const NotificationsScreen()),
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withOpacity(0.14),
+              shape: BoxShape.circle,
+              border: Border.all(
+                  color: AppColors.primary.withOpacity(0.35)),
             ),
-            const SizedBox(height: 2),
-            Text(label,
-                style: const TextStyle(color: Colors.white70, fontSize: 9)),
-          ],
+            child: const Icon(Icons.notifications_none_rounded,
+                color: AppColors.primaryLight, size: 21),
+          ),
         ),
-      ),
+      ],
     );
   }
 
@@ -645,6 +668,113 @@ class _HomeTabState extends State<HomeTab> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Top earners preview — 3 rows with rank + name + coins.
+  /// Real data from GET /api/leaderboard/WEEKLY.
+  Widget _proTopEarners(BuildContext context) {
+    final earners = _topEarners;
+    if (earners.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF17171F),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white10),
+        ),
+        child: const Row(
+          children: [
+            Icon(Icons.emoji_events_rounded,
+                color: AppColors.gold, size: 20),
+            SizedBox(width: 10),
+            Text('Rankings update — complete tasks to climb!',
+                style: TextStyle(color: Colors.white54, fontSize: 12)),
+          ],
+        ),
+      );
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF17171F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        children: List.generate(earners.length, (i) {
+          final m = earners[i] as Map;
+          final u = m['user'];
+          String name = 'User';
+          if (u is Map) {
+            final n = (u['name'] ?? '').toString();
+            name = n.isNotEmpty ? n : 'User';
+          }
+          final coins = ((m['coins'] ?? 0) as num).toInt();
+          final rankColors = [
+            AppColors.gold,
+            const Color(0xFFB0B0B0),
+            const Color(0xFFB45309),
+          ];
+          final rc = rankColors[i % rankColors.length];
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Row(
+              children: [
+                Container(
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    color: rc.withOpacity(0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text('${i + 1}',
+                        style: TextStyle(
+                            color: rc,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                CircleAvatar(
+                  radius: 14,
+                  backgroundColor: Colors.white10,
+                  backgroundImage: (u is Map &&
+                          u['photoUrl'] != null &&
+                          (u['photoUrl'] as String).isNotEmpty)
+                      ? NetworkImage(u['photoUrl'] as String)
+                      : null,
+                  child: (u is Map &&
+                          u['photoUrl'] != null &&
+                          (u['photoUrl'] as String).isNotEmpty)
+                      ? null
+                      : const Icon(Icons.person_rounded,
+                          color: Colors.white38, size: 15),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600)),
+                ),
+                const Icon(Icons.monetization_on_rounded,
+                    color: AppColors.gold, size: 14),
+                const SizedBox(width: 3),
+                Text('$coins',
+                    style: const TextStyle(
+                        color: AppColors.gold,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800)),
+              ],
+            ),
+          );
+        }),
       ),
     );
   }
