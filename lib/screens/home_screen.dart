@@ -277,6 +277,7 @@ class _HomeTabState extends State<HomeTab> {
   List<dynamic> _surveys = [];
   List<dynamic> _tasks = [];
   List<dynamic> _topEarners = [];
+  bool _loadingHome = true;
 
   @override
   void initState() {
@@ -322,6 +323,7 @@ class _HomeTabState extends State<HomeTab> {
               .toList(),
         };
       }).toList();
+      _loadingHome = false;
     });
   }
 
@@ -367,27 +369,27 @@ class _HomeTabState extends State<HomeTab> {
               // Wallet hero: own orange card with coins + ₹ value + withdraw
               _buildBalanceCard(context, user),
               const SizedBox(height: 16),
-              // Quick Play first — the fun stuff right under balance
-              _proSectionTitle('PLAY & EARN'),
-              const SizedBox(height: 10),
-              _proQuickPlay(context, remainingSpins),
-              const SizedBox(height: 18),
-              // Promo trio
+              // Promo trio (compact — Lucky/Invite/Top Earners)
               _proPromoRow(context),
               const SizedBox(height: 18),
+              // Featured Surveys — comes right after promos
               _proSectionTitle('FEATURED SURVEYS',
                   action: 'See more',
                   onAction: () => _proPush(
                       context, const SurveysScreen())),
               const SizedBox(height: 10),
-              _proSurveyRow(context),
+              _loadingHome
+                  ? _skeletonHorizontal()
+                  : _proSurveyRow(context),
               const SizedBox(height: 18),
               _proSectionTitle('TASKS OF THE DAY',
                   action: 'See more',
                   onAction: () => _proPush(
                       context, const EarnScreen())),
               const SizedBox(height: 10),
-              _proTasksList(context),
+              _loadingHome
+                  ? _skeletonHorizontal()
+                  : _proTasksList(context),
               const SizedBox(height: 18),
               // Top earners preview (real leaderboard data)
               _proSectionTitle('TOP EARNERS',
@@ -395,7 +397,14 @@ class _HomeTabState extends State<HomeTab> {
                   onAction: () => _proPush(
                       context, const LeaderboardScreen())),
               const SizedBox(height: 10),
-              _proTopEarners(context),
+              _loadingHome
+                  ? _skeletonList()
+                  : _proTopEarners(context),
+              const SizedBox(height: 18),
+              // Play & Earn — compact, tucked lower on the page
+              _proSectionTitle('PLAY & EARN'),
+              const SizedBox(height: 10),
+              _proQuickPlay(context, remainingSpins),
               const SizedBox(height: 18),
               _proMegaBanner(context),
               const SizedBox(height: 20),
@@ -414,6 +423,80 @@ class _HomeTabState extends State<HomeTab> {
       ),
         );
       },
+    );
+  }
+
+  /// Skeleton: horizontal cards (surveys / tasks placeholder).
+  Widget _skeletonHorizontal() {
+    return SizedBox(
+      height: 132,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: 3,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (_, __) => Container(
+          width: 150,
+          decoration: BoxDecoration(
+            color: const Color(0xFF17171F),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white10),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _skeletonBox(36, 36, radius: 10),
+                const Spacer(),
+                _skeletonBox(70, 14),
+                const SizedBox(height: 8),
+                _skeletonBox(100, 10),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Skeleton: list rows (top earners placeholder).
+  Widget _skeletonList() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF17171F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        children: List.generate(3, (i) => Padding(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Row(
+            children: [
+              _skeletonBox(28, 28, radius: 14),
+              const SizedBox(width: 10),
+              _skeletonBox(28, 28, radius: 14),
+              const SizedBox(width: 10),
+              _skeletonBox(120, 12),
+              const Spacer(),
+              _skeletonBox(50, 12),
+            ],
+          ),
+        )),
+      ),
+    );
+  }
+
+  /// Single gray shimmer block.
+  Widget _skeletonBox(double w, double h,
+      {double radius = 6}) {
+    return Container(
+      width: w,
+      height: h,
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.07),
+        borderRadius: BorderRadius.circular(radius),
+      ),
     );
   }
 
@@ -1112,92 +1195,82 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  /// QUICK PLAY: high-asset image cards 2x2, tiny labels only.
+  /// QUICK PLAY: compact icon tiles (small, own style, not big image cards).
   Widget _proQuickPlay(BuildContext context, int remainingSpins) {
     final tiles = [
       {
         'label': 'Spin',
-        'image': 'assets/wheel.png',
+        'sub': '$remainingSpins left',
+        'icon': Icons.donut_large_rounded,
+        'color': AppColors.primary,
         'onTap': () => _proPush(context, const SpinScreen()),
       },
       {
         'label': 'Scratch',
-        'image': 'assets/scratch.png',
+        'sub': 'Win coins',
+        'icon': Icons.brush_rounded,
+        'color': AppColors.gold,
         'onTap': () => _showScratchDialog(context),
       },
       {
         'label': 'Challenges',
-        'image': 'assets/trophy.png',
-        'onTap': () =>
-            _showChallenges(context, remainingSpins),
+        'sub': 'Bonus',
+        'icon': Icons.emoji_events_rounded,
+        'color': const Color(0xFF10B981),
+        'onTap': () => _showChallenges(context, remainingSpins),
       },
       {
         'label': 'Refer',
-        'image': 'assets/app_icon.jpg',
+        'sub': 'Invite',
+        'icon': Icons.group_add_rounded,
+        'color': const Color(0xFF3B82F6),
         'onTap': () => _proPush(context, const ReferScreen()),
       },
     ];
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 1.35,
-      children: tiles.map((t) {
-        return InkWell(
-          onTap: t['onTap'] as VoidCallback,
-          borderRadius: BorderRadius.circular(18),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF17171F),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: Colors.white10),
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: Stack(
-                fit: StackFit.expand,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF17171F),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Row(
+        children: tiles.map((t) {
+          final color = t['color'] as Color;
+          return Expanded(
+            child: InkWell(
+              onTap: t['onTap'] as VoidCallback,
+              borderRadius: BorderRadius.circular(14),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Image.asset(
-                    t['image'] as String,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        const SizedBox.shrink(),
-                  ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          vertical: 7),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Colors.transparent,
-                            Colors.black.withOpacity(0.85),
-                          ],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                        ),
-                      ),
-                      child: Text(
-                        t['label'] as String,
-                        textAlign: TextAlign.center,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800),
-                      ),
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: color.withOpacity(0.14),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                          color: color.withOpacity(0.35)),
                     ),
+                    child: Icon(t['icon'] as IconData,
+                        color: color, size: 22),
                   ),
+                  const SizedBox(height: 6),
+                  Text(t['label'] as String,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700)),
+                  Text(t['sub'] as String,
+                      style: const TextStyle(
+                          color: Colors.white38, fontSize: 9)),
                 ],
               ),
             ),
-          ),
-        );
-      }).toList(),
+          );
+        }).toList(),
+      ),
     );
   }
 
