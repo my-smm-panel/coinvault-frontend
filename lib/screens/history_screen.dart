@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
+import '../widgets/state_views.dart';
 
 /// History - own CoinVault style (NOT ProRewards):
 /// orange header, orange segment control, filter chips,
@@ -66,14 +67,9 @@ class _HistoryScreenState extends State<HistoryScreen> {
             _filters(),
             Expanded(
               child: _loading
-                  ? const Center(
-                      child: SizedBox(
-                        width: 180,
-                        child: LinearProgressIndicator(
-                          color: AppColors.primary,
-                          backgroundColor: Colors.white10,
-                        ),
-                      ),
+                  ? const ShimmerCardList(
+                      rows: 6,
+                      padding: EdgeInsets.fromLTRB(14, 10, 14, 20),
                     )
                   : RefreshIndicator(
                       color: AppColors.primary,

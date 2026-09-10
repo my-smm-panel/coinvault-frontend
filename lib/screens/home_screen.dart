@@ -369,6 +369,9 @@ class _HomeTabState extends State<HomeTab> {
               // Wallet hero: own orange card with coins + ₹ value + withdraw
               _buildBalanceCard(context, user),
               const SizedBox(height: 16),
+              // Daily bonus strip
+              _dailyBonusBanner(context),
+              const SizedBox(height: 16),
               // Promo trio (compact — Lucky/Invite/Top Earners)
               _proPromoRow(context),
               const SizedBox(height: 18),
@@ -407,6 +410,9 @@ class _HomeTabState extends State<HomeTab> {
               _proQuickPlay(context, remainingSpins),
               const SizedBox(height: 18),
               _proMegaBanner(context),
+              const SizedBox(height: 18),
+              // How to earn — fills the page, own style
+              _howToEarn(context),
               const SizedBox(height: 20),
               // Small footer so the page feels finished, not clipped
               Center(
@@ -751,6 +757,128 @@ class _HomeTabState extends State<HomeTab> {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Daily bonus strip: login bonus claim + next reset.
+  Widget _dailyBonusBanner(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.gold.withOpacity(0.18), const Color(0xFF17171F)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.gold.withOpacity(0.35)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.gold.withOpacity(0.15),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.local_fire_department_rounded,
+                color: AppColors.gold, size: 20),
+          ),
+          const SizedBox(width: 10),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Daily Bonus',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800)),
+                Text('Log in daily, get free coins!',
+                    style: TextStyle(color: Colors.white54, fontSize: 10)),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              gradient: AppColors.goldGradient,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: const Text('CLAIM',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// How to earn — 3 simple steps card (own, fills the page).
+  Widget _howToEarn(BuildContext context) {
+    final steps = [
+      ('Do Tasks', Icons.task_alt_rounded,
+          'Complete app installs & surveys'),
+      ('Spin Daily', Icons.donut_large_rounded,
+          '2 free spins every day, win coins'),
+      ('Withdraw', Icons.currency_rupee_rounded,
+          '100 coins = ₹10 via UPI/Bank'),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF17171F),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('HOW TO EARN',
+              style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1)),
+          const SizedBox(height: 12),
+          ...steps.map((s) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(s.$2, color: AppColors.primary, size: 17),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(s.$1,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700)),
+                          Text(s.$3,
+                              style: const TextStyle(
+                                  color: Colors.white54, fontSize: 11)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+        ],
       ),
     );
   }

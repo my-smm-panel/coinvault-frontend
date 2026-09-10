@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/app_theme.dart';
 import '../services/auth_service.dart';
 import '../models/app_models.dart';
+import '../widgets/state_views.dart';
 import 'earn_screen.dart';
 import 'leaderboard_screen.dart';
 import 'history_screen.dart';
@@ -61,9 +62,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_loading) {
       return const Scaffold(
         backgroundColor: _bg,
-        body: Center(
-            child:
-                CircularProgressIndicator(color: AppColors.primary)),
+        body: ShimmerCardList(rows: 6, padding: EdgeInsets.all(20)),
       );
     }
     if (_user == null) {
