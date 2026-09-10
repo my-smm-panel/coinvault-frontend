@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
 import '../services/app_repository.dart';
+import '../services/auth_service.dart';
 import '../widgets/state_views.dart';
 import 'provider_tasks_screen.dart';
 
@@ -51,10 +52,51 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    final user = AuthService().userModel;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Earn Coins'),
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        centerTitle: false,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Earn Coins',
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800)),
+            Text('Complete tasks, get rewards',
+                style: TextStyle(
+                    color: Colors.white54, fontSize: 11)),
+          ],
+        ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 12),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.gold.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                  color: AppColors.gold.withOpacity(0.4)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.monetization_on_rounded,
+                    color: AppColors.gold, size: 15),
+                const SizedBox(width: 4),
+                Text('${user?.coins ?? 0}',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           indicatorColor: AppColors.primary,
@@ -62,6 +104,8 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
           unselectedLabelColor: AppColors.textTertiary,
           labelStyle: AppTextStyles.labelMedium,
           unselectedLabelStyle: AppTextStyles.labelMedium,
+          indicatorSize: TabBarIndicatorSize.label,
+          indicatorWeight: 3,
           tabs: const [
             Tab(text: 'Tasks'),
             Tab(text: 'Surveys'),
@@ -145,8 +189,19 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: Colors.white.withOpacity(0.06), width: 1),
                   ),
-                  child: Center(
-                    child: ProviderLogo(name, size: 82),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ProviderLogo(name, size: 60),
+                      const SizedBox(height: 6),
+                      Text(name,
+                          style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ],
                   ),
                 ),
               );
@@ -190,7 +245,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(t['title'] as String, style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                const SizedBox(height: 2),
+                                const SizedBox(height: 4),
                                 Row(
                                   children: [
                                     Container(
@@ -199,19 +254,61 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
                                       child: Text(t['provider'] as String, style: TextStyle(color: ProviderLogos.colorFor(t['provider'] as String), fontSize: 10, fontWeight: FontWeight.w700)),
                                     ),
                                     const SizedBox(width: 6),
-                                    const Icon(Icons.monetization_on_rounded, size: 14, color: AppColors.gold),
+                                    const Icon(Icons.schedule_rounded, size: 12, color: Colors.white38),
                                     const SizedBox(width: 2),
-                                    Text('+${t['coins']}', style: const TextStyle(color: AppColors.gold, fontSize: 12, fontWeight: FontWeight.w800)),
+                                    Text('${(t['coins'] as int) ~/ 20} min',
+                                        style: const TextStyle(
+                                            color: Colors.white38,
+                                            fontSize: 10)),
                                   ],
                                 ),
                               ],
                             ),
                           ),
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.18), shape: BoxShape.circle),
-                            child: const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 18),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      gradient: AppColors.goldGradient,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text('+${t['coins']}',
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w800)),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withOpacity(0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                      color: AppColors.primary.withOpacity(0.4)),
+                                ),
+                                child: const Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('GO',
+                                        style: TextStyle(
+                                            color: AppColors.primaryLight,
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w800)),
+                                    SizedBox(width: 2),
+                                    Icon(Icons.arrow_forward_rounded,
+                                        color: AppColors.primaryLight,
+                                        size: 12),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -237,33 +334,60 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
 
   /// Surveys tab shows ONLY providers; tap opens that provider's surveys.
   Widget _buildSurveyList() {
-    return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(8, 12, 8, 16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        mainAxisSpacing: 6,
-        crossAxisSpacing: 6,
-        childAspectRatio: 1,
-      ),
-      itemCount: _providers.length,
-      itemBuilder: (context, index) {
-        final p = _providers[index];
-        return InkWell(
-          onTap: () => _showProviderSurveys(
-              p['name'] as String, context),
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFF17171F),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white.withOpacity(0.06), width: 1),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.fromLTRB(12, 14, 12, 4),
+          child: Text('SURVEY PROVIDERS',
+              style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1)),
+        ),
+        Expanded(
+          child: GridView.builder(
+            padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              mainAxisSpacing: 6,
+              crossAxisSpacing: 6,
+              childAspectRatio: 1,
             ),
-            child: Center(
-              child: ProviderLogo(p['name'] as String, size: 82),
-            ),
+            itemCount: _providers.length,
+            itemBuilder: (context, index) {
+              final p = _providers[index];
+              return InkWell(
+                onTap: () => _showProviderSurveys(
+                    p['name'] as String, context),
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF17171F),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withOpacity(0.06), width: 1),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      ProviderLogo(p['name'] as String, size: 60),
+                      const SizedBox(height: 6),
+                      Text(p['name'] as String,
+                          style: const TextStyle(
+                              color: Colors.white54,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+              );
+            },
           ),
-        );
-      },
+        ),
+      ],
     );
   }
 
@@ -580,7 +704,7 @@ class _SurveyCard extends StatelessWidget {
                   width: 38,
                   height: 38,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE53935),
+                    color: AppColors.primary,
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.chevron_right_rounded,
@@ -598,7 +722,7 @@ class _SurveyCard extends StatelessWidget {
               padding: const EdgeInsets.symmetric(
                   horizontal: 10, vertical: 3),
               decoration: BoxDecoration(
-                color: const Color(0xFFE53935),
+                color: AppColors.primary,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: const Text('Trending 🔥',
