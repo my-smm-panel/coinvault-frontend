@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-
 import '../core/app_theme.dart';
+
 
 /// Production-grade shared states: shimmer loading, empty, error + retry.
 /// Used across list screens so every screen behaves identically offline,

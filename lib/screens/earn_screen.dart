@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
@@ -127,14 +126,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
   }
 
   /// Brand icon + color per task type (kit style).
-  static const Map<String, List<dynamic>> _taskStyles = {
-    'app': [Icons.download_rounded, Color(0xFF3B82F6)],
-    'video': [Icons.play_circle_fill_rounded, Color(0xFFEF4444)],
-    'profile': [Icons.person_rounded, Color(0xFF10B981)],
-    'login': [Icons.star_rounded, Color(0xFFF59E0B)],
-    'share': [Icons.share_rounded, Color(0xFF14B8A6)],
-    'review': [Icons.rate_review_rounded, Color(0xFFF66B06)],
-  };
+
 
   /// Tasks tab: ONLY provider logos; tap opens that provider's tasks.
   static const _taskProviders = [

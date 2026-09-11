@@ -6,7 +6,6 @@ import '../core/app_theme.dart';
 import '../services/auth_service.dart';
 import '../services/app_repository.dart';
 import '../services/api_client.dart';
-import '../models/app_models.dart';
 import 'history_screen.dart';
 
 class SpinScreen extends StatefulWidget {
@@ -23,8 +22,8 @@ class _SpinScreenState extends State<SpinScreen>
   int _lastReward = 0;
   bool _spinning = false;
   bool _redeeming = false; // server redeem in-flight: block second spin
-  bool _showResult = false;
   int _remainingSpins = 2;
+  bool _showResult = false;
   int _totalWon = 0;
   List<dynamic> _recentWins = [];
   String _statusMessage = 'You have 2 free spins';
@@ -143,15 +142,6 @@ class _SpinScreenState extends State<SpinScreen>
     }
   }
 
-  int _getWeightedReward() {
-    final random = math.Random();
-    final roll = random.nextDouble();
-    
-    if (roll < 0.40) return 10;      // 40%
-    else if (roll < 0.70) return 2;  // 30%
-    else return 3;                    // 30%
-    // 100 coins is NEVER returned (0% weight)
-  }
 
   void _spin() {
     // Blocked while spinning, redeeming result, or out of spins.

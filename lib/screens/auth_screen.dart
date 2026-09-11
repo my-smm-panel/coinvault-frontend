@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_theme.dart';
 import '../services/auth_service.dart';
@@ -44,21 +43,6 @@ class _AuthScreenState extends State<AuthScreen> {
       });
     } finally {
       if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  String _getErrorMessage(String code) {
-    switch (code) {
-      case 'account-exists-with-different-credential':
-        return 'Account exists with different sign-in method.';
-      case 'invalid-credential':
-        return 'Invalid credentials. Please try again.';
-      case 'operation-not-allowed':
-        return 'Google sign-in is not enabled. Contact support.';
-      case 'network-request-failed':
-        return 'Network error. Check your connection.';
-      default:
-        return 'Sign-in failed. Please try again.';
     }
   }
 

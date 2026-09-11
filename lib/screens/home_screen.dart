@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
@@ -9,14 +8,12 @@ import '../models/app_models.dart';
 import 'earn_screen.dart';
 import 'spin_screen.dart';
 import 'surveys_screen.dart';
-import 'provider_tasks_screen.dart';
 import 'withdraw_screen.dart';
 import 'profile_screen.dart';
 import 'leaderboard_screen.dart';
 import 'history_screen.dart';
 import 'notifications_screen.dart';
 import 'refer_screen.dart';
-import 'help_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});

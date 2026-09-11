@@ -202,10 +202,6 @@ class AuthService extends ChangeNotifier {
     return null;
   }
 
-  Future<UserModel> _createDemoUser() async {
-    // DISABLED for production - throw instead of masking errors
-    throw StateError('Demo mode removed for production');
-  }
 
   /// Ensure locally persisted Firebase user has a loaded UserModel.
   /// Returns null if no Firebase session exists.
