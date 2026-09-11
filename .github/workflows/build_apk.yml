@@ -1,0 +1,61 @@
+name: Build CoinVault APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.3'
+          channel: 'stable'
+          cache: true
+      
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+      
+      - name: Accept licenses
+        run: yes | flutter doctor --android-licenses
+      
+      - name: Install dependencies
+        run: flutter pub get
+      
+      - name: Analyze code
+        run: flutter analyze --no-pub
+      
+      - name: Build debug APK
+        run: flutter build apk --debug
+      
+      - name: Build release APK
+        run: flutter build apk --release
+      
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: coinvault-debug-apk
+          path: build/app/outputs/flutter-apk/app-debug.apk
+      
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: coinvault-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
