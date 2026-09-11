@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
 import '../services/auth_service.dart';
@@ -38,12 +39,18 @@ class _AuthScreenState extends State<AuthScreen> {
       setState(() => _error = 'Sign-in failed (${e.code}): ${e.message ?? "Please try again."}');
     } catch (e) {
       debugPrint('AuthScreen error: $e');
-      setState(() {
-        _error = 'Sign-in error: $e';
-      });
+      setState(() => _error = 'Sign-in error: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  // Google "G" logo drawn in code (always available, no asset needed).
+  Widget _googleLogo({double size = 24}) {
+    return CustomPaint(
+      size: Size(size, size),
+      painter: _GoogleGPainter(),
+    );
   }
 
   @override
@@ -51,127 +58,305 @@ class _AuthScreenState extends State<AuthScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Spacer(flex: 2),
-              
-              // Logo - bear mascot (kit)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(AppRadius.xl),
-                child: Image.asset(
-                  'assets/app_icon_name.png',
-                  width: 140,
-                  height: 140,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => Container(
-                    width: 100,
-                    height: 100,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: MediaQuery.of(context).size.height -
+                  MediaQuery.of(context).padding.top -
+                  MediaQuery.of(context).padding.bottom,
+            ),
+            child: IntrinsicHeight(
+              child: Column(
+                children: [
+                  const Spacer(flex: 2),
+
+                  // ===== Hero: bear mascot in glowing orange ring =====
+                  Container(
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
+                      shape: BoxShape.circle,
                       gradient: AppColors.primaryGradient,
-                      borderRadius: BorderRadius.circular(AppRadius.xl),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.45),
+                          blurRadius: 45,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
-                    child: const Icon(
-                      Icons.account_balance_wallet_rounded,
-                      size: 50,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              
-              // Title
-              Text(
-                'Welcome to CoinVault',
-                style: AppTextStyles.displayMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                'Sign in to start earning coins\nvia tasks, spin wheel & surveys',
-                style: AppTextStyles.bodyMedium,
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: AppSpacing.xl),
-              
-              // Error message
-              if (_error != null) ...[
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  decoration: BoxDecoration(
-                    color: AppColors.error.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(AppRadius.md),
-                    border: Border.all(color: AppColors.error.withOpacity(0.3)),
-                  ),
-                  child: Text(
-                    _error!,
-                    style: AppTextStyles.bodyMedium.copyWith(color: AppColors.error),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-              ],
-              
-              // Google Sign-In Button
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton.icon(
-                  onPressed: _loading ? null : _signInWithGoogle,
-                  icon: _loading
-                      ? SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.textOnPrimary),
-                          ),
-                        )
-                      : Image.asset(
-                          'assets/google_logo.png',
-                          width: 22,
-                          height: 22,
-                          errorBuilder: (_, __, ___) => const Icon(
-                            Icons.g_mobiledata,
-                            size: 22,
-                            color: Colors.white,
+                    child: Container(
+                      padding: const EdgeInsets.all(5),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.background,
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/app_icon_name.png',
+                          width: 128,
+                          height: 128,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 128,
+                            height: 128,
+                            color: AppColors.surfaceVariant,
+                            child: const Icon(
+                              Icons.savings_rounded,
+                              size: 56,
+                              color: AppColors.primaryLight,
+                            ),
                           ),
                         ),
-                  label: Text(_loading ? 'Signing in...' : 'Continue with Google'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    elevation: 2,
-                    shadowColor: AppColors.primary.withOpacity(0.4),
-                    side: BorderSide.none,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(AppRadius.full),
+                      ),
                     ),
-                    textStyle: AppTextStyles.labelLarge.copyWith(color: Colors.white),
                   ),
-                ),
-              ),
-              
-              const SizedBox(height: AppSpacing.lg),
-              
-              // Terms
-              Text(
-                'By continuing, you agree to our\nTerms of Service & Privacy Policy',
-                style: AppTextStyles.bodySmall.copyWith(color: AppColors.textTertiary),
-                textAlign: TextAlign.center,
-              ),
+                  const SizedBox(height: AppSpacing.xl),
 
-              const SizedBox(height: AppSpacing.md),
+                  // ===== Brand =====
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text('Coin', style: AppTextStyles.displayMedium),
+                      Text(
+                        'Vault',
+                        style: AppTextStyles.displayMedium
+                            .copyWith(color: AppColors.primaryLight),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text('🐻', style: TextStyle(fontSize: 24)),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    'Earn coins. Cash out real money.',
+                    style: AppTextStyles.bodyLarge.copyWith(
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
 
-              const Spacer(flex: 3),
-            ],
+                  // ===== Benefit chips =====
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _benefitChip(Icons.donut_large_rounded, 'Spin & Win'),
+                      _benefitChip(Icons.task_alt_rounded, 'Easy Tasks'),
+                      _benefitChip(Icons.account_balance_wallet_rounded, 'UPI Cashout'),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xl),
+
+                  // ===== Error banner =====
+                  if (_error != null) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(AppSpacing.md),
+                      decoration: BoxDecoration(
+                        color: AppColors.error.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                        border: Border.all(color: AppColors.error.withOpacity(0.35)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline_rounded,
+                              color: AppColors.error, size: 20),
+                          const SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Text(
+                              _error!,
+                              style: AppTextStyles.bodySmall
+                                  .copyWith(color: AppColors.error),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+                  ],
+
+                  // ===== Google Sign-In (white card button) =====
+                  SizedBox(
+                    width: double.infinity,
+                    height: 58,
+                    child: ElevatedButton(
+                      onPressed: _loading ? null : _signInWithGoogle,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: const Color(0xFF1F1F1F),
+                        elevation: 3,
+                        shadowColor: Colors.black.withOpacity(0.35),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                      ),
+                      child: _loading
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.4,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        AppColors.primary),
+                                  ),
+                                ),
+                                const SizedBox(width: AppSpacing.md),
+                                Text('Signing you in...',
+                                    style: AppTextStyles.labelLarge.copyWith(
+                                        color: const Color(0xFF1F1F1F))),
+                              ],
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _googleLogo(size: 24),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Continue with Google',
+                                  style: AppTextStyles.labelLarge.copyWith(
+                                    color: const Color(0xFF1F1F1F),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.md),
+
+                  // ===== Trust hint =====
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.lock_rounded,
+                          size: 13, color: AppColors.textTertiary),
+                      const SizedBox(width: 5),
+                      Text(
+                        '100% secure sign-in via Google',
+                        style: AppTextStyles.bodySmall.copyWith(
+                          color: AppColors.textTertiary,
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const Spacer(flex: 3),
+
+                  // ===== Terms =====
+                  Text(
+                    'By continuing, you agree to our Terms of Service\n& Privacy Policy',
+                    style: AppTextStyles.bodySmall
+                        .copyWith(color: AppColors.textTertiary, height: 1.5),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
+              ),
+            ),
           ),
         ),
       ),
     );
   }
+
+  Widget _benefitChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 15, color: AppColors.primaryLight),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Official multi-color Google "G" painted in code — always renders,
+/// no missing-asset fallback issues.
+class _GoogleGPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double s = size.width;
+    final Paint blue = Paint()..color = const Color(0xFF4285F4);
+    final Paint green = Paint()..color = const Color(0xFF34A853);
+    final Paint yellow = Paint()..color = const Color(0xFFFBBC05);
+    final Paint red = Paint()..color = const Color(0xFFEA4335);
+
+    final double stroke = s * 0.115;
+
+    // Blue arc (top-left half of ring, 225deg..405deg)
+    final Rect arcRect = Rect.fromLTWH(s * 0.04, s * 0.04, s * 0.92, s * 0.92);
+    canvas.drawArc(
+      arcRect,
+      -math.pi * 0.25, // start
+      math.pi * 1.0, // sweep
+      false,
+      blue..style = PaintingStyle.stroke..strokeWidth = stroke..strokeCap = StrokeCap.butt,
+    );
+
+    // Green arc (bottom-left, 90deg sweep ending at right)
+    canvas.drawArc(
+      arcRect,
+      math.pi * 0.75,
+      math.pi * 0.5,
+      false,
+      green..style = PaintingStyle.stroke..strokeWidth = stroke..strokeCap = StrokeCap.butt,
+    );
+
+    // Yellow arc (left, 45deg)
+    canvas.drawArc(
+      arcRect,
+      math.pi * 0.25,
+      math.pi * 0.5,
+      false,
+      yellow..style = PaintingStyle.stroke..strokeWidth = stroke..strokeCap = StrokeCap.butt,
+    );
+
+    // Red arc (top-right to left joint, 90deg)
+    canvas.drawArc(
+      arcRect,
+      math.pi * 1.75,
+      math.pi * 0.5,
+      false,
+      red..style = PaintingStyle.stroke..strokeWidth = stroke..strokeCap = StrokeCap.butt,
+    );
+
+    // Blue horizontal bar of the G
+    final Path bar = Path()
+      ..moveTo(s * 0.48, s * 0.47)
+      ..lineTo(s, s * 0.47)
+      ..lineTo(s, s * 0.62)
+      ..lineTo(s * 0.62, s * 0.62)
+      ..lineTo(s * 0.62, s * 0.76)
+      ..lineTo(s * 0.48, s * 0.76)
+      ..close();
+    canvas.drawPath(
+      bar,
+      blue..style = PaintingStyle.fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

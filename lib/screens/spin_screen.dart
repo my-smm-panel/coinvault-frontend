@@ -15,7 +15,7 @@ class SpinScreen extends StatefulWidget {
   State<SpinScreen> createState() => _SpinScreenState();
 }
 
-class _SpinScreenState extends State<SpinScreen> 
+class _SpinScreenState extends State<SpinScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _rotationAnim;
@@ -146,7 +146,7 @@ class _SpinScreenState extends State<SpinScreen>
   void _spin() {
     // Blocked while spinning, redeeming result, or out of spins.
     if (_spinning || _redeeming || _remainingSpins <= 0) return;
-    
+
     final auth = AuthService();
     if (!auth.canSpin()) {
       setState(() {
@@ -167,17 +167,17 @@ class _SpinScreenState extends State<SpinScreen>
     final randomSegment = math.Random().nextInt(_segments.length);
     // Add 5-8 full rotations + land on random segment
     final fullRotations = 5 + math.Random().nextInt(4); // 5-8 rotations
-    final targetRotation = (fullRotations * 2 * math.pi) + 
-                          (randomSegment * segmentAngle) + 
+    final targetRotation = (fullRotations * 2 * math.pi) +
+                          (randomSegment * segmentAngle) +
                           (segmentAngle / 2);
-    
+
     _rotationAnim = Tween<double>(
       begin: _controller.value,
       end: targetRotation,
     ).animate(
       CurvedAnimation(parent: _controller, curve: Curves.decelerate),
     );
-    
+
     _controller.forward(from: 0);
   }
 
@@ -191,26 +191,52 @@ class _SpinScreenState extends State<SpinScreen>
         child: Container(
           padding: const EdgeInsets.all(AppSpacing.xl),
           decoration: BoxDecoration(
-            color: AppColors.surface,
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                AppColors.surface,
+                AppColors.spinCard,
+              ],
+            ),
             borderRadius: BorderRadius.circular(AppRadius.xl),
-            boxShadow: AppShadows.elevated,
+            border: Border.all(
+              color: won ? AppColors.gold.withOpacity(0.5) : Colors.white12,
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: (won ? AppColors.gold : AppColors.primary)
+                    .withOpacity(0.35),
+                blurRadius: 60,
+                spreadRadius: 2,
+              ),
+            ],
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               if (won)
-                Image.asset(
-                  'assets/coin.png',
-                  width: 76,
-                  height: 76,
-                  errorBuilder: (_, __, ___) =>
-                      const SizedBox.shrink(),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                        color: AppColors.gold.withOpacity(0.6), width: 2),
+                  ),
+                  child: Image.asset(
+                    'assets/coin.png',
+                    width: 68,
+                    height: 68,
+                    errorBuilder: (_, __, ___) =>
+                        const SizedBox.shrink(),
+                  ),
                 ),
               if (won) const SizedBox(height: AppSpacing.md),
               // Reward animation
               Container(
-                width: 100,
-                height: 100,
+                width: 96,
+                height: 96,
                 decoration: BoxDecoration(
                   gradient: won ? AppColors.goldGradient : null,
                   color: won ? null : AppColors.surfaceVariant,
@@ -235,14 +261,16 @@ class _SpinScreenState extends State<SpinScreen>
               ),
               const SizedBox(height: AppSpacing.lg),
               Text(
-                won ? 'Awesome! Congratulations!' : 'Better luck next time!',
-                style: AppTextStyles.headlineMedium,
+                won ? '🎉 Congratulations!' : 'Better luck next time!',
+                style: AppTextStyles.headlineMedium.copyWith(
+                  color: won ? AppColors.gold : Colors.white,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.xs),
               Text(
                 won
-                    ? 'You won $_lastReward coins — added to your wallet'
+                    ? '$_lastReward coins added to your wallet'
                     : 'No coins this time. Try again tomorrow!',
                 style: AppTextStyles.bodyMedium.copyWith(color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
@@ -250,9 +278,21 @@ class _SpinScreenState extends State<SpinScreen>
               const SizedBox(height: AppSpacing.lg),
               SizedBox(
                 width: double.infinity,
+                height: 50,
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text('Awesome!'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                  ),
+                  child: const Text(
+                    'Awesome!',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
                 ),
               ),
             ],
@@ -272,190 +312,308 @@ class _SpinScreenState extends State<SpinScreen>
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final wheelSize = (size.width * 0.86).clamp(280.0, 340.0);
+
     return Scaffold(
       backgroundColor: AppColors.spinDark,
-      appBar: AppBar(
-        backgroundColor: AppColors.spinDark,
-        foregroundColor: Colors.white,
-        title: const Text('Spin & Win'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.history_rounded),
-            tooltip: 'My history',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (_) => const HistoryScreen()),
-            ),
-          ),
-        ],
-      ),
       body: Stack(
         children: [
+          // Background glow layers (no image dependency, own identity)
           Positioned.fill(
-            child: Image.asset(
-              'assets/spin_bg.png',
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) =>
-                  const SizedBox.shrink(),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0, -0.75),
+                  radius: 1.2,
+                  colors: [
+                    AppColors.primary.withOpacity(0.22),
+                    AppColors.spinDark,
+                  ],
+                ),
+              ),
             ),
           ),
-          SingleChildScrollView(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Column(
-            children: [
-              // Bear mascot
-              ClipRRect(
-                borderRadius:
-                    BorderRadius.circular(AppRadius.xl),
-                child: Image.asset(
-                  'assets/app_icon_name.png',
-                  height: 110,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) =>
-                      const SizedBox.shrink(),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              // Stats: spins left + total won (real data)
-              Row(
-                children: [
-                  Expanded(
-                    child: _spinStat(
-                        Icons.donut_large_rounded,
-                        '$_remainingSpins',
-                        'Spins Left',
-                        AppColors.primary),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _spinStatImage(
-                        'assets/coin.png',
-                        '$_totalWon',
-                        'Total Won'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.md),
-            // Status message
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(AppSpacing.md),
+          // Subtle top accent
+          Positioned(
+            top: -120,
+            left: -80,
+            right: -80,
+            child: Container(
+              height: 320,
               decoration: BoxDecoration(
-                color: AppColors.spinCard,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(
-                  color: _remainingSpins > 0
-                      ? AppColors.primary.withOpacity(0.5)
-                      : Colors.white12,
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.gold.withOpacity(0.10),
+                    Colors.transparent,
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    _remainingSpins > 0 ? Icons.donut_large_rounded : Icons.lock_rounded,
-                    color: _remainingSpins > 0 ? AppColors.primary : Colors.white38,
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Text(
-                      _statusMessage,
-                      style: AppTextStyles.bodyMedium.copyWith(
-                        color: _remainingSpins > 0 ? Colors.white : Colors.white60,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ),
-            const SizedBox(height: AppSpacing.xl),
-            
-            // Spin Wheel (wheel rotates, pointer stays fixed on top)
-            Stack(
-              alignment: Alignment.topCenter,
+          ),
+
+          SafeArea(
+            child: Column(
               children: [
-                AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    return Transform.rotate(
-                      angle: _rotationAnim.value,
-                      child: child,
-                    );
-                  },
-                  child: _buildWheel(),
+                // ===== Custom header =====
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg, AppSpacing.sm, AppSpacing.md, 0),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.casino_rounded,
+                          color: AppColors.gold, size: 26),
+                      const SizedBox(width: AppSpacing.sm),
+                      Text(
+                        'Spin & Win',
+                        style: AppTextStyles.headlineMedium.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const Spacer(),
+                      // Spins pill in header
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: AppColors.spinCard,
+                          borderRadius:
+                              BorderRadius.circular(AppRadius.full),
+                          border: Border.all(
+                              color: AppColors.primary.withOpacity(0.5)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.bolt_rounded,
+                                color: AppColors.primaryLight, size: 16),
+                            const SizedBox(width: 4),
+                            Text(
+                              '$_remainingSpins left',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.history_rounded,
+                            color: Colors.white70),
+                        tooltip: 'My history',
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (_) => const HistoryScreen()),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                Positioned(
-                  top: 0,
-                  child: CustomPaint(
-                    size: const Size(36, 22),
-                    painter:
-                        _TrianglePainter(color: AppColors.gold),
+
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.all(AppSpacing.lg),
+                    child: Column(
+                      children: [
+                        const SizedBox(height: AppSpacing.sm),
+
+                        // ===== Wheel hero section =====
+                        Stack(
+                          alignment: Alignment.topCenter,
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.only(top: 14),
+                              padding: EdgeInsets.all(wheelSize * 0.06),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: RadialGradient(
+                                  colors: [
+                                    AppColors.gold.withOpacity(0.14),
+                                    AppColors.primary.withOpacity(0.05),
+                                    Colors.transparent,
+                                  ],
+                                  radius: 0.95,
+                                ),
+                              ),
+                              child: AnimatedBuilder(
+                                animation: _controller,
+                                builder: (context, child) {
+                                  return Transform.rotate(
+                                    angle: _rotationAnim.value,
+                                    child: child,
+                                  );
+                                },
+                                child: _buildWheel(wheelSize),
+                              ),
+                            ),
+                            // Golden pointer
+                            CustomPaint(
+                              size: const Size(42, 30),
+                              painter: _PointerPainter(color: AppColors.goldLight),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: AppSpacing.xl),
+
+                        // ===== Big SPIN button =====
+                        SizedBox(
+                          width: double.infinity,
+                          height: 60,
+                          child: ElevatedButton(
+                            onPressed:
+                                (_spinning || _redeeming || _remainingSpins <= 0)
+                                    ? null
+                                    : _spin,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: AppColors.spinCard,
+                              disabledForegroundColor: Colors.white38,
+                              elevation: _remainingSpins > 0 ? 6 : 0,
+                              shadowColor:
+                                  AppColors.primary.withOpacity(0.55),
+                              shape: RoundedRectangleBorder(
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.full),
+                              ),
+                            ),
+                            child: _spinning
+                                ? Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      SizedBox(
+                                        width: 22,
+                                        height: 22,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.4,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                  Colors.white),
+                                        ),
+                                      ),
+                                      const SizedBox(width: AppSpacing.md),
+                                      Text('Spinning...',
+                                          style: AppTextStyles.labelLarge),
+                                    ],
+                                  )
+                                : Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        _remainingSpins > 0
+                                            ? Icons.casino_rounded
+                                            : Icons.lock_rounded,
+                                        size: 22,
+                                        color: _remainingSpins > 0
+                                            ? Colors.white
+                                            : Colors.white38,
+                                      ),
+                                      const SizedBox(width: AppSpacing.sm),
+                                      Text(
+                                        _remainingSpins > 0
+                                            ? 'SPIN NOW'
+                                            : 'NO SPINS LEFT',
+                                        style: AppTextStyles.labelLarge.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                          letterSpacing: 1.2,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                          ),
+                        ),
+
+                        const SizedBox(height: AppSpacing.md),
+
+                        // ===== Status strip =====
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: AppColors.spinCard,
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                            border: Border.all(
+                              color: _remainingSpins > 0
+                                  ? AppColors.primary.withOpacity(0.5)
+                                  : Colors.white12,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _remainingSpins > 0
+                                    ? Icons.donut_large_rounded
+                                    : Icons.lock_rounded,
+                                color: _remainingSpins > 0
+                                    ? AppColors.primary
+                                    : Colors.white38,
+                              ),
+                              const SizedBox(width: AppSpacing.md),
+                              Expanded(
+                                child: Text(
+                                  _statusMessage,
+                                  style: AppTextStyles.bodyMedium.copyWith(
+                                    color: _remainingSpins > 0
+                                        ? Colors.white
+                                        : Colors.white60,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: AppSpacing.xl),
+
+                        // ===== Stats row =====
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _spinStat(
+                                  Icons.donut_large_rounded,
+                                  '$_remainingSpins',
+                                  'Spins Left',
+                                  AppColors.primary),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _spinStatImage(
+                                  'assets/coin.png',
+                                  '$_totalWon',
+                                  'Total Won'),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: AppSpacing.xl),
+
+                        // Rewards Legend
+                        _buildRewardsLegend(),
+
+                        const SizedBox(height: AppSpacing.xl),
+
+                        // How it works
+                        _buildHowItWorks(),
+
+                        const SizedBox(height: AppSpacing.xl),
+
+                        // Recent Wins (real history)
+                        _buildRecentWins(),
+                      ],
+                    ),
                   ),
                 ),
               ],
             ),
-            
-            const SizedBox(height: AppSpacing.xl),
-            
-            // Spin Button (kit orange)
-            SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: (_spinning || _redeeming || _remainingSpins <= 0) ? null : _spin,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _remainingSpins > 0 ? AppColors.primary : AppColors.spinCard,
-                  foregroundColor: _remainingSpins > 0 ? Colors.white : Colors.white38,
-                  disabledBackgroundColor: AppColors.spinCard,
-                  disabledForegroundColor: Colors.white38,
-                  elevation: _remainingSpins > 0 ? 4 : 0,
-                  shadowColor: AppColors.primary.withOpacity(0.4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                ),
-                child: _spinning
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          Text('Spinning...', style: AppTextStyles.labelLarge),
-                        ],
-                      )
-                    : Text(
-                        _remainingSpins > 0 ? 'SPIN NOW' : 'NO SPINS LEFT',
-                        style: AppTextStyles.labelLarge.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-              ),
-            ),
-            
-            const SizedBox(height: AppSpacing.xl),
-            
-            // Rewards Legend
-            _buildRewardsLegend(),
-            
-            const SizedBox(height: AppSpacing.xl),
-            
-            // How it works
-            _buildHowItWorks(),
-
-            const SizedBox(height: AppSpacing.xl),
-
-            // Recent Wins (real history)
-            _buildRecentWins(),
-          ],
-        ),
           ),
         ],
       ),
@@ -635,7 +793,7 @@ class _SpinScreenState extends State<SpinScreen>
     }
   }
 
-  /// Small stat card for the spin header (icon version).
+  /// Small stat card (icon version).
   Widget _spinStat(
       IconData icon, String value, String label, Color color) {
     return Container(
@@ -668,7 +826,7 @@ class _SpinScreenState extends State<SpinScreen>
     );
   }
 
-  /// Small stat card for the spin header (image version).
+  /// Small stat card (image version).
   Widget _spinStatImage(String asset, String value, String label) {
     return Container(
       padding:
@@ -707,34 +865,36 @@ class _SpinScreenState extends State<SpinScreen>
     );
   }
 
-  Widget _buildWheel() {
-    // Outer bulb ring positions (12 bulbs around the wheel).
+  Widget _buildWheel(double outer) {
+    final disc = outer - 26;
+    // Bulb ring positions (12 bulbs around the wheel).
     final bulbs = List.generate(12, (i) {
       final a = (i * 2 * math.pi / 12) - math.pi / 2;
-      return Offset(150 + 158 * math.cos(a), 150 + 158 * math.sin(a));
+      final r = disc / 2 + 12;
+      return Offset(outer / 2 + r * math.cos(a), outer / 2 + r * math.sin(a));
     });
     return SizedBox(
-      width: 320,
-      height: 320,
+      width: outer,
+      height: outer,
       child: Stack(
         alignment: Alignment.center,
         children: [
           // Bulbs
           ...bulbs.map((o) => Positioned(
-                left: o.dx - 7,
-                top: o.dy - 7,
+                left: o.dx - 6.5,
+                top: o.dy - 6.5,
                 child: Container(
-                  width: 14,
-                  height: 14,
+                  width: 13,
+                  height: 13,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: _spinning
-                        ? AppColors.gold
+                        ? AppColors.goldLight
                         : AppColors.gold.withOpacity(0.45),
                     boxShadow: [
                       BoxShadow(
                         color: AppColors.gold.withOpacity(0.7),
-                        blurRadius: _spinning ? 12 : 5,
+                        blurRadius: _spinning ? 14 : 5,
                       ),
                     ],
                   ),
@@ -742,11 +902,11 @@ class _SpinScreenState extends State<SpinScreen>
               )),
           // Wheel disc
           Container(
-            width: 290,
-            height: 290,
+            width: disc,
+            height: disc,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: AppColors.gold, width: 7),
+              border: Border.all(color: AppColors.gold, width: 6),
               boxShadow: [
                 BoxShadow(
                   color: AppColors.primary.withOpacity(0.45),
@@ -765,13 +925,23 @@ class _SpinScreenState extends State<SpinScreen>
               children: [
                 // Wheel segments (own warm palette)
                 CustomPaint(
-                  size: const Size(290, 290),
+                  size: Size(disc, disc),
                   painter: _WheelPainter(segments: _segments),
+                ),
+                // Inner subtle ring for depth
+                Container(
+                  width: disc - 14,
+                  height: disc - 14,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border:
+                        Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+                  ),
                 ),
                 // Center hub with bear
                 Container(
-                  width: 92,
-                  height: 92,
+                  width: 84,
+                  height: 84,
                   decoration: BoxDecoration(
                     color: AppColors.spinDark,
                     shape: BoxShape.circle,
@@ -790,8 +960,8 @@ class _SpinScreenState extends State<SpinScreen>
                       'assets/app_icon.jpg',
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => const Icon(
-                        Icons.donut_large_rounded,
-                        size: 38,
+                        Icons.savings_rounded,
+                        size: 34,
                         color: AppColors.gold,
                       ),
                     ),
@@ -800,7 +970,6 @@ class _SpinScreenState extends State<SpinScreen>
               ],
             ),
           ),
-          // Top pointer is rendered fixed outside (see build).
         ],
       ),
     );
@@ -952,7 +1121,7 @@ class _HowStep extends StatelessWidget {
 
 class _WheelPainter extends CustomPainter {
   final List<int> segments;
-  
+
   _WheelPainter({required this.segments});
 
   @override
@@ -960,7 +1129,7 @@ class _WheelPainter extends CustomPainter {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
     final segmentAngle = 2 * math.pi / segments.length;
-    
+
     // Own warm palette (no purple) - index-safe for any slice count.
     final colors = [
       AppColors.gold,          // 10 coins - best
@@ -976,7 +1145,7 @@ class _WheelPainter extends CustomPainter {
       final paint = Paint()
         ..color = colors[i % colors.length]
         ..style = PaintingStyle.fill;
-      
+
       final path = Path()
         ..moveTo(center.dx, center.dy)
         ..arcTo(
@@ -986,27 +1155,27 @@ class _WheelPainter extends CustomPainter {
           false,
         )
         ..close();
-      
+
       canvas.drawPath(path, paint);
-      
+
       // Segment border
       final borderPaint = Paint()
         ..color = Colors.white.withOpacity(0.3)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2;
       canvas.drawPath(path, borderPaint);
-      
+
       // Text label
       final textAngle = startAngle + segmentAngle / 2;
       final textRadius = radius * 0.65;
       final textX = center.dx + textRadius * math.cos(textAngle);
       final textY = center.dy + textRadius * math.sin(textAngle);
-      
+
       final textPainter = TextPainter(
         text: TextSpan(
           text: '${segments[i]}',
           style: GoogleFonts.inter(
-            fontSize: 28,
+            fontSize: radius * 0.19,
             fontWeight: FontWeight.w800,
             color: Colors.white,
             shadows: [
@@ -1032,25 +1201,41 @@ class _WheelPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-/// Triangle painter for the spin wheel pointer
-class _TrianglePainter extends CustomPainter {
+/// Pointer for the spin wheel — golden triangle with base notch.
+class _PointerPainter extends CustomPainter {
   final Color color;
-  
-  _TrianglePainter({required this.color});
+
+  _PointerPainter({required this.color});
 
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.fill;
-    
+
+    final w = size.width;
+    final h = size.height;
+
     final path = Path()
-      ..moveTo(size.width / 2, size.height)
-      ..lineTo(0, 0)
-      ..lineTo(size.width, 0)
+      ..moveTo(w / 2, h)          // tip (points down into wheel)
+      ..lineTo(w * 0.08, 0)       // top-left
+      ..lineTo(w * 0.92, 0)       // top-right
       ..close();
-    
     canvas.drawPath(path, paint);
+
+    // Outline for pop
+    final outline = Paint()
+      ..color = Colors.white.withOpacity(0.35)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.5;
+    canvas.drawPath(path, outline);
+
+    // Small circle cap at top
+    canvas.drawCircle(
+      Offset(w / 2, 0),
+      w * 0.16,
+      Paint()..color = color,
+    );
   }
 
   @override
