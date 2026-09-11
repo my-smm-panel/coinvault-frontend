@@ -7,6 +7,8 @@ import '../services/app_repository.dart';
 import '../models/app_models.dart';
 import 'earn_screen.dart';
 import 'spin_screen.dart';
+import 'scratch_screen.dart';
+import 'quiz_screen.dart';
 import 'surveys_screen.dart';
 import 'withdraw_screen.dart';
 import 'profile_screen.dart';
@@ -1335,14 +1337,14 @@ class _HomeTabState extends State<HomeTab> {
         'sub': 'Win coins',
         'image': 'assets/scratch.png',
         'color': AppColors.gold,
-        'onTap': () => _showScratchDialog(context),
+        'onTap': () => _proPush(context, const ScratchScreen()),
       },
       {
-        'label': 'Challenges',
-        'sub': 'Bonus',
+        'label': 'Quiz',
+        'sub': 'Play & earn',
         'image': 'assets/trophy.png',
         'color': const Color(0xFF10B981),
-        'onTap': () => _showChallenges(context, remainingSpins),
+        'onTap': () => _proPush(context, const QuizScreen()),
       },
       {
         'label': 'Refer',
@@ -1757,8 +1759,9 @@ class _HomeTabState extends State<HomeTab> {
       {
         'label': 'Scratch',
         'icon': Icons.card_giftcard_rounded,
-        'color': const Color(0xFF8B5CF6),
-        'onTap': () => _showScratchDialog(context),
+        'color': AppColors.gold,
+        'onTap': () => Navigator.push(context,
+            MaterialPageRoute(builder: (_) => const ScratchScreen())),
       },
       {
         'label': 'Surveys',

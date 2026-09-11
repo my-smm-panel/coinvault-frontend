@@ -4,6 +4,7 @@ import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
 import '../services/app_repository.dart';
 import '../widgets/state_views.dart';
+import 'task_detail_screen.dart';
 
 /// One provider's available tasks on its own page.
 /// Header shows the company logo big; below, only its tasks.
@@ -253,6 +254,34 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
                 ),
               )),
           const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            height: 42,
+            child: OutlinedButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => TaskDetailScreen(
+                    provider: provider,
+                    title: t['title'] as String,
+                    desc: t['desc'] as String,
+                    coins: coins,
+                    steps: steps,
+                  ),
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: color.withOpacity(0.5)),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text('View Details',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+            ),
+          ),
+          const SizedBox(height: 8),
           SizedBox(
             width: double.infinity,
             height: 42,
