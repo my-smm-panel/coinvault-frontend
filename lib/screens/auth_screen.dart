@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_theme.dart';
 import '../services/auth_service.dart';
@@ -118,22 +119,33 @@ class _AuthScreenState extends State<AuthScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text('Coin', style: AppTextStyles.displayMedium),
+                      Text('Coin',
+                          style: GoogleFonts.inter(
+                            fontSize: 34,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                            height: 1.1,
+                          )),
                       Text(
                         'Vault',
-                        style: AppTextStyles.displayMedium
-                            .copyWith(color: AppColors.primaryLight),
+                        style: GoogleFonts.inter(
+                          fontSize: 34,
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFFF5821F),
+                          height: 1.1,
+                        ),
                       ),
-                      const SizedBox(width: 6),
-                      const Text('🐻', style: TextStyle(fontSize: 24)),
+                      const SizedBox(width: 8),
+                      const Text('🐻', style: TextStyle(fontSize: 26)),
                     ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Earn coins. Cash out real money.',
-                    style: AppTextStyles.bodyLarge.copyWith(
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600,
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFFA3A6AD),
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w400,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -236,12 +248,13 @@ class _AuthScreenState extends State<AuthScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.lock_rounded,
-                          size: 13, color: AppColors.textTertiary),
+                          size: 13, color: Color(0xFF8A8D93)),
                       const SizedBox(width: 5),
                       Text(
                         '100% secure sign-in via Google',
-                        style: AppTextStyles.bodySmall.copyWith(
-                          color: AppColors.textTertiary,
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF8A8D93),
+                          fontSize: 12,
                         ),
                       ),
                     ],
@@ -250,10 +263,40 @@ class _AuthScreenState extends State<AuthScreen> {
                   const Spacer(flex: 3),
 
                   // ===== Terms =====
-                  Text(
-                    'By continuing, you agree to our Terms of Service\n& Privacy Policy',
-                    style: AppTextStyles.bodySmall
-                        .copyWith(color: AppColors.textTertiary, height: 1.5),
+                  Text.rich(
+                    TextSpan(
+                      text: 'By continuing, you agree to our ',
+                      style: GoogleFonts.inter(
+                        color: const Color(0xFF7C7F86),
+                        fontSize: 12,
+                        height: 1.5,
+                      ),
+                      children: [
+                        TextSpan(
+                          text: 'Terms of Service',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFFB9BCC2),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        TextSpan(
+                          text: '\n& ',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF7C7F86),
+                            fontSize: 12,
+                          ),
+                        ),
+                        TextSpan(
+                          text: 'Privacy Policy',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFFB9BCC2),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: AppSpacing.lg),
@@ -268,22 +311,23 @@ class _AuthScreenState extends State<AuthScreen> {
 
   Widget _benefitChip(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
       decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
+        color: const Color(0xFF16161A),
         borderRadius: BorderRadius.circular(AppRadius.full),
-        border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+        border: Border.all(color: const Color(0xFF5A3A1E)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: AppColors.primaryLight),
+          Icon(icon, size: 16, color: const Color(0xFFF5821F)),
           const SizedBox(width: 6),
           Text(
             label,
-            style: AppTextStyles.bodySmall.copyWith(
-              color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
+            style: GoogleFonts.inter(
+              color: const Color(0xFFE5E7EB),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
