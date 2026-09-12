@@ -29,9 +29,9 @@ class _SpinScreenState extends State<SpinScreen>
   List<dynamic> _recentWins = [];
   String _statusMessage = 'You have 2 free spins';
 
-  // 8-slice wheel, values mirror real payouts (10/2/3). Server decides reward.
-  final List<int> _segments = [10, 2, 3, 2, 10, 3, 2, 3];
-  // Probabilities: 10=40%, 2=30%, 3=30%
+  // 8-slice wheel — EXACT reference pattern: 10,2,10,2,10,5,5,3
+  // (server still decides actual reward; wheel is visual only)
+  final List<int> _segments = [10, 2, 10, 2, 10, 5, 5, 3];
 
   @override
   void initState() {
@@ -517,42 +517,103 @@ class _SpinScreenState extends State<SpinScreen>
                         const SizedBox(height: AppSpacing.xl),
 
                         // ===== Wheel =====
-                        Stack(
-                          alignment: Alignment.topCenter,
-                          children: [
-                            Container(
-                              margin: const EdgeInsets.only(top: 12),
-                              padding: EdgeInsets.all(wheelSize * 0.05),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: RadialGradient(
-                                  colors: [
-                                    const Color(0xFFFBB040).withOpacity(0.10),
-                                    const Color(0xFFF5820B).withOpacity(0.04),
-                                    Colors.transparent,
-                                  ],
-                                  radius: 0.95,
+                        SizedBox(
+                          height: wheelSize * 1.22,
+                          width: wheelSize * 1.25,
+                          child: Stack(
+                            alignment: Alignment.topCenter,
+                            children: [
+                              // Floating gold coins + sparkles (reference decoration)
+                              Positioned(
+                                left: -8,
+                                top: wheelSize * 0.42,
+                                child: _coinDeco(22, -0.3),
+                              ),
+                              Positioned(
+                                left: 4,
+                                top: wheelSize * 0.78,
+                                child: _coinDeco(16, 0.2),
+                              ),
+                              Positioned(
+                                right: -6,
+                                top: wheelSize * 0.30,
+                                child: _coinDeco(26, 0.25),
+                              ),
+                              Positioned(
+                                right: 8,
+                                top: wheelSize * 0.72,
+                                child: _coinDeco(17, -0.15),
+                              ),
+                              // Sparkle stars
+                              Positioned(
+                                right: wheelSize * 0.13,
+                                top: wheelSize * 0.16,
+                                child: _starDeco(14),
+                              ),
+                              Positioned(
+                                left: wheelSize * 0.16,
+                                top: wheelSize * 0.10,
+                                child: _starDeco(10),
+                              ),
+
+                              // The wheel itself
+                              Container(
+                                margin: const EdgeInsets.only(top: 12),
+                                padding: EdgeInsets.all(wheelSize * 0.05),
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  gradient: RadialGradient(
+                                    colors: [
+                                      const Color(0xFFFBB040).withOpacity(0.10),
+                                      const Color(0xFFF5820B).withOpacity(0.04),
+                                      Colors.transparent,
+                                    ],
+                                    radius: 0.95,
+                                  ),
+                                ),
+                                child: AnimatedBuilder(
+                                  animation: _controller,
+                                  builder: (context, child) {
+                                    return Transform.rotate(
+                                      angle: _rotationAnim.value,
+                                      child: child,
+                                    );
+                                  },
+                                  child: _buildWheel(wheelSize),
                                 ),
                               ),
-                              child: AnimatedBuilder(
-                                animation: _controller,
-                                builder: (context, child) {
-                                  return Transform.rotate(
-                                    angle: _rotationAnim.value,
-                                    child: child,
-                                  );
-                                },
-                                child: _buildWheel(wheelSize),
+
+                              // "Try your luck!" handwritten note (reference)
+                              Positioned(
+                                right: 0,
+                                top: 0,
+                                child: Transform.rotate(
+                                  angle: -0.08,
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        'Try your luck!',
+                                        style: GoogleFonts.caveat(
+                                          color: const Color(0xFFFFC93C),
+                                          fontSize: 19,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
-                            // Red triangle pointer (like reference)
-                            CustomPaint(
-                              size: const Size(36, 30),
-                              painter: _PointerPainter(
-                                color: const Color(0xFFE53946),
+
+                              // Red triangle pointer at top
+                              CustomPaint(
+                                size: const Size(36, 30),
+                                painter: _PointerPainter(
+                                  color: const Color(0xFFE53946),
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
 
                         const SizedBox(height: AppSpacing.xl),
@@ -874,6 +935,57 @@ class _SpinScreenState extends State<SpinScreen>
     return name.isNotEmpty ? name[0].toUpperCase() : 'Y';
   }
 
+  /// Floating gold coin decoration near the wheel (reference art).
+  Widget _coinDeco(double size, double angle) {
+    return Transform.rotate(
+      angle: angle,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Color(0xFFFFC93C), Color(0xFFC98A1B)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Color(0xFFFFC93C),
+              blurRadius: 10,
+              spreadRadius: -2,
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            '\$',
+            style: GoogleFonts.inter(
+              color: const Color(0xFF8A6212),
+              fontSize: size * 0.55,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 4-point sparkle star (reference art).
+  Widget _starDeco(double size) {
+    return Icon(
+      Icons.star_rounded,
+      size: size,
+      color: const Color(0xFFFFC93C).withOpacity(0.9),
+      shadows: [
+        Shadow(
+          color: const Color(0xFFFFC93C).withOpacity(0.6),
+          blurRadius: 8,
+        ),
+      ],
+    );
+  }
+
   String _shortDate(String iso) {
     if (iso.isEmpty) return '';
     try {
@@ -1162,10 +1274,29 @@ class _WheelPainter extends CustomPainter {
     final radius = size.width / 2;
     final segmentAngle = 2 * math.pi / segments.length;
 
-    // Reference palette: burnt orange + cream yellow alternating
+    // EXACT reference palette (clockwise from top):
+    // 10->cream | 2->medium orange | 10->light amber | 2->dark burnt orange
+    // 10->cream | 5->dark burnt orange | 5->red/coral | 3->dark burnt orange
     final colors = [
-      const Color(0xFFE8641C), // burnt orange
-      const Color(0xFFFFEDC2), // pale cream
+      const Color(0xFFFFEDC2), // cream (10)
+      const Color(0xFFE8641C), // medium orange (2)
+      const Color(0xFFFBB040), // light amber (10)
+      const Color(0xFFB34700), // dark burnt orange (2)
+      const Color(0xFFFFEDC2), // cream (10)
+      const Color(0xFFB34700), // dark burnt orange (5)
+      const Color(0xFFE53946), // red/coral (5)
+      const Color(0xFFB34700), // dark burnt orange (3)
+    ];
+    // Text colors: dark on light slices, white on dark slices
+    final darkText = [
+      true,  // cream -> dark text
+      false, // medium orange -> white
+      true,  // amber -> dark text
+      false, // dark orange -> white
+      true,  // cream -> dark text
+      false, // dark orange -> white
+      false, // red -> white
+      false, // dark orange -> white
     ];
 
     for (int i = 0; i < segments.length; i++) {
@@ -1188,30 +1319,32 @@ class _WheelPainter extends CustomPainter {
       canvas.drawPath(path, paint);
 
       final borderPaint = Paint()
-        ..color = Colors.white.withOpacity(0.25)
+        ..color = Colors.white.withOpacity(0.35)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5;
+        ..strokeWidth = 2;
       canvas.drawPath(path, borderPaint);
 
-      // Text label — dark on cream, white on orange
-      final isCream = i % colors.length == 1;
+      // Label: number + small coin dot for coin prizes, gift for 5s
       final textAngle = startAngle + segmentAngle / 2;
       final textRadius = radius * 0.64;
       final textX = center.dx + textRadius * math.cos(textAngle);
       final textY = center.dy + textRadius * math.sin(textAngle);
 
+      final isGift = segments[i] == 5 && (i == 5 || i == 6);
+      final useDark = darkText[i % darkText.length];
+
       final textPainter = TextPainter(
         text: TextSpan(
           text: '${segments[i]}',
           style: GoogleFonts.inter(
-            fontSize: radius * 0.185,
+            fontSize: radius * 0.19,
             fontWeight: FontWeight.w900,
-            color: isCream ? const Color(0xFFB34E10) : Colors.white,
+            color: useDark ? const Color(0xFFB34E10) : Colors.white,
             shadows: [
               Shadow(
-                color: isCream
-                    ? Colors.white.withOpacity(0.4)
-                    : Colors.black.withOpacity(0.35),
+                color: useDark
+                    ? Colors.white.withOpacity(0.5)
+                    : Colors.black.withOpacity(0.4),
                 offset: const Offset(0, 2),
                 blurRadius: 4,
               ),
@@ -1225,6 +1358,23 @@ class _WheelPainter extends CustomPainter {
         canvas,
         Offset(textX - textPainter.width / 2, textY - textPainter.height / 2),
       );
+
+      // Small "gift" marker on the 5-coin slices (like ref pink gift icon)
+      if (isGift) {
+        final giftPainter = TextPainter(
+          text: TextSpan(
+            text: '🎁',
+            style: TextStyle(fontSize: radius * 0.09),
+          ),
+          textDirection: TextDirection.ltr,
+        );
+        giftPainter.layout();
+        giftPainter.paint(
+          canvas,
+          Offset(textX - giftPainter.width / 2,
+              textY - textPainter.height / 2 - radius * 0.15),
+        );
+      }
     }
   }
 

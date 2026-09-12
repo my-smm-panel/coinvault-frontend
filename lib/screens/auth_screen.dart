@@ -111,7 +111,7 @@ class _AuthScreenState extends State<AuthScreen> {
                               shape: BoxShape.circle,
                               border: Border.all(
                                 color: const Color(0xFFFF8C1A),
-                                width: 3.5,
+                                width: logoD * 0.030, // ~6-8px on ref circle
                               ),
                             ),
                             child: const ClipOval(
