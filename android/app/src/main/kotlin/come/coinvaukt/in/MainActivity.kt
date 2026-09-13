@@ -1,4 +1,4 @@
-package com.coinvaukt.`in`.coinvault
+package come.coinvaukt.`in`
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.coinvaukt.in.coinvault"
+    namespace = "come.coinvaukt.in"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +21,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.coinvaukt.in.coinvault"
+        applicationId = "come.coinvaukt.in"
         minSdk = 23
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -31,9 +31,9 @@ android {
     signingConfigs {
         create("release") {
             storeFile = file("coinvault-release.keystore")
-            storePassword = "coinvault"
+            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: "coinvault123"
             keyAlias = "coinvault"
-            keyPassword = "coinvault123"
+            keyPassword = System.getenv("KEY_PASSWORD") ?: "coinvault123"
         }
     }
 
