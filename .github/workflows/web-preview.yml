@@ -24,7 +24,9 @@ jobs:
           channel: stable
       - run: flutter pub get
       - name: Build web (release)
-        run: flutter build web --release --base-href /coinvault-preview/
+        run: flutter build web --release --base-href /coinvault-preview/ --no-tree-shake-icons
+      - name: Verify index.html
+        run: grep -q "base href" build/web/index.html && grep "/coinvault-preview/" build/web/index.html | head -1
       - name: Publish to public preview repo (GitHub Pages)
         env:
           TOKEN: ${{ secrets.GH_PREVIEW_TOKEN }}
