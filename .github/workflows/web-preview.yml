@@ -1,21 +1,16 @@
-name: Web Preview (GitHub Pages)
+name: Web Preview
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
 concurrency:
-  group: pages
+  group: preview
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-publish:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -28,17 +23,20 @@ jobs:
           flutter-version: 3.29.x
           channel: stable
       - run: flutter pub get
-      - run: flutter build web --release --base-href /coinvault-frontend/
-      - uses: actions/upload-pages-artifact@v3
-        with:
-          path: build/web
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Build web (release)
+        run: flutter build web --release --base-href /coinvault-preview/
+      - name: Publish to public preview repo (GitHub Pages)
+        env:
+          TOKEN: ${{ secrets.GH_PREVIEW_TOKEN }}
+        run: |
+          OUT=preview_out
+          rm -rf $OUT && mkdir -p $OUT
+          cp -r build/web/* $OUT/
+          cd $OUT
+          git init -b main -q
+          git config user.name "preview-bot"
+          git config user.email "bot@coinvault.local"
+          git add -A
+          git commit -q -m "preview build"
+          git remote add origin "https://oauth2:${TOKEN}@github.com/my-smm-panel/coinvault-preview.git"
+          git push -f origin main
