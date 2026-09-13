@@ -9,7 +9,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -17,159 +24,27 @@ jobs:
           flutter-version: 3.29.x
           channel: stable
 
-      - name: Install dependencies
+      - name: Flutter pub get
         run: flutter pub get
 
-      - name: Create Android scaffold (package fix + permissions + firebase plugin)
+      # Local android/ folder is already committed (package come.coinvaukt.in.coinvault,
+      # google-services plugin wired). No `flutter create` needed — that would wipe it.
+
+      - name: Decode keystore
         run: |
-          flutter create --platforms=android .
-          python3 - <<'PYEOF'
-          import re, os, glob
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/coinvault-release.keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
-          PKG = "come.coinvaukt.in"
-          OLD = "com.example.coinvault_flutter"
-
-          # 1. applicationId + namespace -> match google-services.json
-          for f in glob.glob("android/app/build.gradle*"):
-              s = open(f).read()
-              if OLD in s:
-                  open(f, "w").write(s.replace(OLD, PKG))
-                  print("patched ids:", f)
-
-          # 2. Move MainActivity.kt to new package (fixes launch force-close)
-          # NOTE: 'in' is a Kotlin keyword -> escape as `in` in package decl
-          for src in glob.glob("android/app/src/main/kotlin/**/MainActivity.kt", recursive=True):
-              s = open(src).read().replace(f"package {OLD}", "package come.coinvaukt.`in`")
-              dst_dir = os.path.join("android/app/src/main/kotlin", *PKG.split("."))
-              os.makedirs(dst_dir, exist_ok=True)
-              dst = os.path.join(dst_dir, "MainActivity.kt")
-              open(dst, "w").write(s)
-              if os.path.abspath(src) != os.path.abspath(dst):
-                  os.remove(src)
-              print("moved:", src, "->", dst)
-
-          # 3. google-services plugin (settings declares version, app applies it)
-          for f in glob.glob("android/settings.gradle*"):
-              s = open(f).read()
-              if "com.google.gms.google-services" not in s:
-                  if f.endswith(".kts"):
-                      s2 = re.sub(r"(plugins\s*\{)", '\\1\n    id("com.google.gms.google-services") version "4.4.2" apply false', s, count=1)
-                  else:
-                      s2 = re.sub(r"(plugins\s*\{)", '\\1\n    id \'com.google.gms.google-services\' version \'4.4.2\' apply false', s, count=1)
-                  if s2 != s:
-                      open(f, "w").write(s2)
-                      print("settings plugin:", f)
-
-          for f in glob.glob("android/app/build.gradle*"):
-              s = open(f).read()
-              if "com.google.gms.google-services" not in s:
-                  if f.endswith(".kts"):
-                      s2 = re.sub(r"(plugins\s*\{)", '\\1\n    id("com.google.gms.google-services")', s, count=1)
-                  else:
-                      s2 = re.sub(r"(plugins\s*\{)", '\\1\n    id "com.google.gms.google-services"', s, count=1)
-                  if s2 != s:
-                      open(f, "w").write(s2)
-                      print("app plugin:", f)
-
-          # 4. Permissions for task/offers tracking
-          mf = "android/app/src/main/AndroidManifest.xml"
-          s = open(mf).read()
-          perms = [
-              "android.permission.INTERNET",
-              "android.permission.ACCESS_NETWORK_STATE",
-              "android.permission.POST_NOTIFICATIONS",
-              "com.google.android.gms.permission.AD_ID",
-              "android.permission.WAKE_LOCK",
-              "android.permission.QUERY_ALL_PACKAGES",
-              "android.permission.PACKAGE_USAGE_STATS",
-          ]
-          need = [p for p in perms if p not in s]
-          insert = "".join(f'\n    <uses-permission android:name="{p}"/>' for p in need)
-          if insert:
-              s = s.replace("<application", insert + "\n    <application", 1)
-              print("permissions added:", need)
-
-          # 5. App label
-          s = re.sub(r'android:label="[^"]*"', 'android:label="CoinVault"', s, count=1)
-          open(mf, "w").write(s)
-          print(open(mf).read()[:1200])
-          PYEOF
-
-      - name: Set launcher icon (bear)
-        run: |
-          pip install pillow -q
-          python3 - <<'PYEOF'
-          from PIL import Image
-          import os
-
-          src = Image.open("assets/app_icon_name.png").convert("RGB")
-          w, h = src.size
-          side = min(w, h)
-          square = src.crop(((w - side) // 2, (h - side) // 2,
-                             (w + side) // 2, (h + side) // 2))
-          # background = corner color of source
-          bg = "#%02x%02x%02x" % square.getpixel((5, 5))
-          print("bg:", bg, "src:", src.size)
-
-          res = "android/app/src/main/res"
-          legacy = {"mipmap-mdpi": 48, "mipmap-hdpi": 72, "mipmap-xhdpi": 96,
-                    "mipmap-xxhdpi": 144, "mipmap-xxxhdpi": 192}
-          fg = {"mipmap-mdpi": 108, "mipmap-hdpi": 162, "mipmap-xhdpi": 216,
-                "mipmap-xxhdpi": 324, "mipmap-xxxhdpi": 432}
-          for d, px in legacy.items():
-              os.makedirs(f"{res}/{d}", exist_ok=True)
-              square.resize((px, px), Image.LANCZOS).save(f"{res}/{d}/ic_launcher.png")
-          for d, px in fg.items():
-              os.makedirs(f"{res}/{d}", exist_ok=True)
-              square.resize((px, px), Image.LANCZOS).save(f"{res}/{d}/ic_launcher_foreground.png")
-
-          os.makedirs(f"{res}/mipmap-anydpi-v26", exist_ok=True)
-          adaptive = ('<?xml version="1.0" encoding="utf-8"?>\n'
-                      '<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n'
-                      '    <background android:drawable="@color/ic_launcher_background"/>\n'
-                      '    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>\n'
-                      '</adaptive-icon>\n')
-          open(f"{res}/mipmap-anydpi-v26/ic_launcher.xml", "w").write(adaptive)
-          open(f"{res}/mipmap-anydpi-v26/ic_launcher_round.xml", "w").write(adaptive)
-
-          os.makedirs(f"{res}/values", exist_ok=True)
-          vc = f"{res}/values/colors.xml"
-          colortag = f'<color name="ic_launcher_background">{bg}</color>'
-          if os.path.exists(vc):
-              s = open(vc).read()
-              if "ic_launcher_background" not in s:
-                  s = s.replace("</resources>", f"    {colortag}\n</resources>")
-                  open(vc, "w").write(s)
-          else:
-              open(vc, "w").write(f'<?xml version="1.0" encoding="utf-8"?>\n<resources>\n    {colortag}\n</resources>\n')
-          print("launcher icon done")
-          PYEOF
-
-      - name: Build AAB
-        run: flutter build appbundle --release
-
-      - name: Set up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Build signed APK from AAB
-        run: |
-          curl -sL -o bundletool.jar https://github.com/google/bundletool/releases/download/1.15.6/bundletool-all-1.15.6.jar
-          java -jar bundletool.jar build-apks \
-            --bundle=build/app/outputs/bundle/release/app-release.aab \
-            --output=coinvault.apks \
-            --ks=android/app/coinvault-release.keystore \
-            --ks-key-alias=coinvault \
-            --ks-pass=pass:coinvault123 \
-            --key-pass=pass:coinvault123 \
-            --mode=universal
-          unzip -o coinvault.apks -d apk_out
-          mv apk_out/universal.apk coinvault-release-signed.apk
+      - name: Build signed release APK
+        run: flutter build apk --release
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Upload signed APK
         uses: actions/upload-artifact@v4
         with:
           name: coinvault-release-apk
-          path: coinvault-release-signed.apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 7
