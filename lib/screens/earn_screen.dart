@@ -482,23 +482,6 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
     // Navigate to full RedeemScreen
     return const RedeemScreen();
   }
-        title: 'No offers right now',
-        subtitle: 'New offers are added daily — check back soon.',
-      );
-    }
-    return RefreshIndicator(
-      color: AppColors.primary,
-      onRefresh: _loadOffers,
-      child: ListView.builder(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        itemCount: _offers.length,
-        itemBuilder: (context, index) {
-          final offer = Map<String, dynamic>.from(_offers[index] as Map);
-          return _OfferCard(offer: offer);
-        },
-      ),
-    );
-  }
 
   void _showTaskDetail(Map<String, dynamic> task) {
     showModalBottomSheet(
