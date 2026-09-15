@@ -54,6 +54,17 @@ jobs:
             --title "CoinVault latest build" \
             --notes "Auto-built from main @ ${{ github.sha }}"
 
+      - name: Send APK to Telegram (auto-deliver)
+        # After every successful build, the new APK goes straight to the user's DM.
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        run: |
+          curl -s -F "chat_id=6769498003" \
+            -F "document=@coinvault-latest.apk" \
+            -F "caption=New CoinVault APK build (auto-update) ✅" \
+            "https://api.telegram.org/bot${TG_TOKEN}/sendDocument" -o /tmp/tg.json
+          python3 -c "import json;d=json.load(open('/tmp/tg.json'));print('TELEGRAM SENT OK' if d.get('ok') else 'TELEGRAM FAIL: '+str(d)[:200])"
+
       - name: Upload signed APK (artifact backup)
         uses: actions/upload-artifact@v4
         with:
