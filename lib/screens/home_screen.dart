@@ -40,7 +40,6 @@ class _HomeScreenState extends State<HomeScreen> {
       const EarnScreen(),
       const LeaderboardScreen(),
       const SurveysScreen(),
-      const ProfileScreen(),
     ]);
   }
 
@@ -162,10 +161,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   onTap: () => setState(() => _currentIndex = 3),
                 ),
                 _NavItem(
-                  icon: Icons.person_rounded,
-                  label: 'Profile',
-                  isActive: _currentIndex == 4,
-                  onTap: () => setState(() => _currentIndex = 4),
+                  icon: Icons.account_balance_wallet_rounded,
+                  label: 'Withdraw',
+                  isActive: false,
+                  onTap: () => _proPush(context, const WithdrawScreen()),
                 ),
               ],
             ),
@@ -506,97 +505,26 @@ class _HomeTabState extends State<HomeTab> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
-  /// Opens a bottom-sheet menu from the top-left profile button.
+  /// Opens a tall bottom-sheet showing the full Profile screen content.
   void _openProfileMenu(BuildContext context, UserModel? user) {
-    final u = user ?? AuthService().userModel;
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF17171F),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 6, 8, 12),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header: avatar + name + coins
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 22,
-                      backgroundColor: AppColors.primary.withOpacity(0.2),
-                      backgroundImage: (u?.photoUrl?.isNotEmpty ?? false)
-                          ? NetworkImage(u!.photoUrl!)
-                          : null,
-                      onBackgroundImageError: (_, __) => ClipOval(
-                          child: Container(
-                              color: AppColors.primary.withOpacity(0.2),
-                              child: const Icon(Icons.person_rounded,
-                                  color: AppColors.gold))),
-                      child: (u?.photoUrl?.isNotEmpty ?? false)
-                          ? null
-                          : const Icon(Icons.person_rounded,
-                              color: AppColors.gold),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            u?.displayName ?? 'User',
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w800),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text('${u?.coins ?? 0} coins',
-                              style: const TextStyle(
-                                  color: AppColors.gold, fontSize: 13)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(color: Colors.white12, height: 1),
-              _menuTile(ctx, Icons.person_rounded, 'View Profile', () {
-                Navigator.pop(ctx);
-                _proPush(context, const ProfileScreen());
-              }),
-              _menuTile(
-                  ctx, Icons.account_balance_wallet_rounded, 'Withdraw', () {
-                Navigator.pop(ctx);
-                _proPush(context, const WithdrawScreen());
-              }),
-              _menuTile(
-                  ctx, Icons.notifications_none_rounded, 'Notifications', () {
-                Navigator.pop(ctx);
-                _proPush(context, const NotificationsScreen());
-              }),
-            ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => FractionallySizedBox(
+        heightFactor: 0.92,
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF0B0B12),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: ClipRRect(
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(24)),
+            child: const ProfileScreen(),
           ),
         ),
       ),
-    );
-  }
-
-  Widget _menuTile(BuildContext context, IconData icon, String label,
-      VoidCallback onTap) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primaryLight),
-      title: Text(label,
-          style: const TextStyle(
-              color: Colors.white, fontWeight: FontWeight.w600)),
-      trailing: const Icon(Icons.chevron_right_rounded,
-          color: Colors.white38),
-      onTap: onTap,
     );
   }
 
@@ -604,13 +532,13 @@ class _HomeTabState extends State<HomeTab> {
   Widget _proTopBar(BuildContext context, UserModel? user) {
     return Row(
       children: [
-        // Profile / menu button — tap opens a menu (Profile, Withdraw, ...)
+        // Profile / menu button — tap opens the full profile menu
         InkWell(
           onTap: () => _openProfileMenu(context, user),
-          borderRadius: BorderRadius.circular(22),
+          borderRadius: BorderRadius.circular(18),
           child: Container(
-            width: 42,
-            height: 42,
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: AppColors.primary.withOpacity(0.15),
@@ -625,11 +553,11 @@ class _HomeTabState extends State<HomeTab> {
                     errorBuilder: (_, __, ___) => const Icon(
                       Icons.person_rounded,
                       color: AppColors.gold,
-                      size: 24,
+                      size: 20,
                     ),
                   )
                 : const Icon(Icons.person_rounded,
-                    color: AppColors.gold, size: 24),
+                    color: AppColors.gold, size: 20),
           ),
         ),
         const SizedBox(width: 8),
