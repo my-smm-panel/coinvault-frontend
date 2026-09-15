@@ -42,7 +42,19 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Upload signed APK
+      - name: Publish APK to stable 'latest-build' release
+        # Every push auto-builds the APK and refreshes this one download link.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk coinvault-latest.apk
+          # delete previous release + tag so the SAME link always has the newest build
+          gh release delete latest-build --yes --cleanup-tag 2>/dev/null || true
+          gh release create latest-build coinvault-latest.apk \
+            --title "CoinVault latest build" \
+            --notes "Auto-built from main @ ${{ github.sha }}"
+
+      - name: Upload signed APK (artifact backup)
         uses: actions/upload-artifact@v4
         with:
           name: coinvault-release-apk
