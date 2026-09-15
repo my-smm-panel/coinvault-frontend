@@ -26,7 +26,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
-  bool _menuOpen = false;
   UserModel? _user;
   bool _loading = true;
 
@@ -71,45 +70,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Stack(
-        children: [
-          IndexedStack(
-            index: _currentIndex,
-            children: _screens,
-          ),
-          // Right-side blur scrim — tap anywhere to close
-          AnimatedOpacity(
-            opacity: _menuOpen ? 1 : 0,
-            duration: const Duration(milliseconds: 200),
-            child: IgnorePointer(
-              ignoring: !_menuOpen,
-              child: GestureDetector(
-                onTap: () => setState(() => _menuOpen = false),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
-                  child: Container(color: Colors.black.withOpacity(0.55)),
-                ),
-              ),
-            ),
-          ),
-          // Left drawer — slides in left→right, ~42% width
-          Align(
-            alignment: Alignment.centerLeft,
-            child: AnimatedSlide(
-              offset: _menuOpen ? Offset.zero : const Offset(-1.1, 0),
-              duration: const Duration(milliseconds: 260),
-              curve: Curves.easeOutCubic,
-              child: FractionallySizedBox(
-                widthFactor: 0.42,
-                heightFactor: 1.0,
-                child: Container(
-                  color: const Color(0xFF0B0B12),
-                  child: SafeArea(child: _menuPanel()),
-                ),
-              ),
-            ),
-          ),
-        ],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -317,6 +280,7 @@ class _HomeTabState extends State<HomeTab> {
   List<dynamic> _tasks = [];
   List<dynamic> _topEarners = [];
   bool _loadingHome = true;
+  bool _menuOpen = false;
 
   @override
   void initState() {
@@ -397,7 +361,9 @@ class _HomeTabState extends State<HomeTab> {
 
         return Scaffold(
       backgroundColor: const Color(0xFF0E0E13),
-      body: SafeArea(
+      body: Stack(
+        children: [
+          SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
           child: Column(
@@ -462,6 +428,40 @@ class _HomeTabState extends State<HomeTab> {
             ],
           ),
         ),
+      ),
+          // Right-side blur scrim — tap anywhere to close
+          AnimatedOpacity(
+            opacity: _menuOpen ? 1 : 0,
+            duration: const Duration(milliseconds: 200),
+            child: IgnorePointer(
+              ignoring: !_menuOpen,
+              child: GestureDetector(
+                onTap: () => setState(() => _menuOpen = false),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                  child: Container(color: Colors.black.withOpacity(0.55)),
+                ),
+              ),
+            ),
+          ),
+          // Left drawer — slides in left→right, ~42% width
+          Align(
+            alignment: Alignment.centerLeft,
+            child: AnimatedSlide(
+              offset: _menuOpen ? Offset.zero : const Offset(-1.1, 0),
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              child: FractionallySizedBox(
+                widthFactor: 0.42,
+                heightFactor: 1.0,
+                child: Container(
+                  color: const Color(0xFF0B0B12),
+                  child: SafeArea(child: _menuPanel()),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
         );
       },
@@ -662,7 +662,7 @@ class _HomeTabState extends State<HomeTab> {
         if (onTap != null) {
           onTap();
         } else if (page != null) {
-          _pushScreen(page);
+          _proPush(context, page);
         }
       },
       borderRadius: BorderRadius.circular(12),
