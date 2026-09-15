@@ -512,18 +512,18 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   /// Brand grid shown when 'Voucher' method is selected.
   Widget _brandGrid() {
     final brands = [
-      {'name': 'Amazon Pay', 'color': const Color(0xFFFF9900), 'icon': 0xe318},
-      {'name': 'PhonePe', 'color': const Color(0xFF5F259F), 'icon': 0xe32a},
-      {'name': 'Paytm', 'color': const Color(0xFF00B9F1), 'icon': 0xe850},
-      {'name': 'Flipkart', 'color': const Color(0xFF2874F0), 'icon': 0xe8f8},
-      {'name': 'Google Play', 'color': const Color(0xFF34A853), 'icon': 0xe8f0},
-      {'name': 'Myntra', 'color': const Color(0xFFFF4466), 'icon': 0xe596},
-      {'name': 'Ajio', 'color': const Color(0xFF2BB1E4), 'icon': 0xe59b},
-      {'name': 'Swiggy', 'color': const Color(0xFFFF5200), 'icon': 0xe56c},
-      {'name': 'Zomato', 'color': const Color(0xFFE23744), 'icon': 0xe556},
-      {'name': 'Netflix', 'color': const Color(0xFFE50914), 'icon': 0xe332},
-      {'name': 'Spotify', 'color': const Color(0xFF1DB954), 'icon': 0xe3a2},
-      {'name': 'OLA', 'color': const Color(0xFF00C853), 'icon': 0xe1e1},
+      {'name': 'Amazon Pay', 'color': const Color(0xFFFF9900), 'icon': Icons.shopping_cart_rounded},
+      {'name': 'PhonePe', 'color': const Color(0xFF5F259F), 'icon': Icons.phone_android_rounded},
+      {'name': 'Paytm', 'color': const Color(0xFF00B9F1), 'icon': Icons.account_balance_wallet_rounded},
+      {'name': 'Flipkart', 'color': const Color(0xFF2874F0), 'icon': Icons.shopping_bag_rounded},
+      {'name': 'Google Play', 'color': const Color(0xFF34A853), 'icon': Icons.play_circle_fill_rounded},
+      {'name': 'Myntra', 'color': const Color(0xFFFF4466), 'icon': Icons.checkroom_rounded},
+      {'name': 'Ajio', 'color': const Color(0xFF2BB1E4), 'icon': Icons.shopping_basket_rounded},
+      {'name': 'Swiggy', 'color': const Color(0xFFFF5200), 'icon': Icons.restaurant_rounded},
+      {'name': 'Zomato', 'color': const Color(0xFFE23744), 'icon': Icons.restaurant_menu_rounded},
+      {'name': 'Netflix', 'color': const Color(0xFFE50914), 'icon': Icons.movie_rounded},
+      {'name': 'Spotify', 'color': const Color(0xFF1DB954), 'icon': Icons.music_note_rounded},
+      {'name': 'OLA', 'color': const Color(0xFF00C853), 'icon': Icons.directions_car_rounded},
     ];
     return GridView.builder(
       shrinkWrap: true,
@@ -542,7 +542,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   Widget _brandChip2(Map<String, dynamic> brand) {
     final name = brand['name'] as String;
     final color = brand['color'] as Color;
-    final iconCode = brand['icon'] as int;
+    final icon = brand['icon'] as IconData;
     final isSelected = _voucherBrand == name;
     return InkWell(
       borderRadius: BorderRadius.circular(12),
@@ -559,7 +559,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(IconData(iconCode, fontFamily: 'MaterialIcons'),
+            Icon(icon,
                 color: isSelected ? color : Colors.white54, size: 24),
             const SizedBox(height: 4),
             Text(

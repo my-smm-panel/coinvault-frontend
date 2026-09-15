@@ -18,18 +18,18 @@ class _RedeemScreenState extends State<RedeemScreen> {
 
   // 12 famous Indian / global gift card brands
   static const _brands = [
-    {'name': 'Amazon Pay',   'color': Color(0xFFFF9900), 'icon': 0xe318},
-    {'name': 'PhonePe',     'color': Color(0xFF5F259F), 'icon': 0xe32a},
-    {'name': 'Paytm',       'color': Color(0xFF00B9F1), 'icon': 0xe850},
-    {'name': 'Flipkart',    'color': Color(0xFF2874F0), 'icon': 0xe8f8},
-    {'name': 'Google Play', 'color': Color(0xFF34A853), 'icon': 0xe8f0},
-    {'name': 'Myntra',      'color': Color(0xFFFF4466), 'icon': 0xe596},
-    {'name': 'Ajio',        'color': Color(0xFF2BB1E4), 'icon': 0xe59b},
-    {'name': 'Swiggy',      'color': Color(0xFFFF5200), 'icon': 0xe56c},
-    {'name': 'Zomato',      'color': Color(0xFFE23744), 'icon': 0xe556},
-    {'name': 'Netflix',     'color': Color(0xFFE50914), 'icon': 0xe332},
-    {'name': 'Spotify',     'color': Color(0xFF1DB954), 'icon': 0xe3a2},
-    {'name': 'OLA',         'color': Color(0xFF00C853), 'icon': 0xe1e1},
+    {'name': 'Amazon Pay',    'color': Color(0xFFFF9900), 'icon': Icons.shopping_cart_rounded},
+    {'name': 'PhonePe',       'color': Color(0xFF5F259F), 'icon': Icons.phone_android_rounded},
+    {'name': 'Paytm',         'color': Color(0xFF00B9F1), 'icon': Icons.account_balance_wallet_rounded},
+    {'name': 'Flipkart',      'color': Color(0xFF2874F0), 'icon': Icons.shopping_bag_rounded},
+    {'name': 'Google Play',   'color': Color(0xFF34A853), 'icon': Icons.play_circle_fill_rounded},
+    {'name': 'Myntra',        'color': Color(0xFFFF4466), 'icon': Icons.checkroom_rounded},
+    {'name': 'Ajio',          'color': Color(0xFF2BB1E4), 'icon': Icons.shopping_basket_rounded},
+    {'name': 'Swiggy',        'color': Color(0xFFFF5200), 'icon': Icons.restaurant_rounded},
+    {'name': 'Zomato',        'color': Color(0xFFE23744), 'icon': Icons.restaurant_menu_rounded},
+    {'name': 'Netflix',       'color': Color(0xFFE50914), 'icon': Icons.movie_rounded},
+    {'name': 'Spotify',       'color': Color(0xFF1DB954), 'icon': Icons.music_note_rounded},
+    {'name': 'OLA',           'color': Color(0xFF00C853), 'icon': Icons.directions_car_rounded},
   ];
 
   @override
@@ -65,7 +65,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
   Widget _brandCard(Map<String, dynamic> brand) {
     final name = brand['name'] as String;
     final color = brand['color'] as Color;
-    final iconCode = brand['icon'] as int;
+    final icon = brand['icon'] as IconData;
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -87,7 +87,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
-                child: Icon(IconData(iconCode, fontFamily: 'MaterialIcons'),
+                child: Icon(icon,
                     color: color, size: 26),
               ),
             ),
@@ -131,9 +131,9 @@ class _RedeemScreenState extends State<RedeemScreen> {
                     color: brandColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(IconData(_brands
-                      .firstWhere((b) => b['name'] == brand)['icon'] as int,
-                      fontFamily: 'MaterialIcons'),
+                  child: Icon(
+                      _brands.firstWhere((b) => b['name'] == brand)['icon']
+                          as IconData,
                       color: brandColor, size: 20),
                 ),
                 const SizedBox(width: 10),
