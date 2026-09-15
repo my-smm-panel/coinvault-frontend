@@ -234,7 +234,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
     final repo = AppRepository.instance;
     try {
       final res = await repo.submitWithdrawal(
-        uid: user.id,
+        uid: user.uid,
         coins: coins,
         method: 'voucher',
         details: '$brand|₹$amount',
