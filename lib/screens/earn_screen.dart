@@ -474,7 +474,10 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
       itemCount: _offers.length,
-      itemBuilder: _offerCard,
+      itemBuilder: (context, index) {
+        final offer = Map<String, dynamic>.from(_offers[index] as Map);
+        return _OfferCard(offer: offer);
+      },
     );
   }
 

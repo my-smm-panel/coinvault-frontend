@@ -577,6 +577,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       ),
     );
   }
+}
 
 class _MethodCard extends StatelessWidget {
   final IconData icon;
