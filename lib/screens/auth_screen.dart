@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:video_player/video_player.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 
-/// Login screen — dark CoinVault theme with an intro video in the centre
-/// (Part 2), matching the wireframe: top bar, video, Continue with Google.
+/// Login screen — matches the CoinVault bear design exactly:
+///   dark bg + orange spotlight, bear mascot (hoodie), CoinVault wordmark,
+///   "Play. Earn. Win Real Rewards." tagline, Continue with Google pill.
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -14,42 +14,8 @@ class AuthScreen extends StatefulWidget {
 }
 
 class _AuthScreenState extends State<AuthScreen> {
-  late VideoPlayerController _videoController;
-  String _selectedLang = 'English';
   bool _loading = false;
-  bool _videoFailed = false;
   String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    // Part 2 — bundled intro video. Plays automatically + loops.
-    // Never stuck: if it fails to load we fall back to a poster.
-    _videoController =
-        VideoPlayerController.asset('assets/videos/intro.mp4')
-          ..initialize().then((_) {
-            if (mounted && _videoController.value.isInitialized) {
-              setState(() {});
-              _videoController.setLooping(true);
-              _videoController.play();
-            }
-          }).catchError((Object e) {
-            debugPrint('AuthScreen video init failed: $e');
-            if (mounted) setState(() => _videoFailed = true);
-          });
-    // Safety timeout so the UI never shows an endless spinner.
-    Future.delayed(const Duration(seconds: 6), () {
-      if (mounted && !_videoController.value.isInitialized) {
-        setState(() => _videoFailed = true);
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _videoController.dispose();
-    super.dispose();
-  }
 
   Future<void> _signInWithGoogle() async {
     if (_loading) return;
@@ -76,24 +42,24 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final ready = _videoController.value.isInitialized;
+    final size = MediaQuery.of(context).size;
     return Scaffold(
       backgroundColor: const Color(0xFF0F0D0B),
       body: Stack(
         children: [
-          // Warm radial amber spotlight glow behind the video
+          // Warm radial amber spotlight glow behind the bear
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
                 gradient: RadialGradient(
-                  center: Alignment(0.5, -0.3),
-                  radius: 0.7,
+                  center: Alignment(0, -0.4),
+                  radius: 0.9,
                   colors: [
                     Color(0xFFFF8A2A),
                     Color(0x33C94A0A),
                     Color(0x000F0D0B),
                   ],
-                  stops: [0.0, 0.45, 1.0],
+                  stops: [0.0, 0.5, 1.0],
                 ),
               ),
             ),
@@ -101,84 +67,16 @@ class _AuthScreenState extends State<AuthScreen> {
           SafeArea(
             child: Column(
               children: [
-                // Part 1 — top-right language pill
-                Align(
-                  alignment: Alignment.topRight,
-                  child: Padding(
-                    padding: const EdgeInsets.only(right: 20, top: 12),
-                    child: GestureDetector(
-                      onTap: () {},
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.05),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: Colors.white.withOpacity(0.15), width: 1),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.public, color: Colors.white, size: 16),
-                            const SizedBox(width: 6),
-                            Text(_selectedLang, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
-                            const SizedBox(width: 4),
-                            const Icon(Icons.expand_more, color: Colors.white, size: 18),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Part 2 — intro video (replaces old bear/coin area)
+                // Bear mascot
                 Expanded(
                   child: Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: _videoFailed
-                          // Graceful poster if the video can't load — never stuck.
-                          ? Container(
-                              width: double.infinity,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(18),
-                                border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
-                                boxShadow: [
-                                  BoxShadow(color: const Color(0xFFFF8A2A).withOpacity(0.18), blurRadius: 30, offset: const Offset(0, 8)),
-                                ],
-                              ),
-                              clipBehavior: Clip.antiAlias,
-                              child: AspectRatio(
-                                aspectRatio: 9 / 16,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Image.asset('assets/bear.png', fit: BoxFit.contain),
-                                    const SizedBox(height: 8),
-                                    const Text('Intro video', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                                  ],
-                                ),
-                              ),
-                            )
-                          : ready
-                              ? Container(
-                                  width: double.infinity,
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(18),
-                                    border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
-                                    boxShadow: [
-                                      BoxShadow(color: const Color(0xFFFF8A2A).withOpacity(0.18), blurRadius: 30, offset: const Offset(0, 8)),
-                                    ],
-                                  ),
-                                  clipBehavior: Clip.antiAlias,
-                                  child: AspectRatio(
-                                    aspectRatio: _videoController.value.aspectRatio,
-                                    child: VideoPlayer(_videoController),
-                                  ),
-                                )
-                              : const CircularProgressIndicator(
-                                  color: Color(0xFFFF8A2A),
-                                  strokeWidth: 2.6,
-                                ),
+                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+                      child: Image.asset(
+                        'assets/bear.png',
+                        width: size.width * 0.72,
+                        fit: BoxFit.contain,
+                      ),
                     ),
                   ),
                 ),
@@ -194,9 +92,16 @@ class _AuthScreenState extends State<AuthScreen> {
                 ),
                 const SizedBox(height: 6),
 
-                // Part 3 — Continue with Google button (full width, white pill)
+                // Tagline
+                const Text(
+                  'Play. Earn. Win Real Rewards.',
+                  style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500, letterSpacing: 0.2),
+                ),
+                const SizedBox(height: 20),
+
+                // Continue with Google button (full width, white pill)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 22),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(40),
                     onTap: _loading ? null : _signInWithGoogle,
