@@ -28,6 +28,7 @@ flutter:
     - assets/app_icon.jpg
     - assets/app_icon_name.png
     - assets/bear.png
+    - assets/login_screen.png
     - assets/coin_zip.png
     - assets/logo_circle.png
     - assets/wheel.png
