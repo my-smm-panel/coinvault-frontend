@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' show ImageFilter;
 
 import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
@@ -11,7 +12,6 @@ import 'scratch_screen.dart';
 import 'quiz_screen.dart';
 import 'surveys_screen.dart';
 import 'withdraw_screen.dart';
-import 'profile_screen.dart';
 import 'leaderboard_screen.dart';
 import 'history_screen.dart';
 import 'notifications_screen.dart';
@@ -26,6 +26,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  bool _menuOpen = false;
   UserModel? _user;
   bool _loading = true;
 
@@ -70,9 +71,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
+      body: Stack(
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: _screens,
+          ),
+          // Right-side blur scrim — tap anywhere to close
+          AnimatedOpacity(
+            opacity: _menuOpen ? 1 : 0,
+            duration: const Duration(milliseconds: 200),
+            child: IgnorePointer(
+              ignoring: !_menuOpen,
+              child: GestureDetector(
+                onTap: () => setState(() => _menuOpen = false),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 4, sigmaY: 4),
+                  child: Container(color: Colors.black.withOpacity(0.55)),
+                ),
+              ),
+            ),
+          ),
+          // Left drawer — slides in left→right, ~42% width
+          Align(
+            alignment: Alignment.centerLeft,
+            child: AnimatedSlide(
+              offset: _menuOpen ? Offset.zero : const Offset(-1.1, 0),
+              duration: const Duration(milliseconds: 260),
+              curve: Curves.easeOutCubic,
+              child: FractionallySizedBox(
+                widthFactor: 0.42,
+                heightFactor: 1.0,
+                child: Container(
+                  color: const Color(0xFF0B0B12),
+                  child: SafeArea(child: _menuPanel()),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -509,24 +546,154 @@ class _HomeTabState extends State<HomeTab> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
-  /// Opens a tall bottom-sheet showing the full Profile screen content.
+  /// Opens the left side-drawer profile menu.
   void _openProfileMenu(BuildContext context, UserModel? user) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => FractionallySizedBox(
-        heightFactor: 0.92,
-        child: Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF0B0B12),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    setState(() => _menuOpen = true);
+  }
+
+  /// Close the side drawer.
+  void _closeMenu() => setState(() => _menuOpen = false);
+
+  Future<void> _logoutFromMenu() async {
+    await AuthService().signOut();
+    if (mounted) {
+      Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+    }
+  }
+
+  /// Left drawer content — compact, icon-led, minimal text.
+  Widget _menuPanel() {
+    final u = AuthService().userModel;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header: avatar + name + coins + close (X)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 10, 8),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: AppColors.primary.withOpacity(0.15),
+                  border: Border.all(color: AppColors.gold, width: 2),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: (u?.photoUrl?.isNotEmpty ?? false)
+                    ? Image.network(u!.photoUrl!, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(
+                            Icons.person_rounded,
+                            color: AppColors.gold,
+                            size: 22))
+                    : const Icon(Icons.person_rounded,
+                        color: AppColors.gold, size: 22),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      u?.displayName ?? 'User',
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text('${u?.coins ?? 0} coins',
+                        style: const TextStyle(
+                            color: AppColors.gold, fontSize: 12)),
+                  ],
+                ),
+              ),
+              // Proper close icon
+              InkWell(
+                onTap: _closeMenu,
+                borderRadius: BorderRadius.circular(16),
+                child: const Padding(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(Icons.close_rounded,
+                      color: Colors.white70, size: 22),
+                ),
+              ),
+            ],
           ),
-          child: ClipRRect(
-            borderRadius:
-                const BorderRadius.vertical(top: Radius.circular(24)),
-            child: const ProfileScreen(),
+        ),
+        const Divider(color: Colors.white12, height: 1),
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              children: [
+                _menuItem(Icons.history_rounded, 'History',
+                    const HistoryScreen(), const Color(0xFF14B8A6)),
+                _menuItem(Icons.payments_rounded, 'Payouts',
+                    const HistoryScreen(initialTab: 'Payouts'),
+                    AppColors.primary),
+                _menuItem(Icons.emoji_events_rounded, 'Ranks',
+                    const LeaderboardScreen(), AppColors.gold),
+                _menuItem(Icons.group_add_rounded, 'Refer',
+                    const ReferScreen(), const Color(0xFFEC4899)),
+                _menuItem(Icons.task_alt_rounded, 'Earn',
+                    const EarnScreen(), const Color(0xFF3B82F6)),
+                _menuItem(Icons.account_balance_wallet_rounded, 'Withdraw',
+                    const WithdrawScreen(), AppColors.primary),
+                _menuItem(Icons.notifications_rounded, 'Alerts',
+                    const NotificationsScreen(), const Color(0xFFF59E0B)),
+                _menuItem(Icons.logout_rounded, 'Logout', null,
+                    const Color(0xFFEF4444), onTap: () => _logoutFromMenu()),
+              ],
+            ),
           ),
+        ),
+      ],
+    );
+  }
+
+  Widget _menuItem(IconData icon, String label, Widget? page,
+      Color color, {VoidCallback? onTap}) {
+    return InkWell(
+      onTap: () {
+        _closeMenu();
+        if (onTap != null) {
+          onTap();
+        } else if (page != null) {
+          _pushScreen(page);
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 19),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w600),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                color: Colors.white30, size: 18),
+          ],
         ),
       ),
     );

@@ -16,9 +16,11 @@ class WithdrawScreen extends StatefulWidget {
 class _WithdrawScreenState extends State<WithdrawScreen> {
   UserModel? _user;
   bool _loading = false;
-  String _selectedMethod = 'upi'; // 'upi' or 'bank'
+  String _selectedMethod = 'upi'; // 'upi' | 'bank' | 'phonepe' | 'voucher'
+  String _voucherBrand = 'Amazon'; // Amazon | OLA | Gift
   final _upiController = TextEditingController();
   final _bankController = TextEditingController();
+  final _voucherController = TextEditingController();
   final _amountController = TextEditingController();
   String? _upiError;
   String? _bankError;
@@ -51,6 +53,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   void dispose() {
     _upiController.dispose();
     _bankController.dispose();
+    _voucherController.dispose();
     _amountController.dispose();
     super.dispose();
   }
@@ -96,13 +99,23 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       }
       details = _upiController.text.trim();
       setState(() => _upiError = null);
-    } else {
+    } else if (_selectedMethod == 'bank') {
       if (_bankController.text.trim().isEmpty) {
         setState(() => _bankError = 'Enter bank details');
         return;
       }
       details = _bankController.text.trim();
       setState(() => _bankError = null);
+    } else {
+      if (_voucherController.text.trim().isEmpty) {
+        _showSnackBar(_selectedMethod == 'phonepe'
+            ? 'Enter your PhonePe number'
+            : 'Enter mobile/email for the voucher');
+        return;
+      }
+      details = _selectedMethod == 'voucher'
+          ? '$_voucherBrand | ${_voucherController.text.trim()}'
+          : _voucherController.text.trim();
     }
 
     setState(() => _loading = true);
@@ -204,6 +217,39 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     );
   }
 
+  /// Voucher brand selector chip (Amazon / OLA / Gift).
+  Widget _brandChip(String label, IconData icon, Color color) {
+    final sel = _voucherBrand == label;
+    return InkWell(
+      onTap: () => setState(() => _voucherBrand = label),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: sel ? color.withOpacity(0.18) : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+              color: sel ? color : AppColors.divider, width: 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: sel ? color : Colors.white54, size: 18),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                color: sel ? color : Colors.white70,
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_user == null) {
@@ -293,31 +339,63 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
             // Withdrawal Method Selection
             Text('Withdrawal Method', style: AppTextStyles.titleMedium),
             const SizedBox(height: AppSpacing.md),
-            Row(
+            GridView.count(
+              crossAxisCount: 4,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              childAspectRatio: 0.85,
               children: [
-                Expanded(
-                  child: _MethodCard(
-                    icon: Icons.flash_on_rounded,
-                    title: 'UPI',
-                    subtitle: 'Instant to UPI ID',
-                    isSelected: _selectedMethod == 'upi',
-                    color: const Color(0xFF16A34A),
-                    onTap: () => setState(() => _selectedMethod = 'upi'),
-                  ),
+                _MethodCard(
+                  icon: Icons.flash_on_rounded,
+                  title: 'UPI',
+                  subtitle: 'ID',
+                  isSelected: _selectedMethod == 'upi',
+                  color: const Color(0xFF16A34A),
+                  onTap: () => setState(() => _selectedMethod = 'upi'),
                 ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: _MethodCard(
-                    icon: Icons.account_balance_rounded,
-                    title: 'Bank Transfer',
-                    subtitle: '1-2 business days',
-                    isSelected: _selectedMethod == 'bank',
-                    color: const Color(0xFF1D4ED8),
-                    onTap: () => setState(() => _selectedMethod = 'bank'),
-                  ),
+                _MethodCard(
+                  icon: Icons.account_balance_rounded,
+                  title: 'Bank',
+                  subtitle: 'Transfer',
+                  isSelected: _selectedMethod == 'bank',
+                  color: const Color(0xFF1D4ED8),
+                  onTap: () => setState(() => _selectedMethod = 'bank'),
+                ),
+                _MethodCard(
+                  icon: Icons.phone_iphone_rounded,
+                  title: 'PhonePe',
+                  subtitle: 'UPI app',
+                  isSelected: _selectedMethod == 'phonepe',
+                  color: const Color(0xFF7C3AED),
+                  onTap: () => setState(() => _selectedMethod = 'phonepe'),
+                ),
+                _MethodCard(
+                  icon: Icons.card_giftcard_rounded,
+                  title: 'Voucher',
+                  subtitle: 'Amazon/OLA',
+                  isSelected: _selectedMethod == 'voucher',
+                  color: const Color(0xFFEC4899),
+                  onTap: () => setState(() => _selectedMethod = 'voucher'),
                 ),
               ],
             ),
+            if (_selectedMethod == 'voucher') ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  _brandChip('Amazon', Icons.shopping_cart_rounded,
+                      const Color(0xFFFF9900)),
+                  const SizedBox(width: 8),
+                  _brandChip('OLA', Icons.directions_car_rounded,
+                      const Color(0xFF34D399)),
+                  const SizedBox(width: 8),
+                  _brandChip('Gift', Icons.card_giftcard_rounded,
+                      const Color(0xFFEC4899)),
+                ],
+              ),
+            ],
             
             const SizedBox(height: AppSpacing.xl),
             
@@ -335,7 +413,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                 keyboardType: TextInputType.emailAddress,
                 textInputAction: TextInputAction.next,
               ),
-            ] else ...[
+            ] else if (_selectedMethod == 'bank') ...[
               TextField(
                 controller: _bankController,
                 style: const TextStyle(color: Colors.white),
@@ -346,6 +424,26 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                   errorText: _bankError,
                 ),
                 maxLines: 2,
+                textInputAction: TextInputAction.next,
+              ),
+            ] else ...[
+              TextField(
+                controller: _voucherController,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: _selectedMethod == 'phonepe'
+                      ? 'PhonePe Number'
+                      : 'Mobile / Email',
+                  hintText: _selectedMethod == 'phonepe'
+                      ? '10-digit mobile'
+                      : 'Email where voucher is sent',
+                  prefixIcon: Icon(
+                    _selectedMethod == 'phonepe'
+                        ? Icons.phone_iphone_rounded
+                        : Icons.alternate_email_rounded,
+                  ),
+                ),
+                keyboardType: TextInputType.text,
                 textInputAction: TextInputAction.next,
               ),
             ],
@@ -373,39 +471,6 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                 textInputAction: TextInputAction.done,
               );
             }),
-            
-            const SizedBox(height: AppSpacing.lg),
-            
-            // Conversion Info
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.primaryContainer,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(color: AppColors.primary.withOpacity(0.2)),
-              ),
-              child: Column(
-                children: [
-                  _ConversionRow(
-                    label: '100 coins',
-                    value: '₹10.00',
-                    highlight: true,
-                  ),
-                  _ConversionRow(
-                    label: '500 coins',
-                    value: '₹50.00',
-                  ),
-                  _ConversionRow(
-                    label: '1,000 coins',
-                    value: '₹100.00',
-                  ),
-                  _ConversionRow(
-                    label: '5,000 coins',
-                    value: '₹500.00',
-                  ),
-                ],
-              ),
-            ),
             
             const SizedBox(height: AppSpacing.xl),
             
