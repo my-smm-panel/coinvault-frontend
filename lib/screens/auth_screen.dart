@@ -78,11 +78,11 @@ class _AuthScreenState extends State<AuthScreen> {
             left: 0,
             right: 0,
             bottom: 0,
-            height: MediaQuery.of(context).size.height * 0.18,
+            height: MediaQuery.of(context).size.height * 0.2,
             child: Align(
               alignment: Alignment.topCenter,
               child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
+                behavior: HitTestBehavior.opaque,
                 onTap: _loading ? null : _signInWithGoogle,
                 child: _loading
                     ? const Center(
@@ -95,7 +95,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           ),
                         ),
                       )
-                    : Container(), // invisible, but tappable
+                    : SizedBox.expand(), // fills the zone -> tappable
               ),
             ),
           ),
