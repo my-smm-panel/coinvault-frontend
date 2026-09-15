@@ -17,12 +17,14 @@ class _AuthScreenState extends State<AuthScreen> {
   late VideoPlayerController _videoController;
   String _selectedLang = 'English';
   bool _loading = false;
+  bool _videoFailed = false;
   String? _error;
 
   @override
   void initState() {
     super.initState();
-    // Part 2 — intro video plays automatically and loops.
+    // Part 2 — bundled intro video. Plays automatically + loops.
+    // Never stuck: if it fails to load we fall back to a poster.
     _videoController =
         VideoPlayerController.asset('assets/videos/intro.mp4')
           ..initialize().then((_) {
@@ -31,7 +33,16 @@ class _AuthScreenState extends State<AuthScreen> {
               _videoController.setLooping(true);
               _videoController.play();
             }
+          }).catchError((Object e) {
+            debugPrint('AuthScreen video init failed: $e');
+            if (mounted) setState(() => _videoFailed = true);
           });
+    // Safety timeout so the UI never shows an endless spinner.
+    Future.delayed(const Duration(seconds: 6), () {
+      if (mounted && !_videoController.value.isInitialized) {
+        setState(() => _videoFailed = true);
+      }
+    });
   }
 
   @override
@@ -124,7 +135,8 @@ class _AuthScreenState extends State<AuthScreen> {
                   child: Center(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: ready
+                      child: _videoFailed
+                          // Graceful poster if the video can't load — never stuck.
                           ? Container(
                               width: double.infinity,
                               decoration: BoxDecoration(
@@ -136,14 +148,37 @@ class _AuthScreenState extends State<AuthScreen> {
                               ),
                               clipBehavior: Clip.antiAlias,
                               child: AspectRatio(
-                                aspectRatio: _videoController.value.aspectRatio,
-                                child: VideoPlayer(_videoController),
+                                aspectRatio: 9 / 16,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Image.asset('assets/bear.png', fit: BoxFit.contain),
+                                    const SizedBox(height: 8),
+                                    const Text('Intro video', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                                  ],
+                                ),
                               ),
                             )
-                          : const CircularProgressIndicator(
-                              color: Color(0xFFFF8A2A),
-                              strokeWidth: 2.6,
-                            ),
+                          : ready
+                              ? Container(
+                                  width: double.infinity,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(18),
+                                    border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+                                    boxShadow: [
+                                      BoxShadow(color: const Color(0xFFFF8A2A).withOpacity(0.18), blurRadius: 30, offset: const Offset(0, 8)),
+                                    ],
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
+                                  child: AspectRatio(
+                                    aspectRatio: _videoController.value.aspectRatio,
+                                    child: VideoPlayer(_videoController),
+                                  ),
+                                )
+                              : const CircularProgressIndicator(
+                                  color: Color(0xFFFF8A2A),
+                                  strokeWidth: 2.6,
+                                ),
                     ),
                   ),
                 ),
