@@ -55,6 +55,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _pushScreen(Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -164,7 +168,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   icon: Icons.account_balance_wallet_rounded,
                   label: 'Withdraw',
                   isActive: false,
-                  onTap: () => _proPush(context, const WithdrawScreen()),
+                  onTap: () => _pushScreen(const WithdrawScreen()),
                 ),
               ],
             ),
