@@ -6,6 +6,7 @@ import '../services/app_repository.dart';
 import '../services/auth_service.dart';
 import '../widgets/state_views.dart';
 import 'provider_tasks_screen.dart';
+import 'redeem_screen.dart';
 
 class EarnScreen extends StatefulWidget {
   const EarnScreen({super.key});
@@ -23,7 +24,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     _loadOffers();
   }
 
@@ -109,6 +110,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
             Tab(text: 'Tasks'),
             Tab(text: 'Surveys'),
             Tab(text: 'Offers'),
+            Tab(text: 'Gift Cards'),
           ],
         ),
       ),
@@ -120,6 +122,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
                 _buildTaskList(),
                 _buildSurveyList(),
                 _buildOfferList(),
+                _buildGiftCardList(),
               ],
             ),
     );
@@ -457,13 +460,28 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
   Widget _buildOfferList() {
     if (_offersFailed) {
       return ErrorState(
-        message: 'Offers could not be loaded. Check your connection.',
+        message: 'Offers could not be loaded.',
         onRetry: _loadOffers,
       );
     }
     if (_offers.isEmpty) {
       return const EmptyState(
         icon: Icons.local_offer_outlined,
+        title: 'No offers yet',
+        subtitle: 'New offers added daily.',
+      );
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+      itemCount: _offers.length,
+      itemBuilder: _offerCard,
+    );
+  }
+
+  Widget _buildGiftCardList() {
+    // Navigate to full RedeemScreen
+    return const RedeemScreen();
+  }
         title: 'No offers right now',
         subtitle: 'New offers are added daily — check back soon.',
       );

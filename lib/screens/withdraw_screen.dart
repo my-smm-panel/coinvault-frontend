@@ -337,65 +337,67 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
             const SizedBox(height: AppSpacing.xl),
             
             // Withdrawal Method Selection
-            Text('Withdrawal Method', style: AppTextStyles.titleMedium),
-            const SizedBox(height: AppSpacing.md),
-            GridView.count(
-              crossAxisCount: 4,
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              mainAxisSpacing: 8,
-              crossAxisSpacing: 8,
-              childAspectRatio: 0.85,
-              children: [
-                _MethodCard(
-                  icon: Icons.flash_on_rounded,
-                  title: 'UPI',
-                  subtitle: 'ID',
-                  isSelected: _selectedMethod == 'upi',
-                  color: const Color(0xFF16A34A),
-                  onTap: () => setState(() => _selectedMethod = 'upi'),
-                ),
-                _MethodCard(
-                  icon: Icons.account_balance_rounded,
-                  title: 'Bank',
-                  subtitle: 'Transfer',
-                  isSelected: _selectedMethod == 'bank',
-                  color: const Color(0xFF1D4ED8),
-                  onTap: () => setState(() => _selectedMethod = 'bank'),
-                ),
-                _MethodCard(
-                  icon: Icons.phone_iphone_rounded,
-                  title: 'PhonePe',
-                  subtitle: 'UPI app',
-                  isSelected: _selectedMethod == 'phonepe',
-                  color: const Color(0xFF7C3AED),
-                  onTap: () => setState(() => _selectedMethod = 'phonepe'),
-                ),
-                _MethodCard(
-                  icon: Icons.card_giftcard_rounded,
-                  title: 'Voucher',
-                  subtitle: 'Amazon/OLA',
-                  isSelected: _selectedMethod == 'voucher',
-                  color: const Color(0xFFEC4899),
-                  onTap: () => setState(() => _selectedMethod = 'voucher'),
-                ),
-              ],
-            ),
-            if (_selectedMethod == 'voucher') ...[
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  _brandChip('Amazon', Icons.shopping_cart_rounded,
-                      const Color(0xFFFF9900)),
-                  const SizedBox(width: 8),
-                  _brandChip('OLA', Icons.directions_car_rounded,
-                      const Color(0xFF34D399)),
-                  const SizedBox(width: 8),
-                  _brandChip('Gift', Icons.card_giftcard_rounded,
-                      const Color(0xFFEC4899)),
-                ],
-              ),
-            ],
+                        Row(
+                          children: [
+                            Text('Withdraw via', style: AppTextStyles.titleMedium),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.md),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _MethodCard(
+                                icon: Icons.qr_code_rounded,
+                                title: 'UPI',
+                                subtitle: 'Instant',
+                                isSelected: _selectedMethod == 'upi',
+                                color: const Color(0xFF10B981),
+                                onTap: () => setState(() => _selectedMethod = 'upi'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _MethodCard(
+                                icon: Icons.account_balance_rounded,
+                                title: 'Bank',
+                                subtitle: '1-2 days',
+                                isSelected: _selectedMethod == 'bank',
+                                color: const Color(0xFF3B82F6),
+                                onTap: () => setState(() => _selectedMethod = 'bank'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _MethodCard(
+                                icon: Icons.phone_iphone_rounded,
+                                title: 'PhonePe',
+                                subtitle: 'Wallet',
+                                isSelected: _selectedMethod == 'phonepe',
+                                color: const Color(0xFF5F259F),
+                                onTap: () => setState(() => _selectedMethod = 'phonepe'),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: _MethodCard(
+                                icon: Icons.card_giftcard_rounded,
+                                title: 'Voucher',
+                                subtitle: 'Gift cards',
+                                isSelected: _selectedMethod == 'voucher',
+                                color: const Color(0xFFEC4899),
+                                onTap: () => setState(() => _selectedMethod = 'voucher'),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_selectedMethod == 'voucher') ...[
+                          const SizedBox(height: AppSpacing.md),
+                          _brandGrid(),
+                        ],
             
             const SizedBox(height: AppSpacing.xl),
             
@@ -501,36 +503,80 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
               ),
             ),
             
-            const SizedBox(height: AppSpacing.xl),
-            
-            // Terms
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(color: AppColors.divider),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Important', style: AppTextStyles.titleMedium.copyWith(color: AppColors.primary)),
-                  const SizedBox(height: AppSpacing.sm),
-                  _TermItem('Minimum withdrawal: 100 coins (₹10)'),
-                  _TermItem('Amount must be in multiples of 100 coins'),
-                  _TermItem('UPI payments: usually within 24 hours'),
-                  _TermItem('Bank transfers: 1-2 business days'),
-                  _TermItem('Admin manually approves each request'),
-                  _TermItem('Details saved for future withdrawals'),
-                ],
-              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Brand grid shown when 'Voucher' method is selected.
+  Widget _brandGrid() {
+    final brands = [
+      {'name': 'Amazon Pay', 'color': const Color(0xFFFF9900), 'icon': 0xe318},
+      {'name': 'PhonePe', 'color': const Color(0xFF5F259F), 'icon': 0xe32a},
+      {'name': 'Paytm', 'color': const Color(0xFF00B9F1), 'icon': 0xe850},
+      {'name': 'Flipkart', 'color': const Color(0xFF2874F0), 'icon': 0xe8f8},
+      {'name': 'Google Play', 'color': const Color(0xFF34A853), 'icon': 0xe8f0},
+      {'name': 'Myntra', 'color': const Color(0xFFFF4466), 'icon': 0xe596},
+      {'name': 'Ajio', 'color': const Color(0xFF2BB1E4), 'icon': 0xe59b},
+      {'name': 'Swiggy', 'color': const Color(0xFFFF5200), 'icon': 0xe56c},
+      {'name': 'Zomato', 'color': const Color(0xFFE23744), 'icon': 0xe556},
+      {'name': 'Netflix', 'color': const Color(0xFFE50914), 'icon': 0xe332},
+      {'name': 'Spotify', 'color': const Color(0xFF1DB954), 'icon': 0xe3a2},
+      {'name': 'OLA', 'color': const Color(0xFF00C853), 'icon': 0xe1e1},
+    ];
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        childAspectRatio: 1.1,
+        crossAxisSpacing: 8,
+        mainAxisSpacing: 8,
+      ),
+      itemCount: brands.length,
+      itemBuilder: (_, i) => _brandChip2(brands[i] as Map<String, dynamic>),
+    );
+  }
+
+  Widget _brandChip2(Map<String, dynamic> brand) {
+    final name = brand['name'] as String;
+    final color = brand['color'] as Color;
+    final iconCode = brand['icon'] as int;
+    final isSelected = _voucherBrand == name;
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => setState(() => _voucherBrand = name),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isSelected ? color.withOpacity(0.15) : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? color : AppColors.divider,
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(IconData(iconCode, fontFamily: 'MaterialIcons'),
+                color: isSelected ? color : Colors.white54, size: 24),
+            const SizedBox(height: 4),
+            Text(
+              name,
+              style: TextStyle(
+                  color: isSelected ? color : Colors.white54,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
       ),
     );
   }
-}
 
 class _MethodCard extends StatelessWidget {
   final IconData icon;
