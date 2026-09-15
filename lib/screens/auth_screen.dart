@@ -1,14 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:video_player/video_player.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 
-/// Login screen — matches reference video exactly:
-///   1. Top-right: "English" language pill
-///   2. Center: bear mascot + $ coin with warm amber spotlight glow
-///   3. Below: "CoinVault" wordmark (white "Coin" + orange "Vault")
-///   4. Bottom: full-width white "Continue with Google" pill button
-/// Sign-in is REAL: native Google picker -> Firebase credential -> backend JWT.
+/// Login screen — dark CoinVault theme with an intro video in the centre
+/// (Part 2), matching the wireframe: top bar, video, Continue with Google.
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -16,10 +13,8 @@ class AuthScreen extends StatefulWidget {
   State<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _flipController;
-  late Animation<double> _flipAnim;
+class _AuthScreenState extends State<AuthScreen> {
+  late VideoPlayerController _videoController;
   String _selectedLang = 'English';
   bool _loading = false;
   String? _error;
@@ -27,16 +22,21 @@ class _AuthScreenState extends State<AuthScreen>
   @override
   void initState() {
     super.initState();
-    _flipController = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2200),
-    )..repeat();
-    _flipAnim = CurvedAnimation(parent: _flipController, curve: Curves.easeInOut);
+    // Part 2 — intro video plays automatically and loops.
+    _videoController =
+        VideoPlayerController.asset('assets/videos/intro.mp4')
+          ..initialize().then((_) {
+            if (mounted && _videoController.value.isInitialized) {
+              setState(() {});
+              _videoController.setLooping(true);
+              _videoController.play();
+            }
+          });
   }
 
   @override
   void dispose() {
-    _flipController.dispose();
+    _videoController.dispose();
     super.dispose();
   }
 
@@ -65,12 +65,12 @@ class _AuthScreenState extends State<AuthScreen>
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    final ready = _videoController.value.isInitialized;
     return Scaffold(
       backgroundColor: const Color(0xFF0F0D0B),
       body: Stack(
         children: [
-          // Warm radial amber spotlight glow centered behind bear
+          // Warm radial amber spotlight glow behind the video
           Positioned.fill(
             child: Container(
               decoration: const BoxDecoration(
@@ -90,7 +90,7 @@ class _AuthScreenState extends State<AuthScreen>
           SafeArea(
             child: Column(
               children: [
-                // Top-right language pill
+                // Part 1 — top-right language pill
                 Align(
                   alignment: Alignment.topRight,
                   child: Padding(
@@ -119,51 +119,32 @@ class _AuthScreenState extends State<AuthScreen>
                   ),
                 ),
 
-                // Bear mascot + flipping coin (center of screen)
+                // Part 2 — intro video (replaces old bear/coin area)
                 Expanded(
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Positioned(
-                        child: SizedBox(
-                          width: size.width * 0.7,
-                          height: size.width * 0.7,
-                          child: Image.asset('assets/bear.png', fit: BoxFit.contain),
-                        ),
-                      ),
-                      Positioned(
-                        right: size.width * 0.12,
-                        top: size.height * 0.05,
-                        child: AnimatedBuilder(
-                          animation: _flipAnim,
-                          builder: (context, _) {
-                            final t = _flipAnim.value;
-                            final rotateY = t * 12.566;
-                            final bounceY = -8 * (1 - (2 * t - 1) * (2 * t - 1).abs());
-                            return Transform(
-                              alignment: Alignment.center,
-                              transform: Matrix4.identity()
-                                ..setEntry(3, 2, 0.0015)
-                                ..rotateY(rotateY)
-                                ..rotateX((t - 0.5).abs() * 0.3),
-                              child: Transform.translate(
-                                offset: Offset(0, bounceY),
-                                child: Container(
-                                  width: 64, height: 64,
-                                  decoration: const BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(color: Color(0xFFFFB347), blurRadius: 25, spreadRadius: 4),
-                                    ],
-                                  ),
-                                  child: Image.asset('assets/coin_zip.png', fit: BoxFit.contain),
-                                ),
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24),
+                      child: ready
+                          ? Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(18),
+                                border: Border.all(color: Colors.white.withOpacity(0.12), width: 1),
+                                boxShadow: [
+                                  BoxShadow(color: const Color(0xFFFF8A2A).withOpacity(0.18), blurRadius: 30, offset: const Offset(0, 8)),
+                                ],
                               ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
+                              clipBehavior: Clip.antiAlias,
+                              child: AspectRatio(
+                                aspectRatio: _videoController.value.aspectRatio,
+                                child: VideoPlayer(_videoController),
+                              ),
+                            )
+                          : const CircularProgressIndicator(
+                              color: Color(0xFFFF8A2A),
+                              strokeWidth: 2.6,
+                            ),
+                    ),
                   ),
                 ),
 
@@ -178,7 +159,7 @@ class _AuthScreenState extends State<AuthScreen>
                 ),
                 const SizedBox(height: 6),
 
-                // Continue with Google button (full width, white pill)
+                // Part 3 — Continue with Google button (full width, white pill)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 8),
                   child: InkWell(
