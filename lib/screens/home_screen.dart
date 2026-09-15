@@ -365,9 +365,6 @@ class _HomeTabState extends State<HomeTab> {
             children: [
               _proTopBar(context, user),
               const SizedBox(height: 14),
-              // Wallet hero: own orange card with coins + ₹ value + withdraw
-              _buildBalanceCard(context, user),
-              const SizedBox(height: 16),
               // Daily bonus strip
               _dailyBonusBanner(context),
               const SizedBox(height: 16),
@@ -509,22 +506,130 @@ class _HomeTabState extends State<HomeTab> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
-  /// Pro top bar: bear logo + CoinVault + wallet pill (tap = Withdraw) + icons.
+  /// Opens a bottom-sheet menu from the top-left profile button.
+  void _openProfileMenu(BuildContext context, UserModel? user) {
+    final u = user ?? AuthService().userModel;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF17171F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(8, 6, 8, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header: avatar + name + coins
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 22,
+                      backgroundColor: AppColors.primary.withOpacity(0.2),
+                      backgroundImage: (u?.photoUrl?.isNotEmpty ?? false)
+                          ? NetworkImage(u!.photoUrl!)
+                          : null,
+                      onBackgroundImageError: (_, __) => ClipOval(
+                          child: Container(
+                              color: AppColors.primary.withOpacity(0.2),
+                              child: const Icon(Icons.person_rounded,
+                                  color: AppColors.gold))),
+                      child: (u?.photoUrl?.isNotEmpty ?? false)
+                          ? null
+                          : const Icon(Icons.person_rounded,
+                              color: AppColors.gold),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            u?.displayName ?? 'User',
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text('${u?.coins ?? 0} coins',
+                              style: const TextStyle(
+                                  color: AppColors.gold, fontSize: 13)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(color: Colors.white12, height: 1),
+              _menuTile(ctx, Icons.person_rounded, 'View Profile', () {
+                Navigator.pop(ctx);
+                _proPush(context, const ProfileScreen());
+              }),
+              _menuTile(
+                  ctx, Icons.account_balance_wallet_rounded, 'Withdraw', () {
+                Navigator.pop(ctx);
+                _proPush(context, const WithdrawScreen());
+              }),
+              _menuTile(
+                  ctx, Icons.notifications_none_rounded, 'Notifications', () {
+                Navigator.pop(ctx);
+                _proPush(context, const NotificationsScreen());
+              }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _menuTile(BuildContext context, IconData icon, String label,
+      VoidCallback onTap) {
+    return ListTile(
+      leading: Icon(icon, color: AppColors.primaryLight),
+      title: Text(label,
+          style: const TextStyle(
+              color: Colors.white, fontWeight: FontWeight.w600)),
+      trailing: const Icon(Icons.chevron_right_rounded,
+          color: Colors.white38),
+      onTap: onTap,
+    );
+  }
+
+  /// Pro top bar: profile menu button (top-left) + CoinVault + wallet pill.
   Widget _proTopBar(BuildContext context, UserModel? user) {
     return Row(
       children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: Image.asset(
-            'assets/app_icon_name.png',
+        // Profile / menu button — tap opens a menu (Profile, Withdraw, ...)
+        InkWell(
+          onTap: () => _openProfileMenu(context, user),
+          borderRadius: BorderRadius.circular(22),
+          child: Container(
             width: 42,
             height: 42,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const Icon(
-              Icons.account_balance_wallet_rounded,
-              color: AppColors.gold,
-              size: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.primary.withOpacity(0.15),
+              border: Border.all(
+                  color: AppColors.primary.withOpacity(0.35)),
             ),
+            clipBehavior: Clip.antiAlias,
+            child: (user?.photoUrl?.isNotEmpty ?? false)
+                ? Image.network(
+                    user!.photoUrl!,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.person_rounded,
+                      color: AppColors.gold,
+                      size: 24,
+                    ),
+                  )
+                : const Icon(Icons.person_rounded,
+                    color: AppColors.gold, size: 24),
           ),
         ),
         const SizedBox(width: 8),
