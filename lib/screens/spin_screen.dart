@@ -111,26 +111,28 @@ class _SpinScreenState extends State<SpinScreen>
       final reward = ((data['coins'] ?? 0) as num).toInt();
       if (!mounted) return;
       final auth = AuthService();
+      // Credit coins INSTANTLY (local first, background sync)
       if (reward > 0) {
-        await auth.addCoins(reward);
+        auth.addCoins(reward); // no await — instant UI
       }
-      await auth.recordSpin();
+      auth.recordSpin(); // no await
       if (!mounted) return;
       setState(() {
         _lastReward = reward;
         _showResult = true;
+        _coins = auth.userModel?.coins ?? _coins; // wallet updates NOW
         _redeeming = false; // unlock: result shown
         _remainingSpins = (_remainingSpins - 1).clamp(0, 99);
         _statusMessage = _remainingSpins > 0
             ? 'You have $_remainingSpins free spin${_remainingSpins > 1 ? 's' : ''} left'
             : 'No spins left today';
       });
-      await _loadSpins(); // refresh exact server count
+      _loadSpins(); // refresh exact server count (background)
       if (mounted) _showResultDialog();
     } on ApiException catch (e) {
       if (!mounted) return;
       setState(() {
-        _redeeming = false; // unlock on failure too
+        _redeeming = false; // unlock on failure — spin available again
         _statusMessage = e.message;
       });
       await _loadSpins();
@@ -142,7 +144,7 @@ class _SpinScreenState extends State<SpinScreen>
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _redeeming = false;
+        _redeeming = false; // unlock — do NOT leave user stuck
         _statusMessage = 'Spin failed. Check connection and try again.';
       });
     }

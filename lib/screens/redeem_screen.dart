@@ -231,14 +231,29 @@ class _RedeemScreenState extends State<RedeemScreen> {
     final user = AuthService().userModel;
     if (user == null) return;
 
+    // Front-end guard: clear message before server round-trip
+    if (user.coins < coins) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Not enough coins. Need $coins, have ${user.coins}'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      return;
+    }
+
     final repo = AppRepository.instance;
     try {
-      final res = await repo.submitWithdrawal(
+      await repo.submitWithdrawal(
         uid: user.uid,
         coins: coins,
         method: 'voucher',
         details: '$brand|₹$amount',
       );
+      // Deduct coins instantly (local first)
+      await AuthService().deductCoins(coins);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -246,6 +261,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
             backgroundColor: AppColors.primary,
           ),
         );
+        Navigator.pop(context); // close dialog
       }
     } catch (e) {
       if (mounted) {

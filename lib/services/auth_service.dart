@@ -240,19 +240,19 @@ class AuthService extends ChangeNotifier {
   Future<void> addCoins(int amount) async {
     if (_userModel == null) return;
     _userModel = _userModel!.copyWith(coins: _userModel!.coins + amount);
-    await _cacheUserModel();
-    notifyListeners(); // wallet updates instantly, no restart
+    notifyListeners(); // wallet updates INSTANTLY
+    _cacheUserModel(); // fire-and-forget cache write
     FirebaseStats.addCoinsDelta(_userModel!.uid, amount);
-    await _syncToBackend();
+    _syncToBackend(); // fire-and-forget background sync
   }
 
   Future<void> deductCoins(int amount) async {
     if (_userModel == null) return;
     _userModel = _userModel!.copyWith(coins: (_userModel!.coins - amount).clamp(0, 999999));
-    await _cacheUserModel();
-    notifyListeners(); // wallet updates instantly, no restart
+    notifyListeners(); // wallet updates INSTANTLY
+    _cacheUserModel();
     FirebaseStats.addCoinsDelta(_userModel!.uid, -amount);
-    await _syncToBackend();
+    _syncToBackend();
   }
 
   /// Record spin usage
@@ -263,8 +263,8 @@ class AuthService extends ChangeNotifier {
       dailySpinsUsed: _userModel!.dailySpinsUsed + 1,
       lastSpinDate: now,
     );
-    await _cacheUserModel();
     notifyListeners();
+    _cacheUserModel();
     FirebaseStats.recordSpin(_userModel!.uid);
     await _syncToBackend();
   }

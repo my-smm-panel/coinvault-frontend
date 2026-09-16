@@ -225,24 +225,56 @@ class AppRepository {
 
   /// Submit withdrawal request (real endpoint: POST /api/withdrawals/request).
   /// Throws ApiException with the server message on failure.
+  /// Supports UPI, BANK_TRANSFER, PHONEPE, and VOUCHER methods.
   Future<Map<String, dynamic>> submitWithdrawal({
     required String uid,
     required int coins,
-    required String method, // 'upi' or 'bank'
+    required String method, // 'upi' | 'bank' | 'phonepe' | 'voucher'
     required String details,
   }) async {
-    final isUpi = method == 'upi';
+    final m = method.toLowerCase();
     final body = <String, dynamic>{
       'amount': coins,
-      'method': isUpi ? 'UPI' : 'BANK_TRANSFER',
-      if (isUpi) 'upiId': details,
-      if (!isUpi) ..._splitBankDetails(details),
+      'method': m == 'upi'
+          ? 'UPI'
+          : m == 'bank'
+              ? 'BANK_TRANSFER'
+              : m == 'phonepe'
+                  ? 'PHONEPE'
+                  : 'VOUCHER',
     };
+    if (m == 'upi') {
+      body['upiId'] = details;
+    } else if (m == 'bank') {
+      body.addAll(_splitBankDetails(details));
+    } else if (m == 'phonepe') {
+      // details = phone number
+      final digits = details.replaceAll(RegExp(r'\D'), '');
+      if (digits.length < 10 || digits.length > 12) {
+        throw ApiException(-1, 'Enter a valid PhonePe number (10 digits)');
+      }
+      body['phone'] = digits;
+      body['accountHolder'] = details;
+    } else {
+      // voucher: details = 'Brand|contact'
+      final parts = details.split('|');
+      final brand = parts[0].trim();
+      final contact = parts.length > 1 ? parts[1].trim() : '';
+      if (brand.isEmpty) throw ApiException(-1, 'Select a gift card brand');
+      if (contact.isEmpty || contact.length < 3) {
+        throw ApiException(-1, 'Enter email/mobile for voucher delivery');
+      }
+      body['brand'] = brand;
+      body['contact'] = contact;
+    }
     final res = await _api.post('/api/withdrawals/request', body);
     if (res is Map && res['success'] == true && res['data'] is Map) {
       return Map<String, dynamic>.from(res['data'] as Map);
     }
-    throw ApiException(-1, 'Withdrawal failed');
+    final msg = (res is Map && res['error'] is String)
+        ? res['error'] as String
+        : 'Withdrawal failed';
+    throw ApiException(-1, msg);
   }
 
   /// Best-effort split of free-text bank details into accountNumber/IFSC.

@@ -122,7 +122,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
 
     try {
       final repo = AppRepository.instance;
-      // Server debits Supabase ledger atomically - throws with server
+      // Server validates + debits; throws ApiException with the server
       // message on failure (insufficient balance, limit, validation).
       await repo.submitWithdrawal(
         uid: _user!.uid,
@@ -132,17 +132,22 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       );
 
       if (mounted) {
+        // Coins deducted on server — mirror locally, instantly.
         await AuthService().deductCoins(coins);
         await AuthService().updateWithdrawInfo(
           upiId: _selectedMethod == 'upi' ? details : null,
           bankDetails: _selectedMethod == 'bank' ? details : null,
         );
+        _user = AuthService().userModel; // refresh balance
         _showSuccessDialog(coins, coins / 10);
       }
     } on ApiException catch (e) {
       if (mounted) _showSnackBar(e.message);
-    } catch (_) {
-      if (mounted) _showSnackBar('Error occurred. Please try again.');
+    } catch (e) {
+      if (mounted) {
+        final msg = e.toString().replaceFirst('Exception: ', '');
+        _showSnackBar(msg.isEmpty ? 'Error occurred. Please try again.' : msg);
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
