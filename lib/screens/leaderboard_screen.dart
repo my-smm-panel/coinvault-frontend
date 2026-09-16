@@ -5,9 +5,9 @@ import '../services/app_repository.dart';
 import '../services/auth_service.dart';
 
 /// Ranks / Leaderboard — light premium design.
-/// Header → segmented period control → top-3 podium → "My Rank" card →
- ranked list (current user highlighted) → Your Stats. Data from
-/// GET /api/leaderboard/:period (real, server-computed).
+/// Header, segmented period control, top-3 podium, My Rank card,
+/// ranked list (current user highlighted), Your Stats.
+/// Data from GET /api/leaderboard/:period (real, server-computed).
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
 
