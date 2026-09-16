@@ -85,7 +85,7 @@ class _AuthScreenState extends State<AuthScreen> {
               SizedBox(height: h * 0.02),
 
               // ── Bear mascot (vector, large) ──
-              BearMascot(size: h * 0.26),
+              Image.asset('assets/bear_earn.png', height: h * 0.26, fit: BoxFit.contain),
 
               SizedBox(height: h * 0.035),
 

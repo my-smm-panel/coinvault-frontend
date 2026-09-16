@@ -162,7 +162,9 @@ class AuthService extends ChangeNotifier {
 
   /// Sign in with Google - PRODUCTION (no demo fallback)
   Future<UserModel?> signInWithGoogle() async {
-    // 1. Native Google account picker (reliable on Android)
+    // Native Google account picker (reliable on Android). No browser
+    // fallback — signInWithProvider hangs on Android and leaves the UI
+    // stuck in a loading state.
     try {
       final googleUser = await GoogleSignIn(
         scopes: ['email', 'profile'],
@@ -187,19 +189,8 @@ class AuthService extends ChangeNotifier {
       rethrow; // production: surface real error, no demo mask
     } catch (e) {
       debugPrint('Native Google Sign-In error: $e');
-      // fall through to browser flow
+      rethrow; // surface so the button unlocks + user sees the message
     }
-
-    // 2. Browser fallback (signInWithProvider)
-    final googleProvider = firebase_auth.GoogleAuthProvider();
-    googleProvider.addScope('email');
-    googleProvider.addScope('profile');
-    final credential = await _auth.signInWithProvider(googleProvider);
-    if (credential.user != null) {
-      await _loadUserModel(credential.user!);
-      return _userModel;
-    }
-    return null;
   }
 
 
