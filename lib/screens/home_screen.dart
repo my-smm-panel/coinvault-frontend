@@ -8,6 +8,7 @@ import '../services/app_repository.dart';
 import '../models/app_models.dart';
 import 'earn_screen.dart';
 import 'spin_screen.dart';
+import '../widgets/home_banner_carousel.dart';
 import 'scratch_screen.dart';
 import 'quiz_screen.dart';
 import 'surveys_screen.dart';
@@ -416,7 +417,58 @@ class _HomeTabState extends State<HomeTab> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _topBar(context, user),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 14),
+                  HomeBannerCarousel(
+                    slides: [
+                      BannerSlide(
+                        title: 'Daily Bonus',
+                        subtitle:
+                            "Complete today's activities and earn extra coins.",
+                        cta: 'Earn Now',
+                        icon: Icons.calendar_today_rounded,
+                        accent: const Color(0xFFFF8C42),
+                        accentSoft: const Color(0xFFFFF0E5),
+                        onTap: () => _push(context, const EarnScreen()),
+                      ),
+                      BannerSlide(
+                        title: 'Earn With Surveys',
+                        subtitle: 'Share your opinion and earn coins.',
+                        cta: 'View Surveys',
+                        icon: Icons.poll_rounded,
+                        accent: const Color(0xFF3B82F6),
+                        accentSoft: const Color(0xFFEAF1FF),
+                        onTap: () => _push(context, const SurveysScreen()),
+                      ),
+                      BannerSlide(
+                        title: 'New Tasks Available',
+                        subtitle: 'Complete simple tasks and collect rewards.',
+                        cta: 'View Tasks',
+                        icon: Icons.task_alt_rounded,
+                        accent: const Color(0xFF16A34A),
+                        accentSoft: const Color(0xFFE9F7EE),
+                        onTap: () => _push(context, const EarnScreen()),
+                      ),
+                      BannerSlide(
+                        title: 'Spin & Win Coins',
+                        subtitle: 'Use your daily free spin for extra rewards.',
+                        cta: 'Spin Now',
+                        icon: Icons.casino_rounded,
+                        accent: const Color(0xFF8B5CF6),
+                        accentSoft: const Color(0xFFF1ECFE),
+                        onTap: () => _push(context, const SpinScreen()),
+                      ),
+                      BannerSlide(
+                        title: 'Redeem Your Coins',
+                        subtitle: 'Turn your coins into exciting rewards.',
+                        cta: 'Withdraw',
+                        icon: Icons.account_balance_wallet_rounded,
+                        accent: const Color(0xFFF59E0B),
+                        accentSoft: const Color(0xFFFFF7E6),
+                        onTap: () => _push(context, const WithdrawScreen()),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
                   _earningsRow(context),
                   const SizedBox(height: 16),
                   _sectionTitle('Featured Surveys',
