@@ -12,6 +12,7 @@ import 'scratch_screen.dart';
 import 'quiz_screen.dart';
 import 'surveys_screen.dart';
 import 'withdraw_screen.dart';
+import 'redeem_screen.dart';
 import 'leaderboard_screen.dart';
 import 'history_screen.dart';
 import 'notifications_screen.dart';
@@ -561,96 +562,148 @@ class _HomeTabState extends State<HomeTab> {
     }
   }
 
-  /// Left drawer content — compact, icon-led, minimal text.
+  /// Left drawer content — IMG1-style sectioned menu.
   Widget _menuPanel() {
     final u = AuthService().userModel;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header: avatar + name + coins + close (X)
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 10, 8),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primary.withOpacity(0.15),
-                  border: Border.all(color: AppColors.gold, width: 2),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: (u?.photoUrl?.isNotEmpty ?? false)
-                    ? Image.network(u!.photoUrl!, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(
-                            Icons.person_rounded,
-                            color: AppColors.gold,
-                            size: 22))
-                    : const Icon(Icons.person_rounded,
-                        color: AppColors.gold, size: 22),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      u?.displayName ?? 'User',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 15,
-                          fontWeight: FontWeight.w800),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text('${u?.coins ?? 0} coins',
-                        style: const TextStyle(
-                            color: AppColors.gold, fontSize: 12)),
-                  ],
-                ),
-              ),
-              // Proper close icon
-              InkWell(
-                onTap: _closeMenu,
-                borderRadius: BorderRadius.circular(16),
-                child: const Padding(
-                  padding: EdgeInsets.all(6),
-                  child: Icon(Icons.close_rounded,
-                      color: Colors.white70, size: 22),
-                ),
-              ),
-            ],
-          ),
+    return Container(
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF0F1420), Color(0xFF0B0B12)],
         ),
-        const Divider(color: Colors.white12, height: 1),
-        Expanded(
-          child: SingleChildScrollView(
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: avatar + name + coins + settings + close (X)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 12, 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary.withOpacity(0.15),
+                    border: Border.all(color: AppColors.gold, width: 2),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: (u?.photoUrl?.isNotEmpty ?? false)
+                      ? Image.network(u!.photoUrl!, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Icon(
+                              Icons.person_rounded,
+                              color: AppColors.gold, size: 24))
+                      : const Icon(Icons.person_rounded,
+                          color: AppColors.gold, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        u?.displayName ?? 'User',
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text('${u?.coins ?? 0} coins',
+                          style: const TextStyle(
+                              color: AppColors.gold,
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+                // Settings gear (top-right, like IMG1)
+                InkWell(
+                  onTap: () {
+                    _closeMenu();
+                    _proPush(context, const NotificationsScreen());
+                  },
+                  borderRadius: BorderRadius.circular(16),
+                  child: const Padding(
+                    padding: EdgeInsets.all(6),
+                    child: Icon(Icons.settings_rounded,
+                        color: Colors.white70, size: 21),
+                  ),
+                ),
+                // Proper close icon
+                InkWell(
+                  onTap: _closeMenu,
+                  borderRadius: BorderRadius.circular(16),
+                  child: const Padding(
+                    padding: EdgeInsets.all(6),
+                    child: Icon(Icons.close_rounded,
+                        color: Colors.white70, size: 22),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const Divider(color: Colors.white12, height: 1),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Section: Wallet & Activity
+                  _menuSection('Wallet & Activity'),
+                  _menuItem(Icons.account_balance_wallet_rounded, 'Wallet',
+                      const WithdrawScreen(), AppColors.primary),
+                  _menuItem(Icons.receipt_long_rounded, 'Transactions',
+                      const HistoryScreen(initialTab: 'Payouts'),
+                      const Color(0xFF14B8A6)),
+                  _menuItem(Icons.local_offer_rounded, 'Coupons',
+                      const RedeemScreen(), const Color(0xFFEC4899)),
+                  const SizedBox(height: 10),
+                  // Section: Settings & Support
+                  _menuSection('Settings & Support'),
+                  _menuItem(Icons.help_outline_rounded, 'Help & Support',
+                      const NotificationsScreen(), const Color(0xFF3B82F6)),
+                  _menuItem(Icons.menu_book_rounded, 'Guides',
+                      const EarnScreen(), const Color(0xFFF59E0B)),
+                  _menuItem(Icons.description_rounded, 'Terms & Privacy',
+                      const NotificationsScreen(), Colors.white54),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
+          ),
+          // Bottom: Delete + Logout (like IMG1)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 4, 12, 14),
             child: Column(
               children: [
-                _menuItem(Icons.history_rounded, 'History',
-                    const HistoryScreen(), const Color(0xFF14B8A6)),
-                _menuItem(Icons.payments_rounded, 'Payouts',
-                    const HistoryScreen(initialTab: 'Payouts'),
-                    AppColors.primary),
-                _menuItem(Icons.emoji_events_rounded, 'Ranks',
-                    const LeaderboardScreen(), AppColors.gold),
-                _menuItem(Icons.group_add_rounded, 'Refer',
-                    const ReferScreen(), const Color(0xFFEC4899)),
-                _menuItem(Icons.task_alt_rounded, 'Earn',
-                    const EarnScreen(), const Color(0xFF3B82F6)),
-                _menuItem(Icons.account_balance_wallet_rounded, 'Withdraw',
-                    const WithdrawScreen(), AppColors.primary),
-                _menuItem(Icons.notifications_rounded, 'Alerts',
-                    const NotificationsScreen(), const Color(0xFFF59E0B)),
-                _menuItem(Icons.logout_rounded, 'Logout', null,
+                _menuItem(Icons.person_remove_rounded, 'Delete my Account',
+                    null, Colors.white54, onTap: () => _logoutFromMenu()),
+                _menuItem(Icons.logout_rounded, 'Log out', null,
                     const Color(0xFFEF4444), onTap: () => _logoutFromMenu()),
               ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+
+  Widget _menuSection(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(6, 10, 0, 4),
+      child: Text(
+        title,
+        style: const TextStyle(
+            color: Colors.white38, fontSize: 11.5, fontWeight: FontWeight.w800,
+            letterSpacing: 0.8),
+      ),
     );
   }
 
