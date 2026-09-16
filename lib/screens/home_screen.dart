@@ -417,8 +417,6 @@ class _HomeTabState extends State<HomeTab> {
                 children: [
                   _topBar(context, user),
                   const SizedBox(height: 16),
-                  _balanceCard(context, coins),
-                  const SizedBox(height: 14),
                   _earningsRow(context),
                   const SizedBox(height: 16),
                   _sectionTitle('Featured Surveys',
@@ -527,101 +525,6 @@ class _HomeTabState extends State<HomeTab> {
           ),
         ),
       ],
-    );
-  }
-
-  // ────────────────────────── Total Balance card ──────────────────────
-  // White card, orange gradient value, bear avatar, green "+10% Bonus".
-  Widget _balanceCard(BuildContext context, int coins) {
-    final value = (coins / 10).toStringAsFixed(2);
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 18, 18, 18),
-      decoration: BoxDecoration(
-        gradient: AppColors.brandHeader,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        boxShadow: AppShadows.elevated,
-      ),
-      child: Stack(
-        children: [
-          // Bear avatar, right side
-          Positioned(
-            right: -6,
-            bottom: -14,
-            child: Image.asset('assets/bear.png',
-                width: 132, height: 132,
-                alignment: Alignment.topLeft,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink()),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Total Balance',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
-                children: [
-                  Text(_fmt(coins),
-                      style: GoogleFonts.inter(
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                        height: 1.1,
-                      )),
-                  const SizedBox(width: 6),
-                  const Text('Coins',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600)),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text('≈ \$$value',
-                  style: const TextStyle(
-                      color: Color(0xFFE8F0FF), fontSize: 12)),
-              const SizedBox(height: 16),
-              // Green +10% Bonus button
-              InkWell(
-                onTap: () => _push(context, const RedeemScreen()),
-                borderRadius: BorderRadius.circular(AppRadius.full),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF22C55E),
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF22C55E).withOpacity(0.35),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.trending_up_rounded,
-                          color: Colors.white, size: 15),
-                      SizedBox(width: 5),
-                      Text('+10% Bonus',
-                          style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
