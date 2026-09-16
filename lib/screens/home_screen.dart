@@ -13,6 +13,7 @@ import 'quiz_screen.dart';
 import 'surveys_screen.dart';
 import 'withdraw_screen.dart';
 import 'redeem_screen.dart';
+import 'tracking_screen.dart';
 import 'leaderboard_screen.dart';
 import 'history_screen.dart';
 import 'notifications_screen.dart';
@@ -660,8 +661,7 @@ class _HomeTabState extends State<HomeTab> {
                   _menuItem(Icons.account_balance_wallet_rounded, 'Wallet',
                       const WithdrawScreen(), AppColors.primary),
                   _menuItem(Icons.receipt_long_rounded, 'Transactions',
-                      const HistoryScreen(initialTab: 'Payouts'),
-                      const Color(0xFF14B8A6)),
+                      const TrackingScreen(), const Color(0xFF14B8A6)),
                   _menuItem(Icons.local_offer_rounded, 'Coupons',
                       const RedeemScreen(), const Color(0xFFEC4899)),
                   const SizedBox(height: 10),

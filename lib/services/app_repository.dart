@@ -305,6 +305,20 @@ class AppRepository {
     }
   }
 
+  /// Fetch user activity feed (real endpoint: GET /api/user/activity).
+  Future<List<dynamic>> fetchActivity() async {
+    try {
+      final res = await _api.get('/api/user/activity');
+      if (res is Map && res['success'] == true) {
+        final d = res['data'];
+        return d is List ? d : [];
+      }
+      return [];
+    } catch (_) {
+      return [];
+    }
+  }
+
   /// Start a survey (registers IN_PROGRESS completion; server returns externalUrl).
   Future<Map<String, dynamic>?> startSurvey(String id) async {
     try {
