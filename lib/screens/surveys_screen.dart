@@ -3,14 +3,10 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
-import '../services/app_repository.dart';
-import '../services/auth_service.dart';
-import 'earn_screen.dart';
-import 'leaderboard_screen.dart';
-import 'withdraw_screen.dart';
-import 'home_screen.dart';
 import 'notifications_screen.dart';
 import 'profile_screen.dart';
+import '../services/app_repository.dart';
+import '../services/auth_service.dart';
 import '../widgets/state_views.dart';
 
 /// Surveys screen — light/white premium design.
@@ -177,14 +173,13 @@ class _SurveysScreenState extends State<SurveysScreen> {
                         ),
                       ),
               ),
-            _bottomNav(context, 3),
           ],
         ),
       ),
     );
   }
 
-  // ─────────────────────────── HEADER ───────────────────────────
+  // ─────────────────────────── SURVEY CARD ───────────────────────────
   Widget _header() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -562,76 +557,6 @@ class _SurveysScreenState extends State<SurveysScreen> {
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  // ─────────────────────────── BOTTOM NAV ───────────────────────────
-  Widget _bottomNav(BuildContext context, int selected) {
-    const items = [
-      ('Home', Icons.home_outlined, 0),
-      ('Earn', Icons.emoji_events_outlined, 1),
-      ('Ranks', Icons.leaderboard_outlined, 2),
-      ('Surveys', Icons.assignment_outlined, 3),
-      ('Withdraw', Icons.account_balance_wallet_outlined, 4),
-    ];
-    Widget screenFor(int i) {
-      switch (i) {
-        case 0:
-          return const HomeScreen();
-        case 1:
-          return const EarnScreen();
-        case 2:
-          return const LeaderboardScreen();
-        case 4:
-          return const WithdrawScreen();
-        default:
-          return const SurveysScreen();
-      }
-    }
-
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: _border, width: 1)),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: items.map((it) {
-            final active = it.$3 == selected;
-            return Expanded(
-              child: InkWell(
-                onTap: () {
-                  if (active) return;
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute(builder: (_) => screenFor(it.$3)),
-                  );
-                },
-                borderRadius: BorderRadius.circular(10),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(it.$2,
-                          color: active ? _orange : _secondaryText, size: 22),
-                      const SizedBox(height: 3),
-                      Text(it.$1,
-                          style: TextStyle(
-                            color: active ? _orange : _secondaryText,
-                            fontSize: 11,
-                            fontWeight:
-                                active ? FontWeight.w700 : FontWeight.w500,
-                          )),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          }).toList(),
-        ),
       ),
     );
   }
