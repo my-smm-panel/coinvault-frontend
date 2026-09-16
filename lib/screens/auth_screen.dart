@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/app_theme.dart';
+import 'onboarding_screen.dart';
 import '../services/auth_service.dart';
 
 /// Premium light login screen: brand wordmark, big bear mascot (vector),
@@ -84,7 +85,7 @@ class _AuthScreenState extends State<AuthScreen> {
               SizedBox(height: h * 0.02),
 
               // ── Bear mascot (vector, large) ──
-              _BearMascot(size: h * 0.26),
+              BearMascot(size: h * 0.26),
 
               SizedBox(height: h * 0.035),
 
@@ -254,23 +255,6 @@ class _GoogleGPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-// ───────────────────────── Bear mascot (vector) ─────────────────────────
-class _BearMascot extends StatelessWidget {
-  final double size;
-  const _BearMascot({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(
-        painter: _BearPainter(),
-        size: Size(size, size),
-      ),
-    );
-  }
-}
 
 class _BearPainter extends CustomPainter {
   @override

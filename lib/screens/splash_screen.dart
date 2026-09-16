@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/auth_service.dart';
 import 'auth_screen.dart';
+import 'onboarding_screen.dart';
 import 'home_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -38,7 +39,7 @@ class _SplashScreenState extends State<SplashScreen>
       if (!mounted) return;
       // Restore system UI before leaving splash
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      Widget next = const AuthScreen();
+      Widget next = const OnboardingScreen();
       try {
         if (FirebaseAuth.instance.currentUser != null) {
           final model = await AuthService().ensureUserLoaded();
