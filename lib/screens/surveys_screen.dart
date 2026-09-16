@@ -86,8 +86,8 @@ class _SurveysScreenState extends State<SurveysScreen> {
     }
   }
 
-  static const _bg = Color(0xFF0B0B12);
-  static const _card = Color(0xFF17171F);
+  static const _bg = Color(0xFFF7F8FA);
+  static const _card = Color(0xFFFFFFFF);
 
   @override
   Widget build(BuildContext context) {
@@ -162,11 +162,11 @@ class _SurveysScreenState extends State<SurveysScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.assignment_rounded, color: Colors.white, size: 24),
+          const Icon(Icons.assignment_rounded, color: AppColors.textPrimary, size: 24),
           const SizedBox(width: 8),
           const Text('Surveys',
               style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.w800)),
           const Spacer(),
@@ -178,7 +178,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
             ),
             child: Text(_loading ? '…' : '$count live',
                 style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 12,
                     fontWeight: FontWeight.w700)),
           ),
@@ -221,7 +221,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
                     SizedBox(height: 4),
                     Text('All',
                         style: TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 11,
                             fontWeight: FontWeight.w700)),
                   ],
@@ -302,7 +302,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
                           const SizedBox(height: 2),
                           Text(title,
                               style: const TextStyle(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontSize: 13,
                                   fontWeight: FontWeight.w600),
                               maxLines: 1,
@@ -321,7 +321,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.chevron_right_rounded,
-                          color: Colors.white, size: 26),
+                          color: AppColors.textPrimary, size: 26),
                     ),
                   ],
                 ),
@@ -342,7 +342,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
               ),
               child: const Text('HOT',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 9,
                       fontWeight: FontWeight.w800)),
             ),

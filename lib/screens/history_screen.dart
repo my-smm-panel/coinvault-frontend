@@ -22,14 +22,14 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<dynamic> _tasks = [];
   bool _loading = true;
 
-  static const _bg = Color(0xFF0B0B12);
-  static const _card = Color(0xFF17171F);
+  static const _bg = Color(0xFFF7F8FA);
+  static const _card = Color(0xFFFFFFFF);
 
   static const _tileColors = [
     Color(0xFFF66B06),
     Color(0xFFF59E0B),
     Color(0xFF3B82F6),
-    Color(0xFF10B981),
+    Color(0xFF16A34A),
     Color(0xFFEC4899),
     Color(0xFF14B8A6),
   ];
@@ -104,13 +104,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.arrow_back_rounded,
-                  color: Colors.white, size: 20),
+                  color: AppColors.textPrimary, size: 20),
             ),
           ),
           const SizedBox(width: 12),
           const Text('History',
               style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontSize: 20,
                   fontWeight: FontWeight.w800)),
           const Spacer(),
@@ -128,7 +128,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 const SizedBox(width: 4),
                 Text('$total',
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.w800)),
               ],
@@ -360,7 +360,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }) {
     final ok = bucket == 'Completed';
     final dot = ok
-        ? const Color(0xFF10B981)
+        ? const Color(0xFF16A34A)
         : bucket == 'Ongoing'
             ? AppColors.primary
             : const Color(0xFFEF4444);
@@ -385,7 +385,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: Colors.white, size: 24),
+            child: Icon(icon, color: AppColors.textPrimary, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -394,7 +394,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               children: [
                 Text(title,
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w700,
                         fontSize: 14),
                     maxLines: 1,

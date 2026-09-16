@@ -37,7 +37,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final minutes = (widget.coins ~/ 20).clamp(1, 60);
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0B12),
+      backgroundColor: const Color(0xFFF7F8FA),
       body: SafeArea(
         child: Column(
           children: [
@@ -61,14 +61,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.arrow_back_rounded,
-                          color: Colors.white, size: 20),
+                          color: AppColors.textPrimary, size: 20),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Container(
                     padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: ProviderLogo(widget.provider,
@@ -82,7 +82,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         Text(
                           widget.provider,
                           style: GoogleFonts.inter(
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               fontSize: 16,
                               fontWeight: FontWeight.w800),
                           maxLines: 1,
@@ -90,7 +90,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                         ),
                         Text('Official partner task',
                             style: GoogleFonts.inter(
-                                color: Colors.white.withOpacity(0.85),
+                                color: AppColors.textPrimary.withOpacity(0.85),
                                 fontSize: 11)),
                       ],
                     ),
@@ -128,7 +128,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             height: 44,
                             errorBuilder: (_, __, ___) => const Icon(
                                 Icons.monetization_on_rounded,
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 size: 44),
                           ),
                           const SizedBox(width: 12),
@@ -138,7 +138,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               Text(
                                 '+${widget.coins} coins',
                                 style: GoogleFonts.inter(
-                                  color: Colors.white,
+                                  color: AppColors.textPrimary,
                                   fontSize: 22,
                                   fontWeight: FontWeight.w900,
                                 ),
@@ -146,7 +146,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               Text(
                                 'on completion',
                                 style: GoogleFonts.inter(
-                                    color: Colors.white.withOpacity(0.9),
+                                    color: AppColors.textPrimary.withOpacity(0.9),
                                     fontSize: 12),
                               ),
                             ],
@@ -162,12 +162,12 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             child: Row(
                               children: [
                                 const Icon(Icons.schedule_rounded,
-                                    color: Colors.white, size: 14),
+                                    color: AppColors.textPrimary, size: 14),
                                 const SizedBox(width: 4),
                                 Text(
                                   '$minutes min',
                                   style: GoogleFonts.inter(
-                                      color: Colors.white,
+                                      color: AppColors.textPrimary,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700),
                                 ),
@@ -184,7 +184,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     Text(
                       widget.title,
                       style: GoogleFonts.inter(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 19,
                           fontWeight: FontWeight.w800),
                     ),
@@ -201,7 +201,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF17171F),
+                        color: const Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: color.withOpacity(0.35)),
                       ),
@@ -216,7 +216,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                               Text(
                                 'How to complete',
                                 style: GoogleFonts.inter(
-                                    color: Colors.white,
+                                    color: AppColors.textPrimary,
                                     fontSize: 15,
                                     fontWeight: FontWeight.w800),
                               ),
@@ -280,10 +280,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF17171F),
+                        color: const Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                            color: Colors.white.withOpacity(0.06)),
+                            color: AppColors.textPrimary.withOpacity(0.06)),
                       ),
                       child: Column(
                         children: [
@@ -306,10 +306,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               padding: EdgeInsets.fromLTRB(
                   16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
               decoration: BoxDecoration(
-                color: const Color(0xFF0B0B12),
+                color: const Color(0xFFF7F8FA),
                 border: Border(
                     top: BorderSide(
-                        color: Colors.white.withOpacity(0.06))),
+                        color: AppColors.textPrimary.withOpacity(0.06))),
               ),
               child: SizedBox(
                 width: double.infinity,
@@ -326,9 +326,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                           );
                         },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _started ? const Color(0xFF1E2740) : color,
+                    backgroundColor: _started ? const Color(0xFFE8F0FF) : color,
                     foregroundColor: Colors.white,
-                    disabledBackgroundColor: const Color(0xFF1E2740),
+                    disabledBackgroundColor: const Color(0xFFE8F0FF),
                     disabledForegroundColor: Colors.white54,
                     elevation: 0,
                     shape: RoundedRectangleBorder(

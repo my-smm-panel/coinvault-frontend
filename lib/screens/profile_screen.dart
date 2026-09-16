@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
+import 'invite_screen.dart';
 import '../services/auth_service.dart';
 import '../models/app_models.dart';
 import '../widgets/state_views.dart';
@@ -25,8 +26,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   UserModel? _user;
   bool _loading = true;
 
-  static const _bg = Color(0xFF0B0B12);
-  static const _card = Color(0xFF17171F);
+  static const _bg = Color(0xFFF7F8FA);
+  static const _card = Color(0xFFFFFFFF);
 
   @override
   void initState() {
@@ -131,7 +132,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             children: [
               const Text('My Profile',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 20,
                       fontWeight: FontWeight.w800)),
               const Spacer(),
@@ -148,11 +149,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   child: const Row(
                     children: [
                       Icon(Icons.settings_rounded,
-                          color: Colors.white, size: 15),
+                          color: AppColors.textPrimary, size: 15),
                       SizedBox(width: 4),
                       Text('Help',
                           style: TextStyle(
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               fontSize: 13,
                               fontWeight: FontWeight.w700)),
                     ],
@@ -212,7 +213,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           Text(
             user.displayName.isEmpty ? 'User' : user.displayName,
             style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontSize: 19,
                 fontWeight: FontWeight.w800),
             maxLines: 1,
@@ -236,11 +237,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.monetization_on_rounded,
-                    color: Colors.white, size: 20),
+                    color: AppColors.textPrimary, size: 20),
                 const SizedBox(width: 6),
                 Text('${user.coins} coins',
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 17,
                         fontWeight: FontWeight.w800)),
               ],
@@ -268,7 +269,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _stat('Spins Left', spinsLeft, Icons.donut_large_rounded,
             AppColors.gold),
         _stat('Total Earned', '${user.coins}',
-            Icons.emoji_events_rounded, const Color(0xFF10B981)),
+            Icons.emoji_events_rounded, const Color(0xFF16A34A)),
         _stat('Rate', '100 = ₹10', Icons.currency_rupee_rounded,
             const Color(0xFF3B82F6)),
       ],
@@ -302,7 +303,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Text(value,
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 16,
                         fontWeight: FontWeight.w800),
                     maxLines: 1,
@@ -332,7 +333,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const LeaderboardScreen()],
       ['Refer & Earn', 'Invite friends, bonus coins',
         Icons.group_add_rounded, const Color(0xFFEC4899),
-        const ReferScreen()],
+        const InviteScreen()],
       ['Earn More', 'Tasks & offers',
         Icons.task_alt_rounded, const Color(0xFF3B82F6),
         const EarnScreen()],
@@ -386,7 +387,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   children: [
                     Text(title,
                         style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 15,
                             fontWeight: FontWeight.w700)),
                     Text(sub,
@@ -419,7 +420,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         children: [
           const Text('Payout Details',
               style: TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontSize: 14,
                   fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),

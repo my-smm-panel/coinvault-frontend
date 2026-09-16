@@ -151,7 +151,7 @@ class _QuizScreenState extends State<QuizScreen> {
     final correct = q['answer'] as int;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0B12),
+      backgroundColor: const Color(0xFFF7F8FA),
       body: SafeArea(
         child: Column(
           children: [
@@ -175,7 +175,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 5),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF17171F),
+                      color: const Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(16),
                       border:
                           Border.all(color: AppColors.gold.withOpacity(0.4)),
@@ -247,19 +247,19 @@ class _QuizScreenState extends State<QuizScreen> {
                     ...options.asMap().entries.map((e) {
                       final i = e.key;
                       final opt = e.value;
-                      Color bg = const Color(0xFF17171F);
+                      Color bg = const Color(0xFFFFFFFF);
                       Color border = Colors.white.withOpacity(0.08);
                       Color text = Colors.white;
                       IconData? trailing;
 
                       if (_answered) {
                         if (i == correct) {
-                          bg = const Color(0xFF12271D);
-                          border = const Color(0xFF2E5A45);
+                          bg = const Color(0xFFE6F4EC);
+                          border = const Color(0xFF1E7A55);
                           text = const Color(0xFF4ADE80);
                           trailing = Icons.check_rounded;
                         } else if (i == _selected) {
-                          bg = const Color(0xFF2A1214);
+                          bg = const Color(0xFFFFE9EC);
                           border = const Color(0xFF5A2A2E);
                           text = const Color(0xFFEF4444);
                           trailing = Icons.close_rounded;
@@ -333,7 +333,7 @@ class _QuizScreenState extends State<QuizScreen> {
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
                           disabledBackgroundColor:
-                              const Color(0xFF1E2740),
+                              const Color(0xFFE8F0FF),
                           disabledForegroundColor: Colors.white38,
                           elevation: 0,
                           shape: RoundedRectangleBorder(

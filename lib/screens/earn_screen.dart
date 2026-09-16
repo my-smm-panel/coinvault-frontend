@@ -64,7 +64,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
           children: [
             const Text('Earn Coins',
                 style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 20,
                     fontWeight: FontWeight.w800)),
             Text('Complete tasks, get rewards',
@@ -90,7 +90,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
                 const SizedBox(width: 4),
                 Text('${user?.coins ?? 0}',
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 13,
                         fontWeight: FontWeight.w800)),
               ],
@@ -180,9 +180,9 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF17171F),
+                    color: const Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.06), width: 1),
+                    border: Border.all(color: AppColors.textPrimary.withOpacity(0.06), width: 1),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -205,15 +205,15 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
           const SizedBox(height: 18),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 6),
-            child: Text('Popular Tasks', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+            child: Text('Popular Tasks', style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w800)),
           ),
           const SizedBox(height: 10),
           ...quickTasks.map((t) => Container(
                 margin: const EdgeInsets.only(bottom: 10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF17171F),
+                  color: const Color(0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.06)),
+                  border: Border.all(color: AppColors.textPrimary.withOpacity(0.06)),
                 ),
                 child: Material(
                   color: Colors.transparent,
@@ -228,7 +228,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
                             width: 54,
                             height: 54,
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             padding: const EdgeInsets.all(6),
@@ -239,7 +239,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(t['title'] as String, style: const TextStyle(color: Colors.white, fontSize: 13.5, fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                Text(t['title'] as String, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13.5, fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
                                 const SizedBox(height: 4),
                                 Row(
                                   children: [
@@ -273,7 +273,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
                                     ),
                                     child: Text('+${t['coins']}',
                                         style: const TextStyle(
-                                            color: Colors.white,
+                                            color: AppColors.textPrimary,
                                             fontSize: 12,
                                             fontWeight: FontWeight.w800)),
                                   ),
@@ -321,7 +321,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
   static const List<Map<String, dynamic>> _providers = [
     {'name': 'Cint', 'bonus': '55% BONUS', 'color': Color(0xFF8B5CF6)},
     {'name': 'Prime Surveys', 'bonus': '', 'color': Color(0xFF3B82F6)},
-    {'name': 'TimeWall', 'bonus': '', 'color': Color(0xFF10B981)},
+    {'name': 'TimeWall', 'bonus': '', 'color': Color(0xFF16A34A)},
     {'name': 'BitLabs', 'bonus': '', 'color': Color(0xFF8B5CF6)},
     {'name': 'CPX Research', 'bonus': '', 'color': Color(0xFF3B82F6)},
     {'name': 'Pollfish', 'bonus': '', 'color': Color(0xFF14B8A6)},
@@ -359,9 +359,9 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF17171F),
+                    color: const Color(0xFFFFFFFF),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withOpacity(0.06), width: 1),
+                    border: Border.all(color: AppColors.textPrimary.withOpacity(0.06), width: 1),
                   ),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -400,7 +400,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
           return Container(
             padding: const EdgeInsets.all(20),
             decoration: const BoxDecoration(
-              color: Color(0xFF17171F),
+              color: Color(0xFFFFFFFF),
               borderRadius:
                   BorderRadius.vertical(top: Radius.circular(24)),
               border: Border(top: BorderSide(color: Colors.white10)),
@@ -411,7 +411,7 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
               children: [
                 Text(provider,
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 18,
                         fontWeight: FontWeight.w800)),
                 const SizedBox(height: 4),
@@ -664,7 +664,7 @@ class _SurveyCard extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: const Color(0xFF17171F),
+            color: const Color(0xFFFFFFFF),
             borderRadius: BorderRadius.circular(14),
             border:
                 Border.all(color: _providerColor(provider).withOpacity(0.35)),
@@ -704,7 +704,7 @@ class _SurveyCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.chevron_right_rounded,
-                      color: Colors.white, size: 26),
+                      color: AppColors.textPrimary, size: 26),
                 ),
               ],
             ),
@@ -723,7 +723,7 @@ class _SurveyCard extends StatelessWidget {
               ),
               child: const Text('Trending 🔥',
                   style: TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 9,
                       fontWeight: FontWeight.w800)),
             ),
@@ -852,7 +852,7 @@ class _OfferCard extends StatelessWidget {
                         ),
                         child: const Text('GO',
                             style: TextStyle(
-                                color: Colors.white,
+                                color: AppColors.textPrimary,
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800)),
                       ),
@@ -876,7 +876,7 @@ class _OfferCard extends StatelessWidget {
               ),
               child: Text(isHot ? 'HOT' : 'NEW',
                   style: const TextStyle(
-                      color: Colors.white,
+                      color: AppColors.textPrimary,
                       fontSize: 9,
                       fontWeight: FontWeight.w800)),
             ),

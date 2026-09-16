@@ -3,7 +3,8 @@ import '../core/app_theme.dart';
 import '../services/app_repository.dart';
 import '../services/auth_service.dart';
 
-/// Full tracking screen: activity feed + withdrawal status + referrals + stats.
+/// Tracking — CoinVault light theme (per design sheet).
+/// Keeps the 3 tabs (Activity / Withdrawals / Referrals) and all data logic.
 class TrackingScreen extends StatefulWidget {
   const TrackingScreen({super.key});
 
@@ -13,6 +14,8 @@ class TrackingScreen extends StatefulWidget {
 
 class _TrackingScreenState extends State<TrackingScreen>
     with SingleTickerProviderStateMixin {
+  static const _bg = Color(0xFFF7F8FA);
+
   late final TabController _tabs = TabController(length: 3, vsync: this);
   bool _loading = true;
   String? _error;
@@ -106,48 +109,134 @@ class _TrackingScreenState extends State<TrackingScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        title: const Text('Tracking'),
-        bottom: TabBar(
-          controller: _tabs,
-          indicatorColor: AppColors.primary,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
-          tabs: const [
-            Tab(icon: Icon(Icons.history_rounded), text: 'Activity'),
-            Tab(icon: Icon(Icons.account_balance_wallet_outlined), text: 'Withdrawals'),
-            Tab(icon: Icon(Icons.group_rounded), text: 'Referrals'),
+      backgroundColor: _bg,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _header(),
+            _segmentedTabs(),
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(color: AppColors.primary))
+                  : _error != null
+                      ? _ErrorView(error: _error!, onRetry: _loadAll)
+                      : RefreshIndicator(
+                          color: AppColors.primary,
+                          backgroundColor: AppColors.cardBackground,
+                          onRefresh: _loadAll,
+                          child: TabBarView(
+                            controller: _tabs,
+                            children: [
+                              _ActivityTab(
+                                activity: _activity,
+                                coins: _coins,
+                                spins: _spins,
+                              ),
+                              _WithdrawalsTab(withdrawals: _withdrawals),
+                              _ReferralsTab(
+                                code: _referralCode,
+                                total: _totalReferrals,
+                                active: _activeReferrals,
+                                coins: _referralCoins,
+                                list: _referralList,
+                              ),
+                            ],
+                          ),
+                        ),
+            ),
           ],
         ),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _ErrorView(error: _error!, onRetry: _loadAll)
-              : RefreshIndicator(
-                  onRefresh: _loadAll,
-                  child: TabBarView(
-                    controller: _tabs,
-                    children: [
-_ActivityTab(
-                        activity: _activity,
-                        coins: _coins,
-                        spins: _spins,
-                      ),
-                      _WithdrawalsTab(withdrawals: _withdrawals),
-                      _ReferralsTab(
-                        code: _referralCode,
-                        total: _totalReferrals,
-                        active: _activeReferrals,
-                        coins: _referralCoins,
-                        list: _referralList,
-                      ),
-                    ],
-                  ),
-                ),
+    );
+  }
+
+  /// Orange header with back arrow + title (per design sheet).
+  Widget _header() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(8, 8, 14, 14),
+      decoration: const BoxDecoration(gradient: AppColors.brandHeader),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: () => Navigator.pop(context),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white, size: 20),
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Text(
+            'Tracking',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            tooltip: 'Refresh',
+            onPressed: _loading ? null : _loadAll,
+            icon: Icon(Icons.refresh_rounded,
+                color: Colors.white.withOpacity(0.95), size: 20),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// White pill segmented bar sitting just under the header.
+  Widget _segmentedTabs() {
+    return Container(
+      color: _bg,
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 6),
+      child: Container(
+        height: 44,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(AppRadius.full),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: TabBar(
+          controller: _tabs,
+          dividerColor: Colors.transparent,
+          indicator: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          indicatorSize: TabBarIndicatorSize.tab,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: AppColors.textSecondary,
+          labelStyle: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+          unselectedLabelStyle: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+          padding: const EdgeInsets.all(4),
+          tabs: const [
+            Tab(text: 'Activity'),
+            Tab(text: 'Withdrawals'),
+            Tab(text: 'Referrals'),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -156,45 +245,115 @@ _ActivityTab(
 class _ActivityTab extends StatelessWidget {
   final List<Map<String, dynamic>> activity;
   final int coins, spins;
-  const _ActivityTab({
-    required this.activity,
-    required this.coins,
-    required this.spins,
-  });
+  const _ActivityTab({required this.activity, required this.coins, required this.spins});
 
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
       children: [
-        // stat cards
+        // Balance hero (white card, orange figure + gold coin icon)
+        _balanceHero(),
+        const SizedBox(height: 16),
+        // stats grid
         GridView.count(
-          crossAxisCount: 2,
+          crossAxisCount: 3,
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 10,
           crossAxisSpacing: 10,
-          childAspectRatio: 1.6,
+          childAspectRatio: 1.0,
           children: [
-            _StatCard('Balance', '$coins', Icons.savings_rounded, AppColors.primary),
-            _StatCard('Earned', '$coins', Icons.emoji_events_rounded, Colors.green),
-            _StatCard('Spins Today', '$spins', Icons.casino_rounded, Colors.purple),
-            _StatCard('Activity', '${activity.length}', Icons.history_rounded, Colors.blue),
+            _StatCard('Earned', '$coins', Icons.emoji_events_rounded, AppColors.gold),
+            _StatCard('Spins', '$spins', Icons.casino_rounded, AppColors.primary),
+            _StatCard('Activity', '${activity.length}', Icons.history_rounded, const Color(0xFF3B82F6)),
           ],
         ),
-        const SizedBox(height: 18),
-        Text('Recent Activity',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            )),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            const Text('Recent Activity',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                )),
+            const Spacer(),
+            if (activity.isNotEmpty)
+              Text('${activity.length} items',
+                  style: AppTextStyles.bodySmall),
+          ],
+        ),
         const SizedBox(height: 10),
         if (activity.isEmpty)
-          _Empty('No activity yet. Complete a task or spin!')
+          const _Empty('No activity yet. Complete a task or spin!')
         else
           ...activity.map((a) => _ActivityItem(a)),
       ],
+    );
+  }
+
+  Widget _balanceHero() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppRadius.xl),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Available Coins',
+                    style: AppTextStyles.bodyMedium
+                        .copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '$coins',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 34,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 5),
+                      child: Text(
+                        '= ₹${(coins / 10).toStringAsFixed(0)}',
+                        style: AppTextStyles.bodyMedium.copyWith(
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            width: 56,
+            height: 56,
+            decoration: const BoxDecoration(
+              gradient: AppColors.goldGradient,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.monetization_on_rounded,
+                color: Colors.white, size: 30),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -208,32 +367,45 @@ class _StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: color, size: 26),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(value,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  )),
-              Text(label,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                  )),
-            ],
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 18),
+          ),
+          const SizedBox(height: 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: AppTextStyles.bodySmall.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -254,22 +426,25 @@ class _ActivityItem extends StatelessWidget {
     final at = a['at'];
 
     final spec = _typeSpec(type);
+    final positive = coins > 0;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(14),
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: spec.$2.withOpacity(0.15),
+              color: spec.$2.withOpacity(0.12),
               shape: BoxShape.circle,
             ),
-            child: Icon(spec.$1, color: spec.$2, size: 20),
+            child: Icon(spec.$1, color: spec.$2, size: 18),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -279,26 +454,25 @@ class _ActivityItem extends StatelessWidget {
                 Text(title,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+                    style: const TextStyle(
                       color: AppColors.textPrimary,
                       fontSize: 14,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     )),
                 const SizedBox(height: 3),
                 Row(
                   children: [
                     if (status.isNotEmpty)
-                      Text('${_statusLabel(status)}  •  ',
-                          style: TextStyle(
-                            color: _statusColor(status),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          )),
-                    Text(_fmtDate(at),
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 11,
-                        )),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: _StatusDot(status),
+                      ),
+                    Flexible(
+                      child: Text(_fmtDate(at),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodySmall),
+                    ),
                   ],
                 ),
               ],
@@ -306,11 +480,11 @@ class _ActivityItem extends StatelessWidget {
           ),
           if (coins != 0)
             Text(
-              coins > 0 ? '+$coins' : '$coins',
+              positive ? '+$coins' : '$coins',
               style: TextStyle(
-                color: coins > 0 ? Colors.green : Colors.redAccent,
+                color: positive ? AppColors.success : AppColors.error,
                 fontSize: 14,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w800,
               ),
             ),
         ],
@@ -321,18 +495,49 @@ class _ActivityItem extends StatelessWidget {
   (IconData, Color) _typeSpec(String t) {
     switch (t) {
       case 'task':
-        return (Icons.task_alt_rounded, Colors.green);
+        return (Icons.task_alt_rounded, AppColors.success);
       case 'withdrawal':
-        return (Icons.account_balance_wallet_rounded, Colors.blue);
+        return (Icons.account_balance_wallet_rounded, const Color(0xFF3B82F6));
       case 'spin':
-        return (Icons.casino_rounded, Colors.purple);
+        return (Icons.casino_rounded, AppColors.primary);
       case 'survey':
-        return (Icons.poll_rounded, Colors.orange);
+        return (Icons.poll_rounded, AppColors.primaryDark);
       case 'scratch':
-        return (Icons.card_giftcard_rounded, Colors.pink);
+        return (Icons.card_giftcard_rounded, const Color(0xFFEC4899));
       default:
         return (Icons.bolt_rounded, AppColors.primary);
     }
+  }
+}
+
+/// Green "Completed" status dot + label (per design sheet).
+class _StatusDot extends StatelessWidget {
+  final String status;
+  const _StatusDot(this.status);
+
+  @override
+  Widget build(BuildContext context) {
+    final color = _statusColor(status);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(_statusLabel(status),
+            style: TextStyle(
+              color: color,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            )),
+      ],
+    );
   }
 
   String _statusLabel(String s) {
@@ -351,6 +556,8 @@ class _ActivityItem extends StatelessWidget {
         return 'Rejected';
       case 'FAILED':
         return 'Failed';
+      case 'ANOMALY':
+        return 'Flagged';
       case 'REFUNDED':
         return 'Refunded';
       default:
@@ -363,18 +570,17 @@ class _ActivityItem extends StatelessWidget {
       case 'VERIFIED':
       case 'COMPLETED':
       case 'DONE':
-        return Colors.green;
+        return AppColors.success;
       case 'REJECTED':
       case 'FAILED':
-        return Colors.redAccent;
+        return AppColors.error;
       case 'REFUNDED':
-        return Colors.orange;
+        return AppColors.warning;
       default:
         return AppColors.textSecondary;
     }
   }
 }
-
 // =================== WITHDRAWALS TAB ===================
 class _WithdrawalsTab extends StatelessWidget {
   final List<Map<String, dynamic>> withdrawals;
@@ -383,76 +589,116 @@ class _WithdrawalsTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (withdrawals.isEmpty) {
-      return _Empty('No withdrawals yet.\nYour withdrawal history will appear here.');
+      return ListView(
+        children: const [
+          SizedBox(height: 40),
+          _Empty('No withdrawals yet.\nYour withdrawal history will appear here.'),
+        ],
+      );
     }
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: withdrawals.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (context, i) {
-        final w = withdrawals[i];
-        final status = w['status']?.toString() ?? 'PENDING';
-        final amount = (w['amount'] as num?)?.toInt() ?? 0;
-        final inr = (w['rupeeAmount'] as num?)?.toInt() ??
-            (amount ~/ 10);
-        final method = w['method']?.toString() ?? 'UPI';
-        final createdAt = w['createdAt'];
-        final processedAt = w['processedAt'];
-        final reason = w['rejectionReason']?.toString();
+    final completed =
+        withdrawals.where((w) => w['status']?.toString() == 'COMPLETED').length;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
+      children: [
+        _withdrawStats(withdrawals.length, completed),
+        const SizedBox(height: 16),
+        ...withdrawals.map((w) => _WithdrawalItem(w)),
+      ],
+    );
+  }
 
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: _statusColor(status).withOpacity(0.35),
-              width: 1.2,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _withdrawStats(int total, int completed) {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 2.4,
+      children: [
+        _StatCard('Total Withdrawals', '$total',
+            Icons.account_balance_wallet_outlined, const Color(0xFF3B82F6)),
+        _StatCard('Completed', '$completed',
+            Icons.check_circle_outline_rounded, AppColors.success),
+      ],
+    );
+  }
+}
+
+class _WithdrawalItem extends StatelessWidget {
+  final Map<String, dynamic> w;
+  const _WithdrawalItem(this.w);
+
+  @override
+  Widget build(BuildContext context) {
+    final status = w['status']?.toString() ?? 'PENDING';
+    final amount = (w['amount'] as num?)?.toInt() ?? 0;
+    final inr = (w['rupeeAmount'] as num?)?.toInt() ?? (amount ~/ 10);
+    final method = w['method']?.toString() ?? 'UPI';
+    final createdAt = w['createdAt'];
+    final processedAt = w['processedAt'];
+    final reason = w['rejectionReason']?.toString();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(_methodIcon(method),
-                      color: AppColors.primary, size: 22),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text('₹$inr via ${_methodLabel(method)}',
-                        style: TextStyle(
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(_methodIcon(method),
+                    color: AppColors.primaryDark, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('₹$inr via ${_methodLabel(method)}',
+                        style: const TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 15,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w800,
                         )),
-                  ),
-                  _StatusChip(status),
-                ],
-              ),
-              const SizedBox(height: 8),
-              // timeline
-              _Timeline(
-                status: status,
-                createdAt: createdAt,
-                processedAt: processedAt,
-              ),
-              if (reason != null && reason.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text('Reason: $reason',
-                      style: const TextStyle(
-                          color: Colors.redAccent, fontSize: 12)),
+                    Text('${_fmtDate(createdAt)}  •  $amount coins',
+                        style: AppTextStyles.bodySmall),
+                  ],
                 ),
-              ],
+              ),
+              _StatusChip(status),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 10),
+          _Timeline(status: status, createdAt: createdAt, processedAt: processedAt),
+          if (reason != null && reason.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.08),
+                borderRadius: BorderRadius.circular(AppRadius.sm),
+              ),
+              child: Text('Reason: $reason',
+                  style: const TextStyle(
+                      color: AppColors.error, fontSize: 12)),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -489,20 +735,6 @@ class _WithdrawalsTab extends StatelessWidget {
         return m;
     }
   }
-
-  Color _statusColor(String s) {
-    switch (s) {
-      case 'COMPLETED':
-        return Colors.green;
-      case 'REJECTED':
-      case 'FAILED':
-        return Colors.redAccent;
-      case 'REFUNDED':
-        return Colors.orange;
-      default:
-        return Colors.blue;
-    }
-  }
 }
 
 class _StatusChip extends StatelessWidget {
@@ -515,14 +747,14 @@ class _StatusChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(20),
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(AppRadius.full),
       ),
       child: Text(_label(),
           style: TextStyle(
             color: color,
             fontSize: 11,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w800,
           )),
     );
   }
@@ -530,18 +762,18 @@ class _StatusChip extends StatelessWidget {
   Color _color() {
     switch (status) {
       case 'COMPLETED':
-        return Colors.green;
+        return AppColors.success;
       case 'REJECTED':
       case 'FAILED':
-        return Colors.redAccent;
+        return AppColors.error;
       case 'REFUNDED':
-        return Colors.orange;
+        return AppColors.warning;
       case 'PROCESSING':
-        return Colors.purple;
+        return AppColors.primary;
       case 'UNDER_REVIEW':
-        return Colors.amber;
+        return AppColors.warning;
       default:
-        return Colors.blue;
+        return const Color(0xFF3B82F6);
     }
   }
 
@@ -554,7 +786,7 @@ class _StatusChip extends StatelessWidget {
       case 'PROCESSING':
         return 'Processing';
       case 'COMPLETED':
-        return 'Paid';
+        return 'Completed';
       case 'FAILED':
         return 'Failed';
       case 'REJECTED':
@@ -575,7 +807,6 @@ class _Timeline extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // stage order
     final stages = <String>['Requested', 'In Review', 'Processing', 'Paid'];
     final reached = _stageIndex();
     return Row(
@@ -586,7 +817,7 @@ class _Timeline extends StatelessWidget {
             child: Container(
               height: 3,
               margin: const EdgeInsets.symmetric(horizontal: 3),
-              color: lineDone ? Colors.green : AppColors.divider,
+              color: lineDone ? AppColors.success : AppColors.border,
             ),
           );
         }
@@ -594,7 +825,7 @@ class _Timeline extends StatelessWidget {
         final done = idx <= reached;
         return Icon(
           done ? Icons.check_circle : Icons.radio_button_unchecked,
-          color: done ? Colors.green : AppColors.textSecondary,
+          color: done ? AppColors.success : AppColors.textTertiary,
           size: 16,
         );
       }),
@@ -638,81 +869,99 @@ class _ReferralsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final link = code.isNotEmpty
         ? 'https://coinvault.app/?ref=$code'
-        : '—';
+        : 'https://coinvault.app';
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
       children: [
+        // stats grid
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 1.0,
+          children: [
+            _StatCard('Invited', '$total', Icons.group_rounded,
+                const Color(0xFF3B82F6)),
+            _StatCard('Active', '$active', Icons.person_rounded,
+                AppColors.success),
+            _StatCard('Coins', '$coins', Icons.emoji_events_rounded,
+                AppColors.gold),
+          ],
+        ),
+        const SizedBox(height: 20),
+        // shareable code card
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [AppColors.primary, AppColors.primaryDark],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(18),
+            gradient: AppColors.brandHeader,
+            borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
           child: Column(
             children: [
               const Icon(Icons.card_giftcard_rounded,
-                  color: Colors.white, size: 34),
+                  color: Colors.white, size: 30),
               const SizedBox(height: 8),
               const Text('Invite friends, earn coins',
                   style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
-                      fontWeight: FontWeight.bold)),
-              const SizedBox(height: 10),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  _refStat('Invited', '$total'),
-                  _refStat('Active', '$active'),
-                  _refStat('Coins', '$coins'),
-                ],
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(color: Colors.white.withOpacity(0.35)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(link,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 12)),
+                    ),
+                    InkWell(
+                      onTap: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content: Text('Referral link copied')),
+                        );
+                      },
+                      child: const Padding(
+                        padding: EdgeInsets.all(4),
+                        child: Icon(Icons.copy_rounded,
+                            color: Colors.white, size: 18),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 16),
-        // share row
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(link,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                        color: AppColors.textSecondary, fontSize: 12)),
-              ),
-              IconButton(
-                icon: Icon(Icons.copy_rounded, color: AppColors.primary),
-                onPressed: () {
-                  // copy handled via services layer
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Referral link copied')),
-                  );
-                },
-              ),
-            ],
-          ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            const Text('Your Referrals',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                )),
+            const Spacer(),
+            if (list.isNotEmpty)
+              Text('${list.length} friends', style: AppTextStyles.bodySmall),
+          ],
         ),
-        const SizedBox(height: 16),
-        Text('Your Referrals',
-            style: TextStyle(
-              color: AppColors.textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            )),
         const SizedBox(height: 10),
         if (list.isEmpty)
-          _Empty('No referrals yet.\nShare your link to start earning!')
+          const _Empty('No referrals yet.\nShare your link to start earning!')
         else
           ...list.map((r) {
             final referred = r['referred'] as Map?;
@@ -726,15 +975,27 @@ class _ReferralsTab extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 10),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(14),
+                color: AppColors.cardBackground,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                border: Border.all(color: AppColors.border),
+                boxShadow: AppShadows.card,
               ),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    backgroundColor: AppColors.primary.withOpacity(0.15),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: (isActive
+                              ? AppColors.success
+                              : AppColors.textTertiary)
+                          .withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
                     child: Icon(Icons.person_rounded,
-                        color: AppColors.primary, size: 20),
+                        color: isActive
+                            ? AppColors.success
+                            : AppColors.textTertiary,
+                        size: 18),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -744,45 +1005,28 @@ class _ReferralsTab extends StatelessWidget {
                         Text(name,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
+                            style: const TextStyle(
                               color: AppColors.textPrimary,
                               fontSize: 14,
-                              fontWeight: FontWeight.w600,
+                              fontWeight: FontWeight.w700,
                             )),
-                        Text('${_fmtDate(at)}  •  ${isActive ? 'Active' : 'Inactive'}',
-                            style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 11,
-                            )),
+                        Text(
+                            '${_fmtDate(at)}  •  ${isActive ? 'Active' : 'Inactive'}',
+                            style: AppTextStyles.bodySmall),
                       ],
                     ),
                   ),
                   if (earned > 0)
                     Text('+$earned',
                         style: const TextStyle(
-                          color: Colors.green,
+                          color: AppColors.success,
                           fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w800,
                         )),
                 ],
               ),
             );
           }),
-      ],
-    );
-  }
-
-  Widget _refStat(String label, String value) {
-    return Column(
-      children: [
-        Text(value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            )),
-        Text(label,
-            style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 11)),
       ],
     );
   }
@@ -799,12 +1043,12 @@ class _Empty extends StatelessWidget {
       padding: const EdgeInsets.only(top: 40),
       child: Column(
         children: [
-          Icon(Icons.inbox_rounded,
-              size: 48, color: AppColors.textSecondary),
+          const Icon(Icons.inbox_rounded,
+              size: 48, color: AppColors.textTertiary),
           const SizedBox(height: 12),
           Text(text,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 13,
                 height: 1.5,
@@ -828,19 +1072,20 @@ class _ErrorView extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.cloud_off_rounded, size: 44, color: Colors.redAccent),
+            const Icon(Icons.cloud_off_rounded,
+                size: 44, color: AppColors.error),
             const SizedBox(height: 14),
-            Text('Failed to load tracking data',
+            const Text('Failed to load tracking data',
                 style: TextStyle(
                     color: AppColors.textPrimary,
                     fontSize: 15,
-                    fontWeight: FontWeight.bold)),
+                    fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
             Text(error,
                 textAlign: TextAlign.center,
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                style: AppTextStyles.bodySmall),
             const SizedBox(height: 16),
             ElevatedButton.icon(
               onPressed: onRetry,
@@ -854,7 +1099,21 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
-String _mon(int m) => const ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m];
+String _mon(int m) => const [
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ][m];
 
 String _fmtDate(dynamic v) {
   if (v == null) return '';

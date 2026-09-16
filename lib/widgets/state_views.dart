@@ -54,9 +54,9 @@ class _AppShimmerState extends State<AppShimmer>
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
             colors: const [
-              Color(0xFF17171F),
+              Color(0xFFFFFFFF),
               Color(0xFF23232E),
-              Color(0xFF17171F),
+              Color(0xFFFFFFFF),
             ],
             stops: [
               _controller.value - 0.3 < 0 ? 0 : _controller.value - 0.3,
@@ -87,7 +87,7 @@ class ShimmerCardList extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFF17171F),
+          color: const Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: Colors.white10),
         ),

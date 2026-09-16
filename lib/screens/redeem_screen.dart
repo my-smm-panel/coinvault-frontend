@@ -14,7 +14,7 @@ class RedeemScreen extends StatefulWidget {
 }
 
 class _RedeemScreenState extends State<RedeemScreen> {
-  static const _bg = Color(0xFF0B0B12);
+  static const _bg = Color(0xFFF7F8FA);
 
   // 12 famous Indian / global gift card brands
   static const _brands = [
@@ -40,12 +40,12 @@ class _RedeemScreenState extends State<RedeemScreen> {
         backgroundColor: _bg,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text('Gift Cards',
             style: TextStyle(
-                color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+                color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w800)),
         centerTitle: false,
       ),
       body: GridView.builder(
@@ -72,7 +72,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
       onTap: () => _showRedeemDialog(name, color),
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF17171F),
+          color: const Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withOpacity(0.3), width: 1.5),
         ),
@@ -120,7 +120,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
           final valid = amount >= 10 && coinsNeeded <= balance;
 
           return AlertDialog(
-            backgroundColor: const Color(0xFF17171F),
+            backgroundColor: const Color(0xFFFFFFFF),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20)),
             title: Row(
@@ -150,7 +150,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
                 TextField(
                   controller: ctrl,
                   keyboardType: TextInputType.number,
-                  style: const TextStyle(color: Colors.white, fontSize: 18),
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 18),
                   decoration: InputDecoration(
                     hintText: 'e.g. 50',
                     hintStyle: const TextStyle(color: Colors.white24),

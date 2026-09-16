@@ -74,7 +74,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
   Widget build(BuildContext context) {
     final color = ProviderLogos.colorFor(provider);
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0B12),
+      backgroundColor: const Color(0xFFF7F8FA),
       body: SafeArea(
         child: Column(
           children: [
@@ -97,7 +97,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
                             )
                           : RefreshIndicator(
                               color: AppColors.primary,
-                              backgroundColor: const Color(0xFF17171F),
+                              backgroundColor: const Color(0xFFFFFFFF),
                               onRefresh: _load,
                               child: ListView.builder(
                                 padding:
@@ -175,7 +175,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
       margin: const EdgeInsets.only(top: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF17171F),
+        color: const Color(0xFFFFFFFF),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.35)),
       ),

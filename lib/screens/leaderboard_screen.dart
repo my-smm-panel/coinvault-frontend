@@ -21,14 +21,14 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   int? _myRank;
   int _myCoins = 0;
 
-  static const _bg = Color(0xFF0B0B12);
-  static const _card = Color(0xFF17171F);
+  static const _bg = Color(0xFFF7F8FA);
+  static const _card = Color(0xFFFFFFFF);
 
   static const _avatarColors = [
     Color(0xFF3B82F6),
     Color(0xFFF66B06),
     Color(0xFF8B5CF6),
-    Color(0xFF10B981),
+    Color(0xFF16A34A),
     Color(0xFFEC4899),
     Color(0xFF14B8A6),
   ];
@@ -143,11 +143,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.2),
+                    color: AppColors.textPrimary.withOpacity(0.2),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.arrow_back_rounded,
-                      color: Colors.white, size: 20),
+                      color: AppColors.textPrimary, size: 20),
                 ),
               ),
               const Spacer(),
@@ -167,7 +167,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                     const SizedBox(width: 6),
                     Text('$walletCoins',
                         style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 16,
                             fontWeight: FontWeight.w800)),
                   ],
@@ -204,7 +204,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                 const Text('COINVAULT LEADERBOARD',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 17,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.5)),
@@ -270,13 +270,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       child: Row(
         children: [
           const Icon(Icons.emoji_events_rounded,
-              color: Colors.white, size: 20),
+              color: AppColors.textPrimary, size: 20),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               'Your Rank #$_myRank • $_myCoins coins',
               style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontWeight: FontWeight.w700,
                   fontSize: 14),
             ),
@@ -333,11 +333,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               BoxDecoration(shape: BoxShape.circle, color: ring),
           child: CircleAvatar(
             radius: rank == 1 ? 30 : 25,
-            backgroundColor: const Color(0xFF1A1A26),
+            backgroundColor: const Color(0xFFF5F6F8),
             child: Text(
               name.substring(0, 1).toUpperCase(),
               style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
                   fontSize: 22),
             ),
@@ -353,7 +353,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           ),
           child: Text('#$rank',
               style: const TextStyle(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontWeight: FontWeight.w800,
                   fontSize: 12)),
         ),
@@ -363,7 +363,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           child: Text(name,
               textAlign: TextAlign.center,
               style:
-                  const TextStyle(color: Colors.white, fontSize: 12),
+                  const TextStyle(color: AppColors.textPrimary, fontSize: 12),
               maxLines: 1,
               overflow: TextOverflow.ellipsis),
         ),
@@ -400,7 +400,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             width: 34,
             child: Text('#$rank',
                 style: const TextStyle(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontWeight: FontWeight.w800,
                     fontSize: 14)),
           ),
@@ -420,7 +420,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               children: [
                 Text(name,
                     style: const TextStyle(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontWeight: FontWeight.w600,
                         fontSize: 14),
                     maxLines: 1,

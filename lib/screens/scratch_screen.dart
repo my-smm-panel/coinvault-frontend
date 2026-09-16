@@ -46,7 +46,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0B12),
+      backgroundColor: const Color(0xFFF7F8FA),
       body: SafeArea(
         child: Column(
           children: [
@@ -60,7 +60,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
                     Text(
                       'Scratch & Win',
                       style: GoogleFonts.inter(
-                          color: Colors.white,
+                          color: AppColors.textPrimary,
                           fontSize: 24,
                           fontWeight: FontWeight.w900),
                     ),
@@ -155,7 +155,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
                                             children: [
                                               Icon(Icons.touch_app_rounded,
                                                   size: 40,
-                                                  color: Colors.white
+                                                  color: AppColors.textPrimary
                                                       .withOpacity(0.85)),
                                               const SizedBox(height: 8),
                                               Text(
@@ -219,10 +219,10 @@ class _ScratchScreenState extends State<ScratchScreen> {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF17171F),
+                        color: const Color(0xFFFFFFFF),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                            color: Colors.white.withOpacity(0.06)),
+                            color: AppColors.textPrimary.withOpacity(0.06)),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -234,7 +234,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
                               const SizedBox(width: 8),
                               Text('Scratch Rewards',
                                   style: GoogleFonts.inter(
-                                      color: Colors.white,
+                                      color: AppColors.textPrimary,
                                       fontSize: 14,
                                       fontWeight: FontWeight.w800)),
                             ],
@@ -251,7 +251,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
                                 decoration: BoxDecoration(
                                   color: best
                                       ? AppColors.gold.withOpacity(0.12)
-                                      : const Color(0xFF1E2740),
+                                      : const Color(0xFFE8F0FF),
                                   borderRadius: BorderRadius.circular(20),
                                   border: Border.all(
                                       color: best
@@ -308,14 +308,14 @@ class _ScratchScreenState extends State<ScratchScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: Colors.white, size: 20),
+                color: AppColors.textPrimary, size: 20),
             onPressed: () => Navigator.of(context).maybePop(),
           ),
           const Spacer(),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: const Color(0xFF17171F),
+              color: const Color(0xFFFFFFFF),
               borderRadius: BorderRadius.circular(20),
               border:
                   Border.all(color: AppColors.primary.withOpacity(0.5)),
@@ -327,7 +327,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
                 const SizedBox(width: 4),
                 Text('1 Free Today',
                     style: GoogleFonts.inter(
-                        color: Colors.white,
+                        color: AppColors.textPrimary,
                         fontSize: 12,
                         fontWeight: FontWeight.w700)),
               ],

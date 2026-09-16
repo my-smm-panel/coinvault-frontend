@@ -1,66 +1,66 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// App color palette - CoinVault orange kit
+/// App color palette - CoinVault light theme (per design sheet)
 class AppColors {
-  // Primary brand colors (kit orange)
-  static const Color primary = Color(0xFFF66B06); // CoinVault orange
-  static const Color primaryLight = Color(0xFFFF8A3D);
-  static const Color primaryDark = Color(0xFFC24E00);
-  static const Color primaryContainer = Color(0xFF3A1E08);
-  
+  // Primary brand colors (CoinVault orange)
+  static const Color primary = Color(0xFFFF8C42); // sheet orange
+  static const Color primaryLight = Color(0xFFFFAB6E);
+  static const Color primaryDark = Color(0xFFE0711F);
+  static const Color primaryContainer = Color(0xFFFFF0E5);
+
   // Accent - Gold for coins
   static const Color gold = Color(0xFFF59E0B);
   static const Color goldLight = Color(0xFFFBBF24);
-  static const Color goldContainer = Color(0xFF3A2A08);
-  
-  // Surface colors (CoinVault dark)
-  static const Color surface = Color(0xFF17171F);
-  static const Color surfaceVariant = Color(0xFF1E1E28);
-  static const Color background = Color(0xFF0B0B12);
-  static const Color cardBackground = Color(0xFF17171F);
+  static const Color goldContainer = Color(0xFFFFF7E6);
 
-  // Text colors (dark theme)
-  static const Color textPrimary = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFB3B3C0);
-  static const Color textTertiary = Color(0xFF6B6B78);
+  // Surface colors (CoinVault LIGHT)
+  static const Color surface = Color(0xFFFFFFFF);
+  static const Color surfaceVariant = Color(0xFFF5F6F8);
+  static const Color background = Color(0xFFF7F8FA);
+  static const Color cardBackground = Color(0xFFFFFFFF);
+
+  // Text colors (light theme)
+  static const Color textPrimary = Color(0xFF1A1A1A);
+  static const Color textSecondary = Color(0xFF6B6B78);
+  static const Color textTertiary = Color(0xFF9B9BAB);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
-  
+
   // Status colors
-  static const Color success = Color(0xFF10B981);
+  static const Color success = Color(0xFF16A34A);
   static const Color warning = Color(0xFFF59E0B);
   static const Color error = Color(0xFFEF4444);
 
-  // Dark surfaces (CoinVault warm dark)
-  static const Color spinDark = Color(0xFF0E0A06);
-  static const Color spinCard = Color(0xFF1D130B);
+  // Dark surfaces (unused in light, kept for compat)
+  static const Color spinDark = Color(0xFFFFF7E6);
+  static const Color spinCard = Color(0xFFFFFFFF);
 
-  // Border/divider (dark theme)
-  static const Color divider = Color(0xFF2A2A35);
-  static const Color border = Color(0xFF2A2A35);
-  
+  // Border/divider (light theme)
+  static const Color divider = Color(0xFFE8E8EE);
+  static const Color border = Color(0xFFE2E2EA);
+
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [primary, primaryLight],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-  
+
   static const LinearGradient goldGradient = LinearGradient(
     colors: [gold, goldLight],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-  
+
   static const LinearGradient cardGradient = LinearGradient(
-    colors: [Color(0xFF17171F), Color(0xFF1E1E28)],
+    colors: [Color(0xFFFFFFFF), Color(0xFFF5F6F8)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
   /// Own brand header (orange) - replaces all purple/ProRewards headers.
   static const LinearGradient brandHeader = LinearGradient(
-    colors: [Color(0xFFF66B06), Color(0xFFB34700)],
+    colors: [Color(0xFFFF8C42), Color(0xFFE0711F)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

@@ -53,20 +53,20 @@ class _AuthScreenState extends State<AuthScreen> {
         child: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: const Color(0xE6291111),
+            color: const Color(0xFFFFE9EC),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
             _error!,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white, fontSize: 12),
+            style: const TextStyle(color: Color(0xFFB3261E), fontSize: 12),
           ),
         ),
       );
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0D0B),
+      backgroundColor: const Color(0xFFF7F8FA),
       body: Stack(
         fit: StackFit.expand,
         children: [
