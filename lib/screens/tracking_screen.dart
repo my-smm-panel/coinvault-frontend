@@ -177,7 +177,7 @@ class _ActivityTab extends StatelessWidget {
           childAspectRatio: 1.6,
           children: [
             _StatCard('Balance', '$coins', Icons.savings_rounded, AppColors.primary),
-            _StatCard('Earned', '$_coins', Icons.emoji_events_rounded, Colors.green),
+            _StatCard('Earned', '$coins', Icons.emoji_events_rounded, Colors.green),
             _StatCard('Spins Today', '$spins', Icons.casino_rounded, Colors.purple),
             _StatCard('Activity', '${activity.length}', Icons.history_rounded, Colors.blue),
           ],
