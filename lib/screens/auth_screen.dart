@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import '../core/app_theme.dart';
-import 'onboarding_screen.dart';
 import '../services/auth_service.dart';
 
 /// Premium light login screen: brand wordmark, big bear mascot (vector),

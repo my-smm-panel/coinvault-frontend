@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
+import '../widgets/cv_header.dart';
 import '../services/auth_service.dart';
 import '../services/app_repository.dart';
 import '../services/api_client.dart';
@@ -234,38 +235,6 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   }
 
   /// Orange header with back arrow + title (per design sheet).
-  Widget _header() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(8, 8, 14, 14),
-      decoration: const BoxDecoration(gradient: AppColors.brandHeader),
-      child: Row(
-        children: [
-          InkWell(
-            onTap: () => Navigator.pop(context),
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.18),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.arrow_back_rounded,
-                  color: Colors.white, size: 20),
-            ),
-          ),
-          const SizedBox(width: 12),
-          const Text(
-            'Withdraw Coins',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   /// White coin-balance card: big orange number + gold coin icon.
   Widget _balanceCard() {
@@ -484,7 +453,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         body: SafeArea(
           child: Column(
             children: [
-              _header(),
+              const CvHeader(),
               const Expanded(
                 child: Center(
                   child: CircularProgressIndicator(color: AppColors.primary),
@@ -505,7 +474,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _header(),
+              const CvHeader(),
               const SizedBox(height: AppSpacing.md),
               _balanceCard(),
               const SizedBox(height: AppSpacing.xl),

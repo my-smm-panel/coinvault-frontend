@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
+import '../widgets/cv_header.dart';
 import '../core/provider_logos.dart';
 import '../services/app_repository.dart';
 import '../services/auth_service.dart';
@@ -54,66 +55,12 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final user = AuthService().userModel;
     return Scaffold(
-      backgroundColor: AppColors.background,
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        centerTitle: false,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Earn Coins',
-                style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800)),
-            Text('Complete tasks, get rewards',
-                style: TextStyle(
-                    color: Colors.white54, fontSize: 11)),
-          ],
-        ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: AppColors.gold.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: AppColors.gold.withOpacity(0.4)),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.monetization_on_rounded,
-                    color: AppColors.gold, size: 15),
-                const SizedBox(width: 4),
-                Text('${user?.coins ?? 0}',
-                    style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800)),
-              ],
-            ),
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          indicatorColor: AppColors.primary,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textTertiary,
-          labelStyle: AppTextStyles.labelMedium,
-          unselectedLabelStyle: AppTextStyles.labelMedium,
-          indicatorSize: TabBarIndicatorSize.label,
-          indicatorWeight: 3,
-          tabs: const [
-            Tab(text: 'Tasks'),
-            Tab(text: 'Surveys'),
-            Tab(text: 'Offers'),
-            Tab(text: 'Gift Cards'),
-          ],
-        ),
+      appBar: const PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: CvHeader(),
       ),
+      backgroundColor: AppColors.background,
+      
       body: _loading
           ? const ShimmerCardList(rows: 6)
           : TabBarView(

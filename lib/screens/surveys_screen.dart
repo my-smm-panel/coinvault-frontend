@@ -8,6 +8,7 @@ import 'profile_screen.dart';
 import '../services/app_repository.dart';
 import '../services/auth_service.dart';
 import '../widgets/state_views.dart';
+import '../widgets/cv_header.dart';
 
 /// Surveys screen — light/white premium design.
 /// Header (title + subtitle + bell + avatar) → compact balance → search →
@@ -130,7 +131,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _header(),
+            const CvHeader(),
             _balanceRow(),
             const SizedBox(height: 12),
             _searchBar(),
@@ -180,63 +181,6 @@ class _SurveysScreenState extends State<SurveysScreen> {
   }
 
   // ─────────────────────────── SURVEY CARD ───────────────────────────
-  Widget _header() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text('Surveys',
-                  style: TextStyle(
-                      color: _primaryText,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700)),
-              SizedBox(height: 2),
-              Text('Share your opinion & earn coins',
-                  style: TextStyle(color: _secondaryText, fontSize: 12.5)),
-            ],
-          ),
-          const Spacer(),
-          InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const NotificationsScreen())),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: _card,
-                shape: BoxShape.circle,
-                border: Border.all(color: _border),
-              ),
-              child: const Icon(Icons.notifications_none_rounded,
-                  color: _primaryText, size: 20),
-            ),
-          ),
-          const SizedBox(width: 8),
-          InkWell(
-            borderRadius: BorderRadius.circular(20),
-            onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ProfileScreen())),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: _card,
-                shape: BoxShape.circle,
-                border: Border.all(color: _border),
-              ),
-              child: const Icon(Icons.person_outline_rounded,
-                  color: _primaryText, size: 20),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ─────────────────────────── BALANCE ───────────────────────────
   Widget _balanceRow() {

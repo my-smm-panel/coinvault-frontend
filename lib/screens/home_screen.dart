@@ -9,6 +9,7 @@ import '../models/app_models.dart';
 import 'earn_screen.dart';
 import 'spin_screen.dart';
 import '../widgets/home_banner_carousel.dart';
+import '../widgets/cv_header.dart';
 import 'scratch_screen.dart';
 import 'quiz_screen.dart';
 import 'surveys_screen.dart';
@@ -416,8 +417,8 @@ class _HomeTabState extends State<HomeTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _topBar(context, user),
-                  const SizedBox(height: 14),
+                  const CvHeader(),
+                  const SizedBox(height: 10),
                   HomeBannerCarousel(
                     slides: [
                       BannerSlide(
@@ -508,77 +509,6 @@ class _HomeTabState extends State<HomeTab> {
 
   // ───────────────────────────── Top bar ─────────────────────────────
   // CoinVault wordmark + coin balance pill + notification bell.
-  Widget _topBar(BuildContext context, UserModel? user) {
-    return Row(
-      children: [
-        RichText(
-          text: const TextSpan(
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              letterSpacing: -0.3,
-            ),
-            children: [
-              TextSpan(
-                  text: 'Coin',
-                  style: TextStyle(color: AppColors.primary)),
-              TextSpan(
-                  text: 'Vault',
-                  style: TextStyle(color: AppColors.textPrimary)),
-            ],
-          ),
-        ),
-        const Spacer(),
-        // Coin balance pill (design sheet: "2,450")
-        InkWell(
-          onTap: () => _push(context, const WithdrawScreen()),
-          borderRadius: BorderRadius.circular(AppRadius.full),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-            decoration: BoxDecoration(
-              color: AppColors.goldContainer,
-              borderRadius: BorderRadius.circular(AppRadius.full),
-              border: Border.all(color: AppColors.border),
-            ),
-            child: Row(
-              children: [
-                Image.asset('assets/coin.png',
-                    width: 18, height: 18,
-                    errorBuilder: (_, __, ___) => const Icon(
-                        Icons.monetization_on_rounded,
-                        color: AppColors.gold,
-                        size: 16)),
-                const SizedBox(width: 5),
-                Text(_fmt(user?.coins ?? 0),
-                    style: AppTextStyles.titleMedium.copyWith(
-                      color: AppColors.textPrimary,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                    )),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Notification bell
-        InkWell(
-          onTap: () => _push(context, const NotificationsScreen()),
-          borderRadius: BorderRadius.circular(AppRadius.full),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: AppColors.surfaceVariant,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.border),
-            ),
-            child: const Icon(Icons.notifications_none_rounded,
-                color: AppColors.textSecondary, size: 21),
-          ),
-        ),
-      ],
-    );
-  }
 
   // ─────────────── Today's Earnings + Daily Goal progress ─────────────
   Widget _earningsRow(BuildContext context) {

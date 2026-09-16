@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
 import '../services/auth_service.dart';
+import '../widgets/cv_header.dart';
 
 /// Ranks / Leaderboard — light premium design.
 /// Header, segmented period control, top-3 podium, My Rank card,
@@ -88,7 +89,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _header(),
+            const CvHeader(),
             _segmented(),
             Expanded(
               child: _loading
@@ -126,55 +127,6 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   }
 
   // ─────────────────────────── HEADER ───────────────────────────
-  Widget _header() {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text('Ranks',
-                  style: TextStyle(
-                      color: _primaryText,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700)),
-              SizedBox(height: 2),
-              Text('See how you compare with other earners',
-                  style: TextStyle(color: _secondaryText, fontSize: 12.5)),
-            ],
-          ),
-          const Spacer(),
-          InkWell(
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              width: 38,
-              height: 38,
-              decoration: BoxDecoration(
-                color: _card,
-                shape: BoxShape.circle,
-                border: Border.all(color: _border),
-              ),
-              child: const Icon(Icons.notifications_none_rounded,
-                  color: _primaryText, size: 20),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: const Color(0xFF8A5A3B),
-              shape: BoxShape.circle,
-              border: Border.all(color: _border),
-            ),
-            child: const Icon(Icons.face_rounded, color: Colors.white, size: 20),
-          ),
-        ],
-      ),
-    );
-  }
 
   // ─────────────────────────── SEGMENTED CONTROL ───────────────────────────
   Widget _segmented() {
