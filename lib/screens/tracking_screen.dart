@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
 import '../services/auth_service.dart';
@@ -30,13 +29,6 @@ class _TrackingScreenState extends State<TrackingScreen>
   int _activeReferrals = 0;
   int _referralCoins = 0;
   List<Map<String, dynamic>> _referralList = [];
-
-  // Stats
-  int _coins = 0;
-  int _totalEarned = 0;
-  int _totalWithdrawn = 0;
-  int _tasksDone = 0;
-  int _spins = 0;
 
   @override
   void initState() {
@@ -96,8 +88,7 @@ class _TrackingScreenState extends State<TrackingScreen>
       final u = auth.userModel;
       if (u != null) {
         _coins = u.coins;
-        _totalEarned = u.totalEarned;
-        _totalWithdrawn = u.totalWithdrawn;
+        _spins = u.dailySpinsUsed;
       }
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');
@@ -137,12 +128,9 @@ class _TrackingScreenState extends State<TrackingScreen>
                   child: TabBarView(
                     controller: _tabs,
                     children: [
-                      _ActivityTab(
+_ActivityTab(
                         activity: _activity,
                         coins: _coins,
-                        totalEarned: _totalEarned,
-                        totalWithdrawn: _totalWithdrawn,
-                        tasksDone: _tasksDone,
                         spins: _spins,
                       ),
                       _WithdrawalsTab(withdrawals: _withdrawals),
@@ -163,13 +151,10 @@ class _TrackingScreenState extends State<TrackingScreen>
 // =================== ACTIVITY TAB ===================
 class _ActivityTab extends StatelessWidget {
   final List<Map<String, dynamic>> activity;
-  final int coins, totalEarned, totalWithdrawn, tasksDone, spins;
+  final int coins, spins;
   const _ActivityTab({
     required this.activity,
     required this.coins,
-    required this.totalEarned,
-    required this.totalWithdrawn,
-    required this.tasksDone,
     required this.spins,
   });
 
@@ -188,9 +173,9 @@ class _ActivityTab extends StatelessWidget {
           childAspectRatio: 1.6,
           children: [
             _StatCard('Balance', '$coins', Icons.savings_rounded, AppColors.primary),
-            _StatCard('Total Earned', '$totalEarned', Icons.emoji_events_rounded, Colors.green),
-            _StatCard('Withdrawn', '₹${(totalWithdrawn / 10).toStringAsFixed(0)}', Icons.account_balance_wallet_rounded, Colors.blue),
-            _StatCard('Spins', '$spins', Icons.casino_rounded, Colors.purple),
+            _StatCard('Earned', '$_coins', Icons.emoji_events_rounded, Colors.green),
+            _StatCard('Spins Today', '$spins', Icons.casino_rounded, Colors.purple),
+            _StatCard('Activity', '${activity.length}', Icons.history_rounded, Colors.blue),
           ],
         ),
         const SizedBox(height: 18),
@@ -865,6 +850,8 @@ class _ErrorView extends StatelessWidget {
   }
 }
 
+String _mon(int m) => const ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][m];
+
 String _fmtDate(dynamic v) {
   if (v == null) return '';
   try {
@@ -882,7 +869,7 @@ String _fmtDate(dynamic v) {
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return DateFormat('dd MMM').format(dt);
+    return '${dt.day} ${_mon(dt.month)}';
   } catch (_) {
     return v.toString();
   }
