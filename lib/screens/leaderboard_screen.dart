@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
 import '../services/auth_service.dart';
-import '../widgets/state_views.dart';
 
-/// Leaderboard - kit dark style: coin header, CoinVault podium,
-/// your rank banner, Daily/Weekly/Monthly pills, letter-avatar rows.
+/// Ranks / Leaderboard — light premium design.
+/// Header → segmented period control → top-3 podium → "My Rank" card →
+ ranked list (current user highlighted) → Your Stats. Data from
+/// GET /api/leaderboard/:period (real, server-computed).
 class LeaderboardScreen extends StatefulWidget {
   const LeaderboardScreen({super.key});
 
@@ -15,23 +16,19 @@ class LeaderboardScreen extends StatefulWidget {
 }
 
 class _LeaderboardScreenState extends State<LeaderboardScreen> {
-  String _period = 'WEEKLY';
+  String _period = 'daily';
+  List<Map<String, dynamic>> _top = [];
+  Map<String, dynamic> _mine = {};
   bool _loading = true;
-  List<dynamic> _top = [];
-  int? _myRank;
-  int _myCoins = 0;
 
-  static const _bg = Color(0xFFF7F8FA);
-  static const _card = Color(0xFFFFFFFF);
-
-  static const _avatarColors = [
-    Color(0xFF3B82F6),
-    Color(0xFFF66B06),
-    Color(0xFF8B5CF6),
-    Color(0xFF16A34A),
-    Color(0xFFEC4899),
-    Color(0xFF14B8A6),
-  ];
+  static const Color _bg = Color(0xFFFAFAF8);
+  static const Color _card = Color(0xFFFFFFFF);
+  static const Color _border = Color(0xFFE7E7E7);
+  static const Color _primaryText = Color(0xFF171717);
+  static const Color _secondaryText = Color(0xFF6B7280);
+  static const Color _orange = Color(0xFFF59E0B);
+  static const Color _orange2 = Color(0xFFF7A928);
+  static const Color _brown = Color(0xFF5A3825);
 
   @override
   void initState() {
@@ -43,78 +40,84 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     setState(() => _loading = true);
     final data = await AppRepository.instance.fetchLeaderboard(_period);
     if (!mounted) return;
-    final top = data['top'];
     setState(() {
-      _top = top is List ? top : [];
-      _myRank = (data['myRank'] ?? data['my_rank']) as int?;
-      _myCoins = ((data['myCoins'] ?? data['my_coins'] ?? 0) as num).toInt();
       _loading = false;
+      final top = data['top'];
+      _top = top is List
+          ? top.map((e) => Map<String, dynamic>.from(e as Map)).toList()
+          : [];
+      _mine = (data['my'] is Map)
+          ? Map<String, dynamic>.from(data['my'] as Map)
+          : {};
     });
   }
 
-  String _name(Map m) {
-    final u = m['user'];
+  String _periodLabel() {
+    switch (_period) {
+      case 'weekly':
+        return 'this week';
+      case 'monthly':
+        return 'this month';
+      default:
+        return 'today';
+    }
+  }
+
+  String _name(Map e) {
+    final u = e['user'];
     if (u is Map) {
-      final n = (u['name'] ?? '').toString();
+      final n = (u['name'] ?? '').toString().trim();
       if (n.isNotEmpty) return n;
-      final p = (u['phone'] ?? '').toString();
-      if (p.length >= 4) return 'User ${p.substring(p.length - 4)}';
+      final p = (u['phone'] ?? '').toString().trim();
+      if (p.length >= 10) return 'User ${p.substring(p.length - 4)}';
     }
     return 'User';
   }
 
+  String? _avatar(Map e) {
+    final u = e['user'];
+    return (u is Map) ? u['avatar']?.toString() : null;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final walletCoins = AuthService().userModel?.coins ?? _myCoins;
+    final uid = AuthService().userModel?.uid;
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _header(walletCoins),
-            _periodRow(),
-            if (_myRank != null) _myRankBanner(),
+            _header(),
+            _segmented(),
             Expanded(
               child: _loading
-                  ? const ShimmerCardList(
-                      rows: 6,
-                      padding: EdgeInsets.fromLTRB(14, 10, 14, 20),
-                    )
-                  : _top.isEmpty
-                      ? const Center(
-                          child: Text(
-                            'No rankings yet. Complete tasks to climb!',
-                            style: TextStyle(
-                                color: Colors.white54, fontSize: 14),
-                          ),
-                        )
-                      : RefreshIndicator(
-                          color: AppColors.primary,
-                          backgroundColor: _card,
-                          onRefresh: _load,
-                          child: ListView(
-                            padding:
-                                const EdgeInsets.fromLTRB(14, 10, 14, 20),
-                            children: [
-                              if (_top.length >= 3) _podium(),
-                              if (_top.length >= 3)
-                                const SizedBox(height: 12),
-                              ..._top
-                                  .skip(_top.length >= 3 ? 3 : 0)
-                                  .map((e) {
-                                final m =
-                                    Map<String, dynamic>.from(
-                                        e as Map);
-                                return _row(
-                                  m['rank'] as int? ?? 0,
-                                  _name(m),
-                                  ((m['coinsEarned'] ?? 0) as num)
-                                      .toInt(),
-                                );
-                              }),
-                            ],
-                          ),
-                        ),
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                          color: _orange, strokeWidth: 2.5))
+                  : RefreshIndicator(
+                      color: _orange,
+                      backgroundColor: _card,
+                      onRefresh: _load,
+                      child: ListView(
+                        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                        children: [
+                          if (_top.isNotEmpty) ...[
+                            _podium(),
+                            const SizedBox(height: 16),
+                            _myRankCard(),
+                            const SizedBox(height: 18),
+                          ],
+                          _listTitle(),
+                          const SizedBox(height: 8),
+                          ..._rankRows(uid),
+                          if (_top.isNotEmpty) ...[
+                            const SizedBox(height: 20),
+                            _statsSection(),
+                          ],
+                        ],
+                      ),
+                    ),
             ),
           ],
         ),
@@ -122,325 +125,482 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     );
   }
 
-  /// Purple header: back + coins pill + COINVAULT LEADERBOARD.
-  Widget _header(int walletCoins) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFFF66B06), Color(0xFFB34700)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Column(
+  // ─────────────────────────── HEADER ───────────────────────────
+  Widget _header() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Row(
-            children: [
-              InkWell(
-                onTap: () => Navigator.pop(context),
-                borderRadius: BorderRadius.circular(10),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.textPrimary.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.arrow_back_rounded,
-                      color: AppColors.textPrimary, size: 20),
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.3),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: AppColors.gold.withOpacity(0.5)),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.monetization_on_rounded,
-                        color: AppColors.gold, size: 18),
-                    const SizedBox(width: 6),
-                    Text('$walletCoins',
-                        style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800)),
-                  ],
-                ),
-              ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text('Ranks',
+                  style: TextStyle(
+                      color: _primaryText,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700)),
+              SizedBox(height: 2),
+              Text('See how you compare with other earners',
+                  style: TextStyle(color: _secondaryText, fontSize: 12.5)),
             ],
           ),
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(
-                horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFF66B06), Color(0xFFB34700)],
+          const Spacer(),
+          InkWell(
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: _card,
+                shape: BoxShape.circle,
+                border: Border.all(color: _border),
               ),
-              borderRadius: BorderRadius.circular(12),
+              child: const Icon(Icons.notifications_none_rounded,
+                  color: _primaryText, size: 20),
             ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(16),
-                  child: Image.asset(
-                    'assets/app_icon.jpg',
-                    width: 32,
-                    height: 32,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) =>
-                        const SizedBox.shrink(),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text('COINVAULT LEADERBOARD',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 0.5)),
-              ],
+          ),
+          const SizedBox(width: 8),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: const Color(0xFF8A5A3B),
+              shape: BoxShape.circle,
+              border: Border.all(color: _border),
             ),
+            child: const Icon(Icons.face_rounded, color: Colors.white, size: 20),
           ),
         ],
       ),
     );
   }
 
-  Widget _periodRow() {
-    const periods = ['DAILY', 'WEEKLY', 'MONTHLY'];
+  // ─────────────────────────── SEGMENTED CONTROL ───────────────────────────
+  Widget _segmented() {
+    const tabs = ['daily', 'weekly', 'monthly'];
     const labels = ['Daily', 'Weekly', 'Monthly'];
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 12, 14, 0),
-      child: Row(
-        children: List.generate(periods.length, (i) {
-          final active = _period == periods[i];
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: InkWell(
-              onTap: () {
-                setState(() => _period = periods[i]);
-                _load();
-              },
-              borderRadius: BorderRadius.circular(20),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 20, vertical: 8),
-                decoration: BoxDecoration(
-                  color: active ? AppColors.primary : _card,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                      color: active
-                          ? AppColors.primary
-                          : Colors.white12),
-                ),
-                child: Text(labels[i],
-                    style: TextStyle(
-                        color: active
-                            ? Colors.white
-                            : Colors.white60,
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 8),
+      child: Container(
+        height: 40,
+        decoration: BoxDecoration(
+          color: const Color(0xFFF1F1F4),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: List.generate(3, (i) {
+            final active = _period == tabs[i];
+            return Expanded(
+              child: GestureDetector(
+                onTap: () {
+                  if (!active) {
+                    setState(() => _period = tabs[i]);
+                    _load();
+                  }
+                },
+                child: Container(
+                  margin: const EdgeInsets.all(3),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: active ? _orange : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(labels[i],
+                      style: TextStyle(
+                        color: active ? Colors.white : _secondaryText,
                         fontSize: 13,
-                        fontWeight: FontWeight.w700)),
+                        fontWeight: FontWeight.w700,
+                      )),
+                ),
               ),
-            ),
-          );
-        }),
+            );
+          }),
+        ),
       ),
     );
   }
 
-  Widget _myRankBanner() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-      padding: const EdgeInsets.symmetric(
-          horizontal: 14, vertical: 11),
-      decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.emoji_events_rounded,
-              color: AppColors.textPrimary, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Your Rank #$_myRank • $_myCoins coins',
-              style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  // ─────────────────────────── PODIUM (top 3) ───────────────────────────
   Widget _podium() {
-    final first = Map<String, dynamic>.from(_top[0] as Map);
-    final second = _top.length > 1
-        ? Map<String, dynamic>.from(_top[1] as Map)
-        : null;
-    final third = _top.length > 2
-        ? Map<String, dynamic>.from(_top[2] as Map)
-        : null;
+    // order: #2 left, #1 center (elevated), #3 right
+    final first = _top[0];
+    final second = _top.length > 1 ? _top[1] : null;
+    final third = _top.length > 2 ? _top[2] : null;
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+      padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFF66B06), Color(0xFFB34700)],
-        ),
+        color: _card,
         borderRadius: BorderRadius.circular(16),
-        border:
-            Border.all(color: AppColors.gold.withOpacity(0.4)),
+        border: Border.all(color: _border),
+        boxShadow: const [
+          BoxShadow(color: Color(0x0F000000), blurRadius: 8, offset: Offset(0, 2)),
+        ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          if (second != null)
-            _podiumUser(second, 2, Colors.white.withOpacity(0.7)),
-          _podiumUser(first, 1, AppColors.gold),
-          if (third != null)
-            _podiumUser(third, 3, Colors.white.withOpacity(0.5)),
+          _podiumSlot(second, 2, false, height: 96),
+          _podiumSlot(first, 1, true, height: 116),
+          _podiumSlot(third, 3, false, height: 96),
         ],
       ),
     );
   }
 
-  Widget _podiumUser(Map m, int rank, Color ring) {
-    final name = _name(m);
-    final coins = ((m['coinsEarned'] ?? 0) as num).toInt();
+  Widget _podiumSlot(Map? e, int rank, bool gold, {required double height}) {
+    final name = e != null ? _name(e) : '—';
+    final coins = e != null ? ((e['coinsEarned'] ?? 0) as num).toInt() : 0;
+    final avatar = e != null ? _avatar(e) : null;
+    final d = 52.0 + (gold ? 12 : 0);
     return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        if (rank == 1)
+        // crown for #1
+        if (gold)
           const Icon(Icons.emoji_events_rounded,
-              color: AppColors.gold, size: 26),
+              color: _orange, size: 22)
+        else
+          const SizedBox(height: 22),
         const SizedBox(height: 4),
         Container(
-          padding: const EdgeInsets.all(3),
-          decoration:
-              BoxDecoration(shape: BoxShape.circle, color: ring),
-          child: CircleAvatar(
-            radius: rank == 1 ? 30 : 25,
-            backgroundColor: const Color(0xFFF5F6F8),
-            child: Text(
-              name.substring(0, 1).toUpperCase(),
-              style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 22),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 10, vertical: 3),
+          width: d,
+          height: d,
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.35),
-            borderRadius: BorderRadius.circular(12),
+            shape: BoxShape.circle,
+            color: gold ? const Color(0xFFFFF7E6) : const Color(0xFFF1F1F4),
+            border: Border.all(
+                color: gold ? _orange : _border, width: gold ? 2.2 : 1),
           ),
-          child: Text('#$rank',
-              style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 12)),
+          child: avatar != null && avatar.isNotEmpty
+              ? ClipOval(
+                  child: Image.network(avatar, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _initials(name, gold)))
+              : _initials(name, gold),
         ),
+        const SizedBox(height: 7),
+        Text(name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(
+                color: _primaryText, fontSize: 12.5, fontWeight: FontWeight.w700)),
         const SizedBox(height: 2),
-        SizedBox(
-          width: 90,
-          child: Text(name,
-              textAlign: TextAlign.center,
-              style:
-                  const TextStyle(color: AppColors.textPrimary, fontSize: 12),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis),
-        ),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.monetization_on_rounded,
-                size: 13, color: AppColors.gold),
-            const SizedBox(width: 2),
-            Text('$coins',
-                style: const TextStyle(
-                    color: AppColors.gold,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13)),
-          ],
+        Text('${_fmt(coins)} Coins',
+            style: TextStyle(
+                color: gold ? _brown : _secondaryText,
+                fontSize: 11.5,
+                fontWeight: FontWeight.w700)),
+        const SizedBox(height: 8),
+        // pedestal
+        Container(
+          height: height * 0.26,
+          width: 64,
+          decoration: BoxDecoration(
+            color: gold
+                ? const Color(0xFFFDEBC8)
+                : const Color(0xFFF1F1F4),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          alignment: Alignment.center,
+          child: Text('#$rank',
+              style: TextStyle(
+                  color: gold ? _brown : _secondaryText,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w800)),
         ),
       ],
     );
   }
 
-  Widget _row(int rank, String name, int coins) {
-    final color = _avatarColors[rank % _avatarColors.length];
+  Widget _initials(String name, bool gold) {
+    final parts = name.trim().split(' ');
+    final ini = parts.isNotEmpty && parts.first.isNotEmpty
+        ? parts.first[0].toUpperCase()
+        : '?';
+    return Center(
+      child: Text(ini,
+          style: TextStyle(
+            color: gold ? _brown : _secondaryText,
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+          )),
+    );
+  }
+
+  // ─────────────────────────── MY RANK CARD ───────────────────────────
+  Widget _myRankCard() {
+    final rank = (_mine['rank'] as num?)?.toInt();
+    final coins = (_mine['coinsEarned'] as num?)?.toInt() ?? 0;
+    if (rank == null) {
+      return Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFFF7E6),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFF3E3C2)),
+        ),
+        child: const Text(
+            'Complete a task to enter the leaderboard.',
+            style: TextStyle(color: _secondaryText, fontSize: 13)),
+      );
+    }
+    // progress to next rank: rough position indicator (rank vs 100)
+    final pct = (100 - rank).clamp(0, 100) / 100;
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7E6),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFF3E3C2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('My Rank',
+                  style: TextStyle(
+                      color: _secondaryText,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700)),
+              const Spacer(),
+              Text('#$rank',
+                  style: const TextStyle(
+                      color: _brown,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text('${_fmt(coins)} Coins ${_periodLabel()}',
+              style: const TextStyle(
+                  color: _primaryText, fontSize: 13, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 9),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 6,
+              backgroundColor: const Color(0xFFEFE4CD),
+              color: _orange,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text('Climbing the ranks — keep earning!',
+              style: TextStyle(color: _secondaryText, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────── LIST ───────────────────────────
+  Widget _listTitle() {
+    return const Text('Leaderboard',
+        style: TextStyle(
+            color: _primaryText, fontSize: 16, fontWeight: FontWeight.w800));
+  }
+
+  List<Widget> _rankRows(String? uid) {
+    if (_top.isEmpty) {
+      return [
+        const Padding(
+          padding: EdgeInsets.only(top: 40),
+          child: Center(
+            child: Text('No rankings yet for this period.',
+                style: TextStyle(color: _secondaryText, fontSize: 13)),
+          ),
+        ),
+      ];
+    }
+    // start list from rank 4 (podium shows 1-3)
+    final rest = _top.where((e) => ((e['rank'] ?? 0) as num).toInt() >= 4).toList();
+    return rest.map((e) {
+      final rank = ((e['rank'] ?? 0) as num).toInt();
+      final coins = ((e['coinsEarned'] ?? 0) as num).toInt();
+      final name = _name(e);
+      final avatar = _avatar(e);
+      final isMe = e['userId']?.toString() == uid;
+      return _rankRow(
+        rank: rank,
+        name: name,
+        coins: coins,
+        avatar: avatar,
+        isMe: isMe,
+      );
+    }).toList();
+  }
+
+  Widget _rankRow({
+    required int rank,
+    required String name,
+    required int coins,
+    String? avatar,
+    bool isMe = false,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8, top: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
+        color: isMe ? const Color(0xFFFFF7E6) : _card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+            color: isMe ? const Color(0xFFF3D9A8) : _border, width: 1),
       ),
       child: Row(
         children: [
           SizedBox(
             width: 34,
             child: Text('#$rank',
-                style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14)),
-          ),
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: color.withOpacity(0.2),
-            child: Text(
-              name.isEmpty ? 'U' : name.substring(0, 1).toUpperCase(),
-              style: TextStyle(
-                  color: color, fontWeight: FontWeight.w800),
-            ),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                    color: isMe ? _brown : _secondaryText,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800)),
           ),
           const SizedBox(width: 10),
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F1F4),
+              shape: BoxShape.circle,
+            ),
+            child: avatar != null && avatar.isNotEmpty
+                ? ClipOval(
+                    child: Image.network(avatar, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _initials(name, false)))
+                : _initials(name, false),
+          ),
+          const SizedBox(width: 11),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(name,
-                    style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                Text('$coins coins',
-                    style: const TextStyle(
-                        color: Colors.white54, fontSize: 11)),
+                Flexible(
+                  child: Text(name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          color: _primaryText,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600)),
+                ),
+                if (isMe) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _orange,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text('You',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800)),
+                  ),
+                ],
               ],
             ),
           ),
-          const Icon(Icons.monetization_on_rounded,
-              size: 16, color: AppColors.gold),
-          const SizedBox(width: 4),
-          Text('$coins',
+          Text('${_fmt(coins)}',
               style: const TextStyle(
-                  color: AppColors.gold,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 14)),
+                  color: _brown, fontSize: 13.5, fontWeight: FontWeight.w800)),
+          const SizedBox(width: 4),
+          const Icon(Icons.monetization_on_rounded,
+              color: _orange, size: 15),
         ],
       ),
     );
+  }
+
+  // ─────────────────────────── YOUR STATS ───────────────────────────
+  Widget _statsSection() {
+    final myTasks = _top
+        .where((e) => e['userId']?.toString() == AuthService().userModel?.uid)
+        .fold<int>(0, (a, e) => a + ((e['tasksCompleted'] ?? 0) as num).toInt());
+    final coins = (_mine['coinsEarned'] as num?)?.toInt() ?? 0;
+    final uid = AuthService().userModel?.uid;
+    final mine = _top.firstWhere(
+      (e) => e['userId']?.toString() == uid,
+      orElse: () => {},
+    );
+    final surveys = (mine['tasksCompleted'] as num?)?.toInt() ?? 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Your Stats',
+            style: TextStyle(
+                color: _primaryText, fontSize: 16, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            _statCard('Coins Earned', _fmt(coins), Icons.savings_rounded,
+                const Color(0xFFF59E0B)),
+            const SizedBox(width: 10),
+            _statCard('Tasks Completed', '$myTasks', Icons.task_alt_rounded,
+                const Color(0xFF16A34A)),
+            const SizedBox(width: 10),
+            _statCard('Surveys', '$surveys', Icons.poll_rounded,
+                const Color(0xFF3B82F6)),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _statCard(String label, String value, IconData icon, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        decoration: BoxDecoration(
+          color: _card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _border),
+          boxShadow: const [
+            BoxShadow(
+                color: Color(0x0F000000), blurRadius: 6, offset: Offset(0, 2)),
+          ],
+        ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(7),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 19),
+            ),
+            const SizedBox(height: 9),
+            Text(value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                    color: _primaryText,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800)),
+            const SizedBox(height: 3),
+            Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    color: _secondaryText, fontSize: 10.5)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _fmt(int n) {
+    final str = n.abs().toString();
+    final sb = StringBuffer();
+    for (var i = 0; i < str.length; i++) {
+      if (i > 0 && (str.length - i) % 3 == 0) sb.write(',');
+      sb.write(str[i]);
+    }
+    return n.isNegative ? '-$sb' : sb.toString();
   }
 }
