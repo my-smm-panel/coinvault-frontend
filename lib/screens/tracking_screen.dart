@@ -30,6 +30,10 @@ class _TrackingScreenState extends State<TrackingScreen>
   int _referralCoins = 0;
   List<Map<String, dynamic>> _referralList = [];
 
+  // Stats
+  int _coins = 0;
+  int _spins = 0;
+
   @override
   void initState() {
     super.initState();
