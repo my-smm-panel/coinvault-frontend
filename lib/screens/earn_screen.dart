@@ -45,9 +45,8 @@ class _EarnScreenState extends State<EarnScreen> {
   bool _failed = false;
   int _today = 0;
   int _pending = 0;
+  int _completed = 0;
   String _category = 'All';
-  String _query = '';
-  final TextEditingController _search = TextEditingController();
 
   static const List<String> _cats = [
     'All', 'Surveys', 'Tasks', 'Offers', 'Quizzes', 'Quick Earn',
@@ -142,6 +141,9 @@ class _EarnScreenState extends State<EarnScreen> {
           ?.where((o) => ((o as Map)['status'] ?? '').toString() == 'PENDING')
           .fold<int>(0, (s, o) => s + (((o['coins'] ?? 0) as num).toInt())) ??
           0;
+      _completed = activity
+          .where((raw) => raw is Map && (raw['status'] ?? '') == 'COMPLETED')
+          .length;
       _loading = false;
     });
   }
@@ -172,15 +174,11 @@ class _EarnScreenState extends State<EarnScreen> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              const SliverToBoxAdapter(child: CvHeader(showProfile: true)),
+              const SliverToBoxAdapter(child: CvHeader()),
 
-              // title + balance pill
-              SliverToBoxAdapter(child: _titleRow(coins)),
-              const SliverToBoxAdapter(child: SizedBox(height: 12)),
-
-              // search
-              SliverToBoxAdapter(child: _searchField()),
-              const SliverToBoxAdapter(child: SizedBox(height: 12)),
+              // title (no balance pill, no search bar — per spec)
+              SliverToBoxAdapter(child: _titleRow()),
+              const SliverToBoxAdapter(child: SizedBox(height: 14)),
 
               // category tabs
               SliverToBoxAdapter(child: _categoryTabs()),
@@ -199,7 +197,7 @@ class _EarnScreenState extends State<EarnScreen> {
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: ErrorState(
-                    message: 'Something went wrong',
+                    message: 'Unable to load activities',
                     onRetry: _load,
                   ),
                 )
@@ -267,137 +265,21 @@ class _EarnScreenState extends State<EarnScreen> {
   }
 
   // ───────────────────────── title + balance ─────────────────────────────
-  Widget _titleRow(int coins) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text('Earn Coins',
-                    style: TextStyle(
-                        fontSize: 24, fontWeight: FontWeight.w800, color: _text)),
-                SizedBox(height: 2),
-                Text('Choose an activity and start earning',
-                    style: TextStyle(fontSize: 13, color: _sub)),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFF7E6),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFF3E3C2)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.monetization_on_rounded,
-                    color: _primary, size: 16),
-                const SizedBox(width: 5),
-                Text('${_fmt(coins)} Coins',
-                    style: const TextStyle(
-                        fontSize: 12.5, fontWeight: FontWeight.w800, color: _text)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ───────────────────────── search ───────────────────────────────────────
-  Widget _searchField() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        height: 46,
-        decoration: BoxDecoration(
-          color: _card,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _border),
-        ),
-        child: Row(
+  Widget _titleRow() {
+    return const Padding(
+      padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(width: 12),
-            const Icon(Icons.search_rounded, color: _sub, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextField(
-                controller: _search,
-                style: const TextStyle(fontSize: 14, color: _text),
-                decoration: const InputDecoration(
-                  hintText: 'Search surveys, tasks & offers',
-                  hintStyle: TextStyle(fontSize: 13.5, color: _sub),
-                  border: InputBorder.none,
-                  isDense: true,
-                  contentPadding: EdgeInsets.zero,
-                ),
-                onChanged: (v) => setState(() => _query = v),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.tune_rounded, color: _sub, size: 19),
-              onPressed: () => _showFilters(),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-            const SizedBox(width: 10),
+            Text('Earn Coins',
+                style: TextStyle(
+                    fontSize: 24, fontWeight: FontWeight.w800, color: _text)),
+            SizedBox(height: 2),
+            Text('Choose an activity and start earning',
+                style: TextStyle(fontSize: 13, color: _sub)),
           ],
-        ),
-      ),
-    );
-  }
-
-  void _showFilters() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: _card,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Filter activities',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _cats.map((c) {
-                  final on = _category == c;
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() => _category = c);
-                      Navigator.pop(ctx);
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: on ? _primary : const Color(0xFFF3F3F1),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: on ? _primary : _border),
-                      ),
-                      child: Text(c,
-                          style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                              color: on ? Colors.white : _sub)),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
         ),
       ),
     );
@@ -471,9 +353,9 @@ class _EarnScreenState extends State<EarnScreen> {
               children: [
                 Expanded(child: _stat('Today', '$_today', 'Coins')),
                 Container(width: 1, height: 34, color: _border),
-                Expanded(child: _stat('Available', _fmt(coins), 'Coins')),
-                Container(width: 1, height: 34, color: _border),
                 Expanded(child: _stat('Pending', _fmt(_pending), 'Coins')),
+                Container(width: 1, height: 34, color: _border),
+                Expanded(child: _stat('Completed', '$_completed', 'Tasks')),
               ],
             ),
           ],
@@ -627,18 +509,14 @@ class _EarnScreenState extends State<EarnScreen> {
   }
 
   List<dynamic> _filteredSurveys() {
-    var list = _surveys;
-    final q = _query.trim().toLowerCase();
-    if (q.isNotEmpty) {
-      list = list.where((raw) {
-        final s = raw as Map;
-        return ((s['title'] ?? '') + (s['provider'] ?? ''))
-            .toString()
-            .toLowerCase()
-            .contains(q);
-      }).toList();
+    // Filter by real provider identifier (not visual hiding).
+    if (_category == 'Surveys') return List.of(_surveys);
+    if (_category == 'Tasks' || _category == 'Offers' || _category == 'Quick Earn') {
+      return _surveys
+          .where((raw) => (raw as Map)['type']?.toString() == _category.toUpperCase())
+          .toList();
     }
-    return list;
+    return _surveys;
   }
 
   Widget _surveyCard(Map raw) {
@@ -652,15 +530,7 @@ class _EarnScreenState extends State<EarnScreen> {
       decoration: _cardDec(),
       child: Row(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(Icons.poll_rounded, color: color, size: 22),
-          ),
+          ProviderLogo(provider, size: 44, radius: 12),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -1117,15 +987,7 @@ class _EarnScreenState extends State<EarnScreen> {
           ),
           child: Row(
             children: [
-              Container(
-                width: 46,
-                height: 46,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(Icons.emergency_rounded, color: color, size: 22),
-              ),
+              ProviderLogo(h['provider'] as String, size: 46, radius: 12),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(

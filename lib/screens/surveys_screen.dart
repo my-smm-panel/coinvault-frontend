@@ -1,12 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
-import 'notifications_screen.dart';
-import 'profile_screen.dart';
 import '../services/app_repository.dart';
-import '../services/auth_service.dart';
 import '../widgets/state_views.dart';
 import '../widgets/cv_header.dart';
 
@@ -29,8 +25,6 @@ class _SurveysScreenState extends State<SurveysScreen> {
   List<dynamic> _surveys = [];
   bool _loading = true;
   bool _failed = false;
-  final TextEditingController _search = TextEditingController();
-  String _query = '';
 
   static const Color _bg = Color(0xFFFAFAF8);
   static const Color _card = Color(0xFFFFFFFF);
@@ -42,6 +36,9 @@ class _SurveysScreenState extends State<SurveysScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialProvider != null) {
+      _filter = widget.initialProvider!;
+    }
     _load();
   }
 
@@ -62,16 +59,27 @@ class _SurveysScreenState extends State<SurveysScreen> {
     });
   }
 
+  /// Providers available in the fetched data (dynamic, never hardcoded).
+  List<String> get _providers => _surveys
+      .map((s) => (s['provider'] ?? '').toString())
+      .where((p) => p.isNotEmpty)
+      .toSet()
+      .toList();
+
+  /// Filter by the ACTUAL provider identifier field, not visual hiding.
   List<dynamic> get _filtered {
     var list = _surveys;
     if (_filter != 'All') {
-      // Soft filter by duration / reward heuristics.
       list = list.where((raw) {
         final s = raw as Map;
+        if (_providers.contains(_filter)) {
+          return (s['provider'] ?? '').toString() == _filter;
+        }
+        // heuristic chips
         final coins = ((s['coins'] ?? 0) as num).toInt();
         final dur = (s['duration'] ?? '').toString();
-        final mins = int.tryParse(RegExp(r'(\d+)').firstMatch(dur)?.group(1) ??
-                '') ??
+        final mins = int.tryParse(
+                RegExp(r'(\d+)').firstMatch(dur)?.group(1) ?? '') ??
             99;
         switch (_filter) {
           case 'Quick':
@@ -85,16 +93,6 @@ class _SurveysScreenState extends State<SurveysScreen> {
           default:
             return true;
         }
-      }).toList();
-    }
-    if (_query.trim().isNotEmpty) {
-      final q = _query.trim().toLowerCase();
-      list = list.where((raw) {
-        final s = raw as Map;
-        return ((s['title'] ?? '') + (s['provider'] ?? ''))
-            .toString()
-            .toLowerCase()
-            .contains(q);
       }).toList();
     }
     return list;
@@ -136,9 +134,6 @@ class _SurveysScreenState extends State<SurveysScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               const SliverToBoxAdapter(child: CvHeader()),
-              SliverToBoxAdapter(child: _balanceRow()),
-              const SliverToBoxAdapter(child: SizedBox(height: 12)),
-              SliverToBoxAdapter(child: _searchBar()),
               const SliverToBoxAdapter(child: SizedBox(height: 12)),
               SliverToBoxAdapter(child: _filterChips()),
               const SliverToBoxAdapter(child: SizedBox(height: 6)),
@@ -157,13 +152,16 @@ class _SurveysScreenState extends State<SurveysScreen> {
                   ),
                 )
               else if (list.isEmpty)
-                const SliverFillRemaining(
+                SliverFillRemaining(
                   hasScrollBody: false,
                   child: EmptyState(
                     icon: Icons.assignment_outlined,
-                    title: 'No surveys here yet',
-                    subtitle:
-                        'New surveys are added daily — check back soon.',
+                    title: _filter != 'All'
+                        ? 'No surveys available'
+                        : 'No surveys here yet',
+                    subtitle: _filter != 'All'
+                        ? 'For ${_filter} right now.'
+                        : 'New surveys are added daily — check back soon.',
                   ),
                 )
               else
@@ -191,93 +189,14 @@ class _SurveysScreenState extends State<SurveysScreen> {
 
   // ─────────────────────────── SURVEY CARD ───────────────────────────
 
-  // ─────────────────────────── BALANCE ───────────────────────────
-  Widget _balanceRow() {
-    final coins = AuthService().userModel?.coins ?? 0;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFF7E6),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFF3E3C2)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.monetization_on_rounded,
-                color: _orange, size: 18),
-            const SizedBox(width: 6),
-            Text('${_fmt(coins)} Coins',
-                style: const TextStyle(
-                    color: _primaryText,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800)),
-            const SizedBox(width: 8),
-            Text('₹${(coins / 10).toStringAsFixed(0)}',
-                style: const TextStyle(
-                    color: _secondaryText,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─────────────────────────── SEARCH ───────────────────────────
-  Widget _searchBar() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        height: 46,
-        decoration: BoxDecoration(
-          color: _card,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _border),
-        ),
-        child: Row(
-          children: [
-            const SizedBox(width: 12),
-            const Icon(Icons.search_rounded, color: _secondaryText, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: TextField(
-                controller: _search,
-                onChanged: (v) => setState(() => _query = v),
-                style: const TextStyle(color: _primaryText, fontSize: 14),
-                decoration: const InputDecoration(
-                  isCollapsed: true,
-                  border: InputBorder.none,
-                  hintText: 'Search surveys',
-                  hintStyle: TextStyle(color: _secondaryText, fontSize: 14),
-                ),
-              ),
-            ),
-            if (_query.isNotEmpty)
-              GestureDetector(
-                onTap: () {
-                  _search.clear();
-                  setState(() => _query = '');
-                },
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 12),
-                  child: Icon(Icons.close_rounded,
-                      color: _secondaryText, size: 18),
-                ),
-              )
-            else
-              const SizedBox(width: 12),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ─────────────────────────── FILTERS ───────────────────────────
   Widget _filterChips() {
-    const chips = ['All', 'Quick', 'High Reward', 'Short', 'New'];
+    // Real providers first (dynamic from data), then heuristic chips.
+    final chips = <String>[
+      'All',
+      ..._providers,
+      if (_providers.isEmpty) ...['Quick', 'High Reward', 'Short', 'New'],
+    ];
     return SizedBox(
       height: 36,
       child: ListView.separated(

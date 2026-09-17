@@ -10,6 +10,7 @@ import '../widgets/cv_header.dart';
 import '../widgets/home_banner_carousel.dart';
 import 'earn_screen.dart';
 import 'task_detail_screen.dart';
+import '../core/provider_logos.dart';
 import 'invite_screen.dart';
 import 'leaderboard_screen.dart';
 import 'missions_screen.dart';
@@ -392,17 +393,31 @@ class _HomeTabState extends State<HomeTab> {
                   const SizedBox(height: 18),
                   _todayEarningsCard(context),
                   const SizedBox(height: 20),
+                  _sectionTitle('Tasks of the Day',
+                      action: 'View All',
+                      onAction: () => _push(context, const EarnScreen())),
+                  const SizedBox(height: 10),
+                  _loadingHome ? _skeletonH() : _tasksRow(context),
+                  const SizedBox(height: 20),
                   _sectionTitle('Featured Surveys',
                       action: 'View All',
                       onAction: () => _push(context, const SurveysScreen())),
                   const SizedBox(height: 10),
                   _loadingHome ? _skeletonH() : _surveyRow(context),
                   const SizedBox(height: 20),
-                  _sectionTitle('Tasks of the Day',
+                  _sectionTitle('Quick Earn'),
+                  const SizedBox(height: 10),
+                  _quickEarn(context),
+                  const SizedBox(height: 20),
+                  _sectionTitle('High-Paying Tasks',
                       action: 'View All',
                       onAction: () => _push(context, const EarnScreen())),
                   const SizedBox(height: 10),
-                  _loadingHome ? _skeletonH() : _tasksRow(context),
+                  _highPayingList(context),
+                  const SizedBox(height: 20),
+                  _sectionTitle('Limited-Time Offers'),
+                  const SizedBox(height: 10),
+                  _limitedOffers(context),
                   const SizedBox(height: 20),
                   _sectionTitle('Offer of the Day'),
                   const SizedBox(height: 10),
@@ -431,10 +446,6 @@ class _HomeTabState extends State<HomeTab> {
                   _missionsRow(context),
                   const SizedBox(height: 20),
                   _inviteCard(context),
-                  const SizedBox(height: 20),
-                  _sectionTitle('Limited-Time Offers'),
-                  const SizedBox(height: 10),
-                  _limitedOffers(context),
                   const SizedBox(height: 20),
                   _sectionTitle('Top Earners',
                       action: 'View Full Rankings',
@@ -524,21 +535,26 @@ class _HomeTabState extends State<HomeTab> {
   Widget _balanceSummary(BuildContext context, int coins) {
     final earned = _todayEarned();
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
+          flex: 3,
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: _cardDec(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Row(
                   children: [
-                    const Text('Your Balance',
-                        style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 11.5,
-                            fontWeight: FontWeight.w600)),
+                    const Flexible(
+                      child: Text('Your Balance',
+                          style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600)),
+                    ),
                     const Spacer(),
                     GestureDetector(
                       onTap: () => _push(context, const WithdrawScreen()),
@@ -558,44 +574,46 @@ class _HomeTabState extends State<HomeTab> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 6),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.baseline,
-                  textBaseline: TextBaseline.alphabetic,
+                const SizedBox(height: 8),
+                // Balance value — wraps naturally, never clips or overlaps.
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 5,
+                  runSpacing: 4,
                   children: [
                     const Icon(Icons.monetization_on_rounded,
-                        color: AppColors.primary, size: 20),
-                    const SizedBox(width: 5),
+                        color: AppColors.primary, size: 22),
                     Text(_fmt(coins),
                         style: GoogleFonts.inter(
-                          fontSize: 22,
+                          fontSize: 24,
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
                           height: 1.1,
                         )),
-                    const SizedBox(width: 5),
                     const Text('Coins',
                         style: TextStyle(
                             color: AppColors.textSecondary,
-                            fontSize: 11.5,
+                            fontSize: 12,
                             fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 8),
-                    Text('≈ ₹${(coins / 10).toStringAsFixed(0)}',
-                        style: const TextStyle(
-                            color: AppColors.textSecondary, fontSize: 11.5)),
                   ],
                 ),
+                const SizedBox(height: 4),
+                Text('≈ ₹${(coins / 10).toStringAsFixed(0)}',
+                    style: const TextStyle(
+                        color: AppColors.textSecondary, fontSize: 11.5)),
               ],
             ),
           ),
         ),
         const SizedBox(width: 10),
         Expanded(
+          flex: 2,
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: _cardDec(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 _miniStat('Today', '+${_fmt(earned)}',
                     Icons.trending_up_rounded, AppColors.success),
@@ -734,6 +752,7 @@ class _HomeTabState extends State<HomeTab> {
         icon: Icons.poll_rounded,
         color: const Color(0xFF3B82F6),
         cta: 'Start',
+        provider: (m['provider'] ?? '').toString(),
         onTap: () => _push(context, const SurveysScreen()),
       );
     }).toList();
@@ -763,6 +782,7 @@ class _HomeTabState extends State<HomeTab> {
         icon: Icons.task_alt_rounded,
         color: const Color(0xFF16A34A),
         cta: 'Start Task',
+        provider: (m['provider'] ?? '').toString(),
         onTap: () => _push(
               context,
               TaskDetailScreen(
@@ -798,6 +818,7 @@ class _HomeTabState extends State<HomeTab> {
     required Color color,
     required String cta,
     required VoidCallback onTap,
+    String? provider,
     double width = 200,
   }) {
     return Container(
@@ -809,15 +830,18 @@ class _HomeTabState extends State<HomeTab> {
         children: [
           Row(
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(icon, size: 17, color: color),
-              ),
+              // Real provider logo when known, else clean activity icon.
+              provider != null && ProviderLogos.assetFor(provider) != null
+                  ? ProviderLogo(provider, size: 32, radius: 9)
+                  : Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      child: Icon(icon, size: 17, color: color),
+                    ),
               const Spacer(),
               Container(
                 padding:
@@ -1211,6 +1235,8 @@ class _HomeTabState extends State<HomeTab> {
     return Column(
       children: high.map((m) {
         final coins = ((m['coins'] ?? 0) as num).toInt();
+        final provider = (m['provider'] ?? m['cat'] ?? '').toString();
+        final hasLogo = ProviderLogos.assetFor(provider) != null;
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Container(
@@ -1218,16 +1244,18 @@ class _HomeTabState extends State<HomeTab> {
             decoration: _cardDec(),
             child: Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.local_fire_department_rounded,
-                      color: AppColors.primary, size: 22),
-                ),
+                hasLogo
+                    ? ProviderLogo(provider, size: 44, radius: 12)
+                    : Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(Icons.local_fire_department_rounded,
+                            color: AppColors.primary, size: 22),
+                      ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
