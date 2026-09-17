@@ -61,4 +61,4 @@ jobs:
         with:
           name: coinvault-release-apks
           path: build/app/outputs/flutter-apk/*.apk
-          retention-days: 7
+          retention-days: 2
