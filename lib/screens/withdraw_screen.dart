@@ -396,6 +396,23 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
               // Account details per method
               const SizedBox(height: 18),
               _detailsField(),
+
+              // Brand picker (Gift Cards only)
+              if (_selectedMethod == 'voucher') ...[
+                const SizedBox(height: 16),
+                const Text(
+                  'Choose a gift card brand',
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                _brandGrid(),
+                const SizedBox(height: 10),
+                _selectedBrandChip(),
+              ],
               const SizedBox(height: 16),
 
               // Amount
@@ -762,6 +779,95 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  // ───────────────────────── Gift card brands ────────────────────────────
+  static const _brands = [
+    {'name': 'Amazon Pay', 'color': Color(0xFFFF9900), 'icon': Icons.shopping_cart_rounded},
+    {'name': 'PhonePe', 'color': Color(0xFF5F259F), 'icon': Icons.phone_android_rounded},
+    {'name': 'Paytm', 'color': Color(0xFF00B9F1), 'icon': Icons.account_balance_wallet_rounded},
+    {'name': 'Flipkart', 'color': Color(0xFF2874F0), 'icon': Icons.shopping_bag_rounded},
+    {'name': 'Google Play', 'color': Color(0xFF34A853), 'icon': Icons.play_circle_fill_rounded},
+    {'name': 'Myntra', 'color': Color(0xFFFF4466), 'icon': Icons.checkroom_rounded},
+    {'name': 'Ajio', 'color': Color(0xFF2BB1E4), 'icon': Icons.shopping_basket_rounded},
+    {'name': 'Swiggy', 'color': Color(0xFFFF5200), 'icon': Icons.restaurant_rounded},
+    {'name': 'Zomato', 'color': Color(0xFFE23744), 'icon': Icons.restaurant_menu_rounded},
+    {'name': 'Netflix', 'color': Color(0xFFE50914), 'icon': Icons.movie_rounded},
+    {'name': 'Spotify', 'color': Color(0xFF1DB954), 'icon': Icons.music_note_rounded},
+    {'name': 'OLA', 'color': Color(0xFF00C853), 'icon': Icons.directions_car_rounded},
+  ];
+
+  Widget _brandGrid() {
+    return GridView.count(
+      crossAxisCount: 3,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 9,
+      crossAxisSpacing: 9,
+      childAspectRatio: 1.05,
+      children: _brands.map((b) {
+        final name = b['name'] as String;
+        final color = b['color'] as Color;
+        final icon = b['icon'] as IconData;
+        final selected = _voucherBrand == name;
+        return GestureDetector(
+          onTap: () => setState(() => _voucherBrand = name),
+          child: Container(
+            decoration: BoxDecoration(
+              color: selected
+                  ? const Color(0xFFFFFBF2)
+                  : AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(
+                color: selected ? AppColors.primary : AppColors.border,
+                width: selected ? 1.8 : 1,
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                  ),
+                  child: Icon(icon, size: 18, color: color),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _selectedBrandChip() {
+    return Row(
+      children: [
+        const Icon(Icons.check_circle_rounded,
+            size: 15, color: AppColors.success),
+        const SizedBox(width: 6),
+        Text(
+          'Selected: $_voucherBrand',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
     );
   }
 
