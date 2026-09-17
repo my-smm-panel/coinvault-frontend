@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 
-import '../core/app_theme.dart';
-import '../widgets/cv_header.dart';
+
 import '../core/provider_logos.dart';
 import '../services/app_repository.dart';
 import '../services/auth_service.dart';
+import '../widgets/cv_header.dart';
 import '../widgets/state_views.dart';
-import 'provider_tasks_screen.dart';
+import 'quiz_screen.dart';
+import 'missions_screen.dart';
+import 'surveys_screen.dart';
 import 'task_detail_screen.dart';
-import 'redeem_screen.dart';
+import 'tracking_screen.dart';
 
+/// CoinVault — Earn tab (light design sheet).
+///
+/// Global header (wordmark + bell + bear avatar) → page title + balance pill
+/// → search → category tabs → earn-more-today summary → featured carousel →
+/// surveys → tasks → offers → quizzes → quick earn → high reward → new today
+/// → recommended → earning tips. Vertically scrollable, content-rich.
 class EarnScreen extends StatefulWidget {
   const EarnScreen({super.key});
 
@@ -17,402 +25,567 @@ class EarnScreen extends StatefulWidget {
   State<EarnScreen> createState() => _EarnScreenState();
 }
 
-class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
+class _EarnScreenState extends State<EarnScreen> {
+  // ── palette (exact design tokens) ──────────────────────────────────────
+  static const Color _bg = Color(0xFFFAFAF8);
+  static const Color _card = Color(0xFFFFFFFF);
+  static const Color _border = Color(0xFFE7E7E7);
+  static const Color _primary = Color(0xFFF59E0B);
+
+
+  static const Color _text = Color(0xFF171717);
+  static const Color _sub = Color(0xFF6B7280);
+  static const Color _success = Color(0xFF16A34A);
+  static const Color _warn = Color(0xFFD97706);
+
+  // ── data ────────────────────────────────────────────────────────────────
+  List<dynamic> _surveys = [];
   List<dynamic> _offers = [];
   bool _loading = true;
-  bool _offersFailed = false;
+  bool _failed = false;
+  int _today = 0;
+  int _pending = 0;
+  String _category = 'All';
+  String _query = '';
+  final TextEditingController _search = TextEditingController();
+
+  static const List<String> _cats = [
+    'All', 'Surveys', 'Tasks', 'Offers', 'Quizzes', 'Quick Earn',
+  ];
+
+  static const List<Map<String, dynamic>> _quizzes = [
+    {'title': 'General Knowledge', 'q': 10, 'coins': 100, 'icon': Icons.school_rounded, 'color': Color(0xFF3B82F6)},
+    {'title': 'Sports Quiz', 'q': 8, 'coins': 80, 'icon': Icons.sports_soccer_rounded, 'color': Color(0xFF16A34A)},
+    {'title': 'Fun Trivia', 'q': 5, 'coins': 50, 'icon': Icons.celebration_rounded, 'color': Color(0xFF8B5CF6)},
+  ];
+
+  static const List<Map<String, dynamic>> _quickEarn = [
+    {'title': 'Daily Check-in', 'coins': 20, 'icon': Icons.calendar_today_rounded, 'color': Color(0xFFF59E0B)},
+    {'title': 'Short Survey', 'coins': 50, 'icon': Icons.poll_rounded, 'color': Color(0xFF3B82F6)},
+    {'title': 'Mini Quiz', 'coins': 40, 'icon': Icons.quiz_rounded, 'color': Color(0xFF8B5CF6)},
+    {'title': 'Daily Mission', 'coins': 100, 'icon': Icons.flag_rounded, 'color': Color(0xFF16A34A)},
+  ];
+
+  static const List<Map<String, dynamic>> _featured = [
+    {'title': 'Quick Opinion Survey', 'provider': 'CPX Research', 'coins': 450, 'min': 8, 'badge': 'Popular', 'icon': Icons.poll_rounded, 'color': Color(0xFF3B82F6)},
+    {'title': 'Product Feedback', 'provider': 'BitLabs', 'coins': 700, 'min': 12, 'badge': 'New', 'icon': Icons.rate_review_rounded, 'color': Color(0xFF16A34A)},
+    {'title': 'App Discovery Task', 'provider': 'PubScale', 'coins': 900, 'min': 15, 'badge': 'High Reward', 'icon': Icons.rocket_launch_rounded, 'color': Color(0xFFF59E0B)},
+  ];
+
+  static const List<Map<String, dynamic>> _staticTasks = [
+    {'title': 'Try a New App', 'coins': 600, 'min': 10, 'req': 'Install + open', 'icon': Icons.download_rounded, 'color': Color(0xFF3B82F6)},
+    {'title': 'Complete Registration', 'coins': 800, 'min': 8, 'req': 'Sign up with valid details', 'icon': Icons.person_add_rounded, 'color': Color(0xFF16A34A)},
+    {'title': 'Explore & Complete', 'coins': 1200, 'min': 20, 'req': 'Reach level 3', 'icon': Icons.explore_rounded, 'color': Color(0xFF8B5CF6)},
+  ];
+
+  static const List<Map<String, dynamic>> _staticOffers = [
+    {'title': 'Mega App Offer', 'provider': 'PubScale', 'coins': 3000, 'min': 25, 'milestones': 4, 'done': 0},
+    {'title': 'Finance Bundle', 'provider': 'CPI Droid', 'coins': 2200, 'min': 30, 'milestones': 4, 'done': 1},
+  ];
+
+  static const List<Map<String, dynamic>> _tips = [
+    {'t': 'Complete your profile', 'd': 'Full profiles get more survey matches.', 'icon': Icons.person_rounded},
+    {'t': 'Check surveys regularly', 'd': 'New surveys fill up fast.', 'icon': Icons.refresh_rounded},
+    {'t': 'Read task requirements', 'd': 'Follow every step to get credited.', 'icon': Icons.checklist_rounded},
+    {'t': 'Submit valid proof', 'd': 'Screenshots must be genuine.', 'icon': Icons.verified_rounded},
+  ];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 4, vsync: this);
-    _loadOffers();
+    _load();
   }
 
-  Future<void> _loadOffers() async {
+  Future<void> _load() async {
     setState(() {
       _loading = true;
-      _offersFailed = false;
+      _failed = false;
     });
     final repo = AppRepository.instance;
-    final offers = await repo.fetchOffers();
-    if (mounted) {
-      setState(() {
-        _offers = offers ?? [];
-        _offersFailed = offers == null;
-        _loading = false;
-      });
+    final results = await Future.wait([
+      repo.fetchSurveys(),
+      repo.fetchOffers(),
+      repo.fetchActivity(),
+    ]);
+    if (!mounted) return;
+
+    final surveys = results[0];
+    final offers = results[1];
+    final activity = results[2] as List;
+
+    // fetchSurveys returns null on network failure => show error state
+    final failed = surveys == null || offers == null;
+
+    int today = 0;
+    final now = DateTime.now();
+    for (final raw in activity) {
+      final m = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
+      final coins = (m['coins'] as num?)?.toInt() ?? 0;
+      if (coins > 0) {
+        final ts = m['timestamp'] ?? m['createdAt'] ?? m['date'];
+        DateTime? dt;
+        if (ts is num) {
+          dt = DateTime.fromMillisecondsSinceEpoch(ts > 1e12 ? ts.toInt() : ts.toInt() * 1000);
+        } else if (ts is String) {
+          dt = DateTime.tryParse(ts);
+        }
+        if (dt != null && now.difference(dt).inHours < 24) today += coins;
+      }
     }
+
+    setState(() {
+      _surveys = surveys ?? <dynamic>[];
+      _offers = offers ?? <dynamic>[];
+      _failed = failed;
+      _today = today;
+      _pending = offers
+          ?.where((o) => ((o as Map)['status'] ?? '').toString() == 'PENDING')
+          .fold<int>(0, (s, o) => s + (((o['coins'] ?? 0) as num).toInt())) ??
+          0;
+      _loading = false;
+    });
   }
 
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  String _fmt(int n) {
+    final s = n.abs().toString();
+    final sb = StringBuffer();
+    for (var i = 0; i < s.length; i++) {
+      if (i > 0 && (s.length - i) % 3 == 0) sb.write(',');
+      sb.write(s[i]);
+    }
+    return n.isNegative ? '-$sb' : sb.toString();
   }
+
+  void _push(Widget page) =>
+      Navigator.push(context, MaterialPageRoute(builder: (_) => page));
 
   @override
   Widget build(BuildContext context) {
-    final user = AuthService().userModel;
+    final coins = AuthService().userModel?.coins ?? 0;
     return Scaffold(
-      appBar: const PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: CvHeader(),
-      ),
-      backgroundColor: AppColors.background,
-      
-      body: _loading
-          ? const ShimmerCardList(rows: 6)
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildTaskList(),
-                _buildSurveyList(),
-                _buildOfferList(),
-                _buildGiftCardList(),
+      backgroundColor: _bg,
+      body: SafeArea(
+        child: RefreshIndicator(
+          color: _primary,
+          backgroundColor: _card,
+          onRefresh: _load,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              const SliverToBoxAdapter(child: CvHeader(showProfile: true)),
+
+              // title + balance pill
+              SliverToBoxAdapter(child: _titleRow(coins)),
+              const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+              // search
+              SliverToBoxAdapter(child: _searchField()),
+              const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+              // category tabs
+              SliverToBoxAdapter(child: _categoryTabs()),
+              const SliverToBoxAdapter(child: SizedBox(height: 16)),
+
+              // earn-more-today
+              if (_loading)
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16),
+                    child: ShimmerCardList(
+                        rows: 3, padding: EdgeInsets.zero),
+                  ),
+                )
+              else if (_failed)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: ErrorState(
+                    message: 'Something went wrong',
+                    onRetry: _load,
+                  ),
+                )
+              else ...[
+                SliverToBoxAdapter(child: _summaryCard(coins)),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // featured
+                _section('Featured for You'),
+                SliverToBoxAdapter(child: _featuredCarousel()),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // surveys
+                _section('Surveys',
+                    action: 'View All',
+                    onAction: () => _push(const SurveysScreen())),
+                SliverToBoxAdapter(child: _surveysSection()),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // tasks
+                _section('Tasks'),
+                SliverToBoxAdapter(child: _tasksCarousel()),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // offers
+                _section('Offers'),
+                SliverToBoxAdapter(child: _offersSection()),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // quizzes
+                _section('Quick Quizzes'),
+                SliverToBoxAdapter(child: _quizzesCarousel()),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // quick earn
+                _section('Quick Earn'),
+                SliverToBoxAdapter(child: _quickEarnGrid()),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // high reward
+                _section('High Reward Opportunities'),
+                SliverToBoxAdapter(child: _highRewardSection()),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // new today
+                _section('New Today'),
+                SliverToBoxAdapter(child: _newTodayCarousel()),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // recommended
+                _section('Recommended for You'),
+                SliverToBoxAdapter(child: _recommendedSection()),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // tips
+                _section('Earn Smarter'),
+                SliverToBoxAdapter(child: _tipsSection()),
+                const SliverToBoxAdapter(child: SizedBox(height: 28)),
               ],
-            ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  /// Brand icon + color per task type (kit style).
-
-
-  /// Tasks tab: ONLY provider logos; tap opens that provider's tasks.
-  static const _taskProviders = [
-    'PubScale',
-    'Cint',
-    'TimeWall',
-    'BitLabs',
-    'CPX Research',
-    'Pollfish',
-    'OfferPro',
-    'GrowDeck',
-    'CPI Droid',
-    'Lootably',
-  ];
-
-  Widget _buildTaskList() {
-    // Top: big square provider logos — tightly packed (little gap, thin line keeps rows)
-    final quickTasks = [
-      {'title': 'Ludo Supreme — Play 5 games', 'coins': 500, 'provider': 'PubScale'},
-      {'title': 'MPL — Install & Play', 'coins': 350, 'provider': 'CPI Droid'},
-      {'title': 'Rummy Circle — 3 rounds', 'coins': 300, 'provider': 'PubScale'},
-      {'title': 'Watch & Earn — 3 videos', 'coins': 30, 'provider': 'Lootably'},
-      {'title': 'Daily Check-in', 'coins': 25, 'provider': 'TimeWall'},
-      {'title': 'Rate App on Play Store', 'coins': 30, 'provider': 'OfferPro'},
-    ];
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(8, 12, 8, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  // ───────────────────────── title + balance ─────────────────────────────
+  Widget _titleRow(int coins) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: 6,
-              crossAxisSpacing: 6,
-              childAspectRatio: 1,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: const [
+                Text('Earn Coins',
+                    style: TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.w800, color: _text)),
+                SizedBox(height: 2),
+                Text('Choose an activity and start earning',
+                    style: TextStyle(fontSize: 13, color: _sub)),
+              ],
             ),
-            itemCount: _taskProviders.length,
-            itemBuilder: (context, index) {
-              final name = _taskProviders[index];
-              return InkWell(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ProviderTasksScreen(provider: name),
-                  ),
-                ),
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.textPrimary.withOpacity(0.06), width: 1),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ProviderLogo(name, size: 60),
-                      const SizedBox(height: 6),
-                      Text(name,
-                          style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ),
-              );
-            },
           ),
-          const SizedBox(height: 18),
-          const Padding(
-            padding: EdgeInsets.symmetric(horizontal: 6),
-            child: Text('Popular Tasks', style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w800)),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7E6),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0xFFF3E3C2)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.monetization_on_rounded,
+                    color: _primary, size: 16),
+                const SizedBox(width: 5),
+                Text('${_fmt(coins)} Coins',
+                    style: const TextStyle(
+                        fontSize: 12.5, fontWeight: FontWeight.w800, color: _text)),
+              ],
+            ),
           ),
-          const SizedBox(height: 10),
-          ...quickTasks.map((t) => Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFFFF),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.textPrimary.withOpacity(0.06)),
-                ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => TaskDetailScreen(
-                            provider: t['provider'] as String,
-                            title: t['title'] as String,
-                            desc: 'Complete this offer from our partner ${t['provider']} to earn coins.',
-                            coins: t['coins'] as int,
-                            steps: const [
-                              'Open the offer',
-                              'Follow the instructions',
-                              'Complete the activity',
-                              'Coins credited after verification',
-                            ],
-                          ),
-                        )),
-                    borderRadius: BorderRadius.circular(16),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 54,
-                            height: 54,
-                            decoration: BoxDecoration(
-                              color: AppColors.textPrimary,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            padding: const EdgeInsets.all(6),
-                            child: ProviderLogo(t['provider'] as String, size: 42),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(t['title'] as String, style: const TextStyle(color: AppColors.textPrimary, fontSize: 13.5, fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(color: ProviderLogos.colorFor(t['provider'] as String).withOpacity(0.18), borderRadius: BorderRadius.circular(6)),
-                                      child: Text(t['provider'] as String, style: TextStyle(color: ProviderLogos.colorFor(t['provider'] as String), fontSize: 10, fontWeight: FontWeight.w700)),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    const Icon(Icons.schedule_rounded, size: 12, color: Colors.white38),
-                                    const SizedBox(width: 2),
-                                    Text('${(t['coins'] as int) ~/ 20} min',
-                                        style: const TextStyle(
-                                            color: Colors.white38,
-                                            fontSize: 10)),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Row(
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      gradient: AppColors.goldGradient,
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text('+${t['coins']}',
-                                        style: const TextStyle(
-                                            color: AppColors.textPrimary,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w800)),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary.withOpacity(0.15),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                      color: AppColors.primary.withOpacity(0.4)),
-                                ),
-                                child: const Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text('GO',
-                                        style: TextStyle(
-                                            color: AppColors.primaryLight,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w800)),
-                                    SizedBox(width: 2),
-                                    Icon(Icons.arrow_forward_rounded,
-                                        color: AppColors.primaryLight,
-                                        size: 12),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              )),
         ],
       ),
     );
   }
 
-
-  /// Survey providers only (kit style grid).
-  static const List<Map<String, dynamic>> _providers = [
-    {'name': 'Cint', 'bonus': '55% BONUS', 'color': Color(0xFF8B5CF6)},
-    {'name': 'Prime Surveys', 'bonus': '', 'color': Color(0xFF3B82F6)},
-    {'name': 'TimeWall', 'bonus': '', 'color': Color(0xFF16A34A)},
-    {'name': 'BitLabs', 'bonus': '', 'color': Color(0xFF8B5CF6)},
-    {'name': 'CPX Research', 'bonus': '', 'color': Color(0xFF3B82F6)},
-    {'name': 'Pollfish', 'bonus': '', 'color': Color(0xFF14B8A6)},
-  ];
-
-  /// Surveys tab shows ONLY providers; tap opens that provider's surveys.
-  Widget _buildSurveyList() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.fromLTRB(12, 14, 12, 4),
-          child: Text('SURVEY PROVIDERS',
-              style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1)),
+  // ───────────────────────── search ───────────────────────────────────────
+  Widget _searchField() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          color: _card,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: _border),
         ),
-        Expanded(
-          child: GridView.builder(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 16),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              mainAxisSpacing: 6,
-              crossAxisSpacing: 6,
-              childAspectRatio: 1,
+        child: Row(
+          children: [
+            const SizedBox(width: 12),
+            const Icon(Icons.search_rounded, color: _sub, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: TextField(
+                controller: _search,
+                style: const TextStyle(fontSize: 14, color: _text),
+                decoration: const InputDecoration(
+                  hintText: 'Search surveys, tasks & offers',
+                  hintStyle: TextStyle(fontSize: 13.5, color: _sub),
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+                onChanged: (v) => setState(() => _query = v),
+              ),
             ),
-            itemCount: _providers.length,
-            itemBuilder: (context, index) {
-              final p = _providers[index];
-              return InkWell(
-                onTap: () => _showProviderSurveys(
-                    p['name'] as String, context),
-                borderRadius: BorderRadius.circular(16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFFFFFFF),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.textPrimary.withOpacity(0.06), width: 1),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      ProviderLogo(p['name'] as String, size: 60),
-                      const SizedBox(height: 6),
-                      Text(p['name'] as String,
-                          style: const TextStyle(
-                              color: Colors.white54,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
+            IconButton(
+              icon: const Icon(Icons.tune_rounded, color: _sub, size: 19),
+              onPressed: () => _showFilters(),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(),
+            ),
+            const SizedBox(width: 10),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFilters() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: _card,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Filter activities',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _cats.map((c) {
+                  final on = _category == c;
+                  return GestureDetector(
+                    onTap: () {
+                      setState(() => _category = c);
+                      Navigator.pop(ctx);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: on ? _primary : const Color(0xFFF3F3F1),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: on ? _primary : _border),
+                      ),
+                      child: Text(c,
+                          style: TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: on ? Colors.white : _sub)),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ───────────────────────── category tabs ────────────────────────────────
+  Widget _categoryTabs() {
+    return SizedBox(
+      height: 36,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _cats.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (_, i) {
+          final c = _cats[i];
+          final on = _category == c;
+          return GestureDetector(
+            onTap: () => setState(() => _category = c),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: on ? _primary : _card,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: on ? _primary : _border),
+              ),
+              child: Text(c,
+                  style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                      color: on ? Colors.white : _sub)),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ───────────────────────── summary card ─────────────────────────────────
+  Widget _summaryCard(int coins) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
+        decoration: _cardDec(),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Text('Earn More Today',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _text)),
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => _push(const TrackingScreen()),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: const [
+                      Text('View Activity',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w700, color: _primary)),
+                      Icon(Icons.arrow_forward_rounded, size: 14, color: _primary),
                     ],
                   ),
                 ),
-              );
-            },
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(child: _stat('Today', '$_today', 'Coins')),
+                Container(width: 1, height: 34, color: _border),
+                Expanded(child: _stat('Available', _fmt(coins), 'Coins')),
+                Container(width: 1, height: 34, color: _border),
+                Expanded(child: _stat('Pending', _fmt(_pending), 'Coins')),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _stat(String label, String value, String unit) {
+    return Column(
+      children: [
+        Text(label, style: const TextStyle(fontSize: 11, color: _sub)),
+        const SizedBox(height: 3),
+        RichText(
+          textAlign: TextAlign.center,
+          text: TextSpan(
+            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _text),
+            children: [
+              TextSpan(text: value),
+              TextSpan(text: ' $unit', style: const TextStyle(fontSize: 10, color: _sub, fontWeight: FontWeight.w600)),
+            ],
           ),
         ),
       ],
     );
   }
 
-  void _showProviderSurveys(String provider, BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => FutureBuilder<List<dynamic>?>(
-        future: AppRepository.instance.fetchSurveys(),
-        builder: (context, snap) {
-          final all = snap.data ?? [];
-          final list = all
-              .where((s) => ((s as Map)['provider'] ?? '') == provider)
-              .toList();
+  // ───────────────────────── featured carousel ────────────────────────────
+  Widget _featuredCarousel() {
+    return SizedBox(
+      height: 200,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        physics: const BouncingScrollPhysics(),
+        itemCount: _featured.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) {
+          final f = _featured[i];
+          final coins = f['coins'] as int;
           return Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              color: Color(0xFFFFFFFF),
-              borderRadius:
-                  BorderRadius.vertical(top: Radius.circular(24)),
-              border: Border(top: BorderSide(color: Colors.white10)),
-            ),
+            width: 236,
+            padding: const EdgeInsets.all(14),
+            decoration: _cardDec(),
             child: Column(
-              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(provider,
-                    style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800)),
-                const SizedBox(height: 4),
-                Text(
-                    snap.connectionState == ConnectionState.waiting
-                        ? 'Loading surveys…'
-                        : snap.data == null
-                            ? 'Could not load surveys'
-                            : '${list.length} surveys available',
-                    style: const TextStyle(
-                        color: Colors.white54, fontSize: 12)),
-                const SizedBox(height: 12),
-                Flexible(
-                  child: list.isEmpty
-                      ? const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 24),
-                          child: Center(
-                            child: Text('No surveys from this provider yet',
-                                style: TextStyle(
-                                    color: Colors.white38, fontSize: 13)),
-                          ),
-                        )
-                      : ListView.builder(
-                          shrinkWrap: true,
-                          itemCount: list.length,
-                          itemBuilder: (_, i) {
-                            final s =
-                                Map<String, dynamic>.from(list[i] as Map);
-                            return _SurveyCard(
-                              title: (s['title'] ?? '').toString(),
-                              coins: ((s['coins'] ?? 0) as num).toInt(),
-                              time: (s['duration'] ?? '').toString(),
-                              provider: (s['provider'] ?? '').toString(),
-                            );
-                          },
-                        ),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (f['color'] as Color).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(f['icon'] as IconData, size: 18, color: f['color'] as Color),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(f['provider'] as String,
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: _sub),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                    _badge(f['badge'] as String),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(f['title'] as String,
+                    style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: _text),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                const Spacer(),
+                Row(
+                  children: [
+                    Text('+$coins',
+                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _primary)),
+                    const Text(' Coins',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _primary)),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: _border.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.schedule_rounded, size: 11, color: _sub),
+                          const SizedBox(width: 3),
+                          Text('${f['min']} min',
+                              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: _sub)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                SizedBox(
+                  width: double.infinity,
+                  height: 38,
+                  child: ElevatedButton(
+                    onPressed: () => _push(SurveysScreen(
+                      initialProvider: f['provider'] as String,
+                    )),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _primary,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Start', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+                  ),
                 ),
               ],
             ),
@@ -422,431 +595,829 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _buildOfferList() {
-    if (_offersFailed) {
-      return ErrorState(
-        message: 'Offers could not be loaded.',
-        onRetry: _loadOffers,
-      );
+  Widget _badge(String text) {
+    Color c = _primary;
+    if (text == 'New') c = _success;
+    if (text == 'High Reward') c = _warn;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: c.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: c.withOpacity(0.35)),
+      ),
+      child: Text(text,
+          style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: c)),
+    );
+  }
+
+  // ───────────────────────── surveys ──────────────────────────────────────
+  Widget _surveysSection() {
+    if (_loading) return _skeletonH(170);
+    final list = _filteredSurveys();
+    if (list.isEmpty) return _emptyStrip('No surveys available right now');
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: list.length > 4 ? 4 : list.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (_, i) => _surveyCard(list[i] as Map),
+    );
+  }
+
+  List<dynamic> _filteredSurveys() {
+    var list = _surveys;
+    final q = _query.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      list = list.where((raw) {
+        final s = raw as Map;
+        return ((s['title'] ?? '') + (s['provider'] ?? ''))
+            .toString()
+            .toLowerCase()
+            .contains(q);
+      }).toList();
     }
-    if (_offers.isEmpty) {
-      return const EmptyState(
-        icon: Icons.local_offer_outlined,
-        title: 'No offers yet',
-        subtitle: 'New offers added daily.',
-      );
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-      itemCount: _offers.length,
-      itemBuilder: (context, index) {
-        final offer = Map<String, dynamic>.from(_offers[index] as Map);
-        return _OfferCard(offer: offer);
+    return list;
+  }
+
+  Widget _surveyCard(Map raw) {
+    final s = Map<String, dynamic>.from(raw);
+    final provider = (s['provider'] ?? 'Survey').toString();
+    final coins = ((s['rewardCoins'] ?? s['coins'] ?? 0) as num).toInt();
+    final min = int.tryParse((s['durationMinutes'] ?? s['duration'] ?? 5).toString()) ?? 5;
+    final color = ProviderLogos.colorFor(provider);
+    return Container(
+      padding: const EdgeInsets.all(13),
+      decoration: _cardDec(),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.poll_rounded, color: color, size: 22),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(provider,
+                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: color),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Text((s['title'] ?? 'Survey').toString(),
+                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _text),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(Icons.schedule_rounded, size: 11, color: _sub),
+                    const SizedBox(width: 3),
+                    Text('$min min', style: const TextStyle(fontSize: 10.5, color: _sub)),
+                    const SizedBox(width: 8),
+                    Icon(Icons.signal_cellular_alt_rounded, size: 11, color: _sub),
+                    const SizedBox(width: 3),
+                    Text(_difficulty(min), style: const TextStyle(fontSize: 10.5, color: _sub)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('+$coins',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: _primary)),
+              const Text('Coins', style: TextStyle(fontSize: 9, color: _sub, fontWeight: FontWeight.w600)),
+              const SizedBox(height: 5),
+              GestureDetector(
+                onTap: () => _push(SurveysScreen(initialProvider: provider)),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: _primary,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Start',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
+                      Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _difficulty(int min) => min <= 5 ? 'Easy' : (min <= 12 ? 'Medium' : 'High');
+
+  // ───────────────────────── tasks carousel ───────────────────────────────
+  Widget _tasksCarousel() {
+    final tasks = <Map<String, dynamic>>[
+      ..._offers
+          .where((o) => ((o as Map)['type'] ?? '').toString().startsWith('INSTALL'))
+          .take(3)
+          .map((o) => <String, dynamic>{
+                'title': (o['title'] ?? 'Task').toString(),
+                'coins': ((o['coins'] ?? 0) as num).toInt(),
+                'min': (((o['coins'] ?? 0) as num).toInt() ~/ 20).clamp(3, 30),
+                'req': 'Install + complete',
+                'icon': Icons.download_rounded,
+                'color': ProviderLogos.colorFor((o['provider'] ?? '').toString()),
+              }),
+      ..._staticTasks,
+    ];
+    if (tasks.isEmpty) return _emptyStrip('No tasks right now');
+    return SizedBox(
+      height: 176,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        physics: const BouncingScrollPhysics(),
+        itemCount: tasks.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) {
+          final t = tasks[i];
+          return Container(
+            width: 200,
+            padding: const EdgeInsets.all(13),
+            decoration: _cardDec(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: (t['color'] as Color).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(t['icon'] as IconData, size: 18, color: t['color'] as Color),
+                    ),
+                    const Spacer(),
+                    Text('+${t['coins']}',
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: _primary)),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(t['title'] as String,
+                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: _text),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                Text(t['req'] as String,
+                    style: const TextStyle(fontSize: 11, color: _sub),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                const Spacer(),
+                Row(
+                  children: [
+                    Icon(Icons.schedule_rounded, size: 11, color: _sub),
+                    const SizedBox(width: 3),
+                    Text('~${t['min']} min', style: const TextStyle(fontSize: 10.5, color: _sub)),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => _push(TaskDetailScreen(
+                        provider: 'CoinVault Partner',
+                        title: t['title'] as String,
+                        desc: t['req'] as String,
+                        coins: t['coins'] as int,
+                        steps: const ['Open the offer', 'Follow instructions', 'Complete activity', 'Coins credited'],
+                      )),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _primary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text('View Task',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ───────────────────────── offers ───────────────────────────────────────
+  Widget _offersSection() {
+    final offers = <Map<String, dynamic>>[
+      ..._offers
+          .where((o) => ((o as Map)['coins'] ?? 0) as num >= 1000)
+          .take(2)
+          .map((o) => <String, dynamic>{
+                'title': (o['title'] ?? 'Offer').toString(),
+                'provider': (o['provider'] ?? 'Partner').toString(),
+                'coins': ((o['coins'] ?? 0) as num).toInt(),
+                'min': 25,
+                'milestones': 4,
+                'done': 0,
+              }),
+      ..._staticOffers,
+    ];
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: offers.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (_, i) {
+        final o = offers[i];
+        final steps = ['Install', 'Register', 'Complete Activity', 'Final Reward'];
+        final done = (o['done'] as int).clamp(0, 4);
+        final total = (o['milestones'] as int).clamp(1, 4);
+        return Container(
+          padding: const EdgeInsets.all(14),
+          decoration: _cardDec(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(o['title'] as String,
+                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _text),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                  Text('Up to +${o['coins']}',
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: _primary)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text('Complete $total milestones  •  ~${o['min']} min  •  ${o['provider']}',
+                  style: const TextStyle(fontSize: 11.5, color: _sub)),
+              const SizedBox(height: 12),
+              // progress
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: total == 0 ? 0 : done / total,
+                  minHeight: 6,
+                  backgroundColor: const Color(0xFFEFEFEF),
+                  color: _primary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text('$done/$total completed',
+                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: _sub)),
+              const SizedBox(height: 12),
+              // milestone preview
+              Row(
+                children: List.generate(total, (mi) {
+                  final reached = mi < done;
+                  return Expanded(
+                    child: Row(
+                      children: [
+                        Column(
+                          children: [
+                            Container(
+                              width: 22,
+                              height: 22,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: reached ? _primary : _card,
+                                border: Border.all(
+                                    color: reached ? _primary : _border, width: 1.5),
+                              ),
+                              child: reached
+                                  ? const Icon(Icons.check_rounded, size: 13, color: Colors.white)
+                                  : const SizedBox(),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(steps[mi],
+                                style: TextStyle(
+                                    fontSize: 8.5,
+                                    fontWeight: reached ? FontWeight.w800 : FontWeight.w600,
+                                    color: reached ? _primary : _sub)),
+                          ],
+                        ),
+                        if (mi != total - 1)
+                          Expanded(
+                            child: Container(
+                              height: 1.5,
+                              color: mi < done ? _primary : _border,
+                              margin: const EdgeInsets.only(bottom: 16),
+                            ),
+                          ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 12, color: _sub),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text('Coins credited after verification',
+                        style: const TextStyle(fontSize: 10.5, color: _sub)),
+                  ),
+                  GestureDetector(
+                    onTap: () => _push(TaskDetailScreen(
+                      provider: o['provider'] as String,
+                      title: o['title'] as String,
+                      desc: 'Complete ${o['milestones']} milestones to earn up to ${o['coins']} coins.',
+                      coins: o['coins'] as int,
+                      steps: steps,
+                    )),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: _primary,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('View Offer',
+                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                          Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.white),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
       },
     );
   }
 
-  Widget _buildGiftCardList() {
-    // Navigate to full RedeemScreen
-    return const RedeemScreen();
-  }
-
-  void _showTaskDetail(Map<String, dynamic> task) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (_) => Container(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryContainer,
-                    borderRadius: BorderRadius.circular(AppRadius.md),
+  // ───────────────────────── quizzes ──────────────────────────────────────
+  Widget _quizzesCarousel() {
+    return SizedBox(
+      height: 150,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        physics: const BouncingScrollPhysics(),
+        itemCount: _quizzes.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) {
+          final q = _quizzes[i];
+          return GestureDetector(
+            onTap: () => _push(const QuizScreen()),
+            child: Container(
+              width: 180,
+              padding: const EdgeInsets.all(13),
+              decoration: _cardDec(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: (q['color'] as Color).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(q['icon'] as IconData, size: 20, color: q['color'] as Color),
                   ),
-                  child: const Icon(Icons.task_alt_rounded, color: AppColors.primary, size: 28),
-                ),
-                const SizedBox(width: AppSpacing.md),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(height: 10),
+                  Text(q['title'] as String,
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: _text),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 3),
+                  Text('${q['q']} Questions',
+                      style: const TextStyle(fontSize: 11, color: _sub)),
+                  const Spacer(),
+                  Row(
                     children: [
-                      Text(task['title'] as String, style: AppTextStyles.titleMedium),
-                      Text('+${task['coins']} coins', style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.gold, fontWeight: FontWeight.w700,
-                      )),
+                      Text('+${q['coins']}',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: _primary)),
+                      const Text(' Coins',
+                          style: TextStyle(fontSize: 10, color: _primary, fontWeight: FontWeight.w700)),
+                      const Spacer(),
+                      const Text('Play',
+                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: _primary)),
+                      const Icon(Icons.arrow_forward_rounded, size: 13, color: _primary),
                     ],
                   ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ───────────────────────── quick earn grid ──────────────────────────────
+  Widget _quickEarnGrid() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _quickEarn.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 2.4,
+        ),
+        itemBuilder: (_, i) {
+          final q = _quickEarn[i];
+          return GestureDetector(
+            onTap: () {
+              if (i == 1) {
+                _push(const SurveysScreen());
+              } else if (i == 2) {
+                _push(const QuizScreen());
+              } else if (i == 3) {
+                _push(const MissionsScreen());
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Check-in bonus claimed! +20 coins')),
+                );
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: _cardDec(),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: (q['color'] as Color).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(q['icon'] as IconData, size: 18, color: q['color'] as Color),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(q['title'] as String,
+                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _text),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                  Text('+${q['coins']}',
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: _primary)),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ───────────────────────── high reward ──────────────────────────────────
+  Widget _highRewardSection() {
+    final high = <Map<String, dynamic>>[
+      ..._offers
+          .where((o) => ((o as Map)['coins'] ?? 0) as num >= 800)
+          .take(3)
+          .map((o) => <String, dynamic>{
+                'title': (o['title'] ?? 'Offer').toString(),
+                'provider': (o['provider'] ?? 'Partner').toString(),
+                'coins': ((o['coins'] ?? 0) as num).toInt(),
+                'min': (((o['coins'] ?? 0) as num).toInt() ~/ 40).clamp(5, 40),
+                'badge': 'High Reward',
+              }),
+      {'title': 'Mega App Offer', 'provider': 'PubScale', 'coins': 3000, 'min': 25, 'badge': 'High Reward'},
+      {'title': 'Premium Survey Bundle', 'provider': 'Cint', 'coins': 1500, 'min': 18, 'badge': 'Popular'},
+    ];
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: high.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 10),
+      itemBuilder: (_, i) {
+        final h = high[i];
+        final color = ProviderLogos.colorFor((h['provider'] as String).trim());
+        return Container(
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: _primary.withOpacity(0.25), width: 1.2),
+            boxShadow: const [
+              BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 3)),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.emergency_rounded, color: color, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _badge(h['badge'] as String),
+                    const SizedBox(height: 4),
+                    Text(h['title'] as String,
+                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: _text),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 3),
+                    Text('${h['provider']}  •  ~${h['min']} min',
+                        style: const TextStyle(fontSize: 10.5, color: _sub),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('+${h['coins']}',
+                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: _primary)),
+                  const Text('Coins', style: TextStyle(fontSize: 9, color: _sub, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 5),
+                  GestureDetector(
+                    onTap: () => _push(TaskDetailScreen(
+                      provider: h['provider'] as String,
+                      title: h['title'] as String,
+                      desc: 'High reward opportunity. Complete all requirements to earn ${h['coins']} coins.',
+                      coins: h['coins'] as int,
+                      steps: const ['Open the offer', 'Follow instructions', 'Complete activity', 'Coins credited'],
+                    )),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('View Details',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _primary)),
+                        Icon(Icons.arrow_forward_rounded, size: 12, color: _primary),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  // ───────────────────────── new today ────────────────────────────────────
+  Widget _newTodayCarousel() {
+    final fresh = <Map<String, dynamic>>[
+      ..._surveys.take(2).map((s) => <String, dynamic>{
+            'title': (s['provider'] as String?) ?? 'Survey',
+            'sub': (s['title'] ?? '').toString(),
+            'coins': ((s['rewardCoins'] ?? s['coins'] ?? 0) as num).toInt(),
+            'min': int.tryParse((s['durationMinutes'] ?? 5).toString()) ?? 5,
+          }),
+      {'title': 'New Quiz Live', 'sub': 'General Knowledge', 'coins': 100, 'min': 5},
+    ];
+    if (fresh.isEmpty) return _emptyStrip('Nothing new today');
+    return SizedBox(
+      height: 120,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        physics: const BouncingScrollPhysics(),
+        itemCount: fresh.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) {
+          final n = fresh[i];
+          return Container(
+            width: 210,
+            padding: const EdgeInsets.all(12),
+            decoration: _cardDec(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    _badge('New'),
+                    const Spacer(),
+                    Text('+${n['coins']}',
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: _primary)),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                Text(n['title'] as String,
+                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: _text),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 2),
+                Text((n['sub'] as String?) ?? '',
+                    style: const TextStyle(fontSize: 10.5, color: _sub),
+                    maxLines: 1, overflow: TextOverflow.ellipsis),
+                const Spacer(),
+                Row(
+                  children: [
+                    Icon(Icons.schedule_rounded, size: 11, color: _sub),
+                    const SizedBox(width: 3),
+                    Text('${n['min']} min', style: const TextStyle(fontSize: 10.5, color: _sub)),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => _push(const SurveysScreen()),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(
+                          color: _primary,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text('Start',
+                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Colors.white)),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: AppSpacing.lg),
-            Text(task['desc'] as String, style: AppTextStyles.bodyMedium),
-            const SizedBox(height: AppSpacing.lg),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.pop(context);
-                  _showSnackBar('Task started! Complete to earn coins.');
-                },
-                child: const Text('Start Task'),
+          );
+        },
+      ),
+    );
+  }
+
+  // ───────────────────────── recommended ──────────────────────────────────
+  Widget _recommendedSection() {
+    final rec = <Map<String, dynamic>>[
+      {'title': 'Short Survey', 'coins': 50, 'min': 3, 'icon': Icons.poll_rounded, 'color': const Color(0xFF3B82F6), 'page': const SurveysScreen()},
+      {'title': 'High Reward Task', 'coins': 900, 'min': 15, 'icon': Icons.rocket_launch_rounded, 'color': _primary, 'page': const TaskDetailScreen(provider: 'PubScale', title: 'High Reward Task', desc: 'Complete this offer to earn coins.', coins: 900, steps: ['Open', 'Complete', 'Get coins'])},
+      {'title': 'New Offer', 'coins': 700, 'min': 12, 'icon': Icons.local_offer_rounded, 'color': const Color(0xFF16A34A), 'page': const TaskDetailScreen(provider: 'CPI Droid', title: 'New Offer', desc: 'Complete this offer to earn coins.', coins: 700, steps: ['Open', 'Complete', 'Get coins'])},
+      {'title': 'Quick Quiz', 'coins': 100, 'min': 4, 'icon': Icons.quiz_rounded, 'color': const Color(0xFF8B5CF6), 'page': const QuizScreen()},
+    ];
+    return SizedBox(
+      height: 140,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        physics: const BouncingScrollPhysics(),
+        itemCount: rec.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemBuilder: (_, i) {
+          final r = rec[i];
+          return GestureDetector(
+            onTap: () => _push(r['page'] as Widget),
+            child: Container(
+              width: 176,
+              padding: const EdgeInsets.all(13),
+              decoration: _cardDec(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: (r['color'] as Color).withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(r['icon'] as IconData, size: 18, color: r['color'] as Color),
+                  ),
+                  const SizedBox(height: 9),
+                  Text(r['title'] as String,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _text),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 3),
+                  Text('+${r['coins']} coins  •  ${r['min']} min',
+                      style: const TextStyle(fontSize: 10.5, color: _sub)),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _primary,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text('Start',
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
+          );
+        },
+      ),
+    );
+  }
+
+  // ───────────────────────── tips ─────────────────────────────────────────
+  Widget _tipsSection() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: _tips.length,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 10,
+          crossAxisSpacing: 10,
+          childAspectRatio: 3.1,
+        ),
+        itemBuilder: (_, i) {
+          final t = _tips[i];
+          return Container(
+            padding: const EdgeInsets.all(11),
+            decoration: _cardDec(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(t['icon'] as IconData, size: 15, color: _primary),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(t['t'] as String,
+                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: _text),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(t['d'] as String,
+                    style: const TextStyle(fontSize: 10, color: _sub, height: 1.3),
+                    maxLines: 2, overflow: TextOverflow.ellipsis),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ───────────────────────── shared bits ──────────────────────────────────
+  BoxDecoration _cardDec() => BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border, width: 1),
+        boxShadow: const [
+          BoxShadow(color: Color(0x10000000), blurRadius: 8, offset: Offset(0, 2)),
+        ],
+      );
+
+  Widget _section(String title, {String? action, VoidCallback? onAction}) {
+    return SliverToBoxAdapter(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+        child: Row(
+          children: [
+            Text(title,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _text)),
+            const Spacer(),
+            if (action != null && onAction != null)
+              GestureDetector(
+                onTap: onAction,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(action,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w700, color: _primary)),
+                    const Icon(Icons.arrow_forward_rounded, size: 14, color: _primary),
+                  ],
+                ),
+              ),
           ],
         ),
       ),
     );
   }
 
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: AppColors.primary,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+  Widget _skeletonH(double h) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: const ShimmerCardList(rows: 3),
+    );
+  }
+
+  Widget _emptyStrip(String msg) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 14),
+      decoration: _cardDec(),
+      child: Row(
+        children: [
+          Image.asset('assets/bear_avatar.png',
+              width: 40, height: 40, errorBuilder: (_, __, ___) => const Icon(Icons.task_alt_rounded, color: _primary, size: 28)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(msg,
+                style: const TextStyle(fontSize: 12.5, color: _sub, fontWeight: FontWeight.w600)),
+          ),
+        ],
       ),
-    );
-  }
-}
-
-class _TaskCard extends StatelessWidget {
-  final String title;
-  final int coins;
-  final String description;
-  final VoidCallback onTap;
-  final IconData icon;
-  final Color color;
-  final String provider;
-
-  const _TaskCard({
-    required this.title,
-    required this.coins,
-    required this.description,
-    required this.onTap,
-    this.icon = Icons.task_alt_rounded,
-    this.color = AppColors.primary,
-    this.provider = '',
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.md),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Row(
-            children: [
-              ProviderLogo(
-                  provider.isEmpty ? title : provider,
-                  size: 48),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title, style: AppTextStyles.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
-                    const SizedBox(height: 2),
-                    Text(description, style: AppTextStyles.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    if (provider.isNotEmpty)
-                      Text(provider,
-                          style: AppTextStyles.bodySmall.copyWith(
-                              color: ProviderLogos.colorFor(provider),
-                              fontWeight: FontWeight.w600)),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(Icons.monetization_on_rounded, size: 16, color: AppColors.gold),
-                      Text('$coins', style: AppTextStyles.bodyMedium.copyWith(
-                        color: AppColors.gold, fontWeight: FontWeight.w700,
-                      )),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Icon(Icons.chevron_right_rounded, color: AppColors.textTertiary),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SurveyCard extends StatelessWidget {
-  final String title;
-  final int coins;
-  final String time;
-  final String provider;
-  const _SurveyCard({
-    required this.title,
-    required this.coins,
-    required this.time,
-    required this.provider,
-  });
-
-  /// Brand color per survey provider (kit style).
-  static Color _providerColor(String p) {
-    final v = p.toLowerCase();
-    if (v.contains('bitlabs')) return const Color(0xFF8B5CF6);
-    if (v.contains('cpx')) return const Color(0xFF3B82F6);
-    if (v.contains('poll')) return const Color(0xFF14B8A6);
-    return AppColors.primary;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Kit survey row: dark card, coin + gold amount, conversion,
-    // length + rating, red chevron, Trending ribbon on big payouts.
-    final conversion = (coins / 10).toStringAsFixed(2);
-    final trending = coins >= 100;
-    final rating = (4.1 + ((coins + title.length) % 9) / 10).toStringAsFixed(1);
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFFFFFF),
-            borderRadius: BorderRadius.circular(14),
-            border:
-                Border.all(color: _providerColor(provider).withOpacity(0.35)),
-          ),
-          child: InkWell(
-            onTap: () {},
-            child: Row(
-              children: [
-                ProviderLogo(provider, size: 44),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('$coins.00',
-                          style: const TextStyle(
-                              color: AppColors.gold,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800)),
-                      const SizedBox(height: 2),
-                      Text(title,
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 11),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                      Text('Conversion ₹ $conversion   ⏱ $time   ★ $rating/5',
-                          style: const TextStyle(
-                              color: Colors.white38, fontSize: 10)),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.chevron_right_rounded,
-                      color: AppColors.textPrimary, size: 26),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (trending)
-          Positioned(
-            top: -8,
-            right: 12,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 10, vertical: 3),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Text('Trending 🔥',
-                  style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800)),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-/// Production offer card: renders real backend offer fields
-/// (title/shortDesc/coins/timeEstimate/isHot/isNew) with HOT/NEW badges.
-class _OfferCard extends StatelessWidget {
-  final Map<String, dynamic> offer;
-
-  const _OfferCard({required this.offer});
-
-  IconData get _typeIcon {
-    switch ((offer['type'] ?? '').toString()) {
-      case 'INSTALL':
-      case 'INSTALL_AND_USE':
-      case 'INSTALL_AND_REACH_LEVEL':
-      case 'INSTALL_AND_DEPOSIT':
-      case 'INSTALL_AND_KYC':
-        return Icons.download_rounded;
-      case 'VIDEO':
-        return Icons.play_circle_fill_rounded;
-      case 'SURVEY':
-        return Icons.assignment_rounded;
-      case 'SIGNUP':
-        return Icons.person_add_rounded;
-      case 'SHARE':
-        return Icons.share_rounded;
-      default:
-        return Icons.star_rounded;
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isHot = offer['isHot'] == true;
-    final isNew = offer['isNew'] == true;
-    final coins = ((offer['coins'] ?? 0) as num).toInt();
-    final title = (offer['title'] ?? '').toString();
-    final sub = (offer['shortDesc'] ?? 'Complete to earn').toString();
-    final time = (offer['timeEstimate'] ?? '').toString();
-
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          margin: const EdgeInsets.only(bottom: AppSpacing.md),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            border: Border.all(color: AppColors.divider),
-          ),
-          child: InkWell(
-            onTap: () {},
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            child: Padding(
-              padding: const EdgeInsets.all(AppSpacing.md),
-              child: Row(
-                children: [
-                  Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(AppRadius.md),
-                    ),
-                    child: Icon(_typeIcon, color: AppColors.primary, size: 26),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title,
-                            style: AppTextStyles.bodyMedium
-                                .copyWith(fontWeight: FontWeight.w700),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 2),
-                        Text(sub,
-                            style: AppTextStyles.bodySmall,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis),
-                        if (time.isNotEmpty) ...[
-                          const SizedBox(height: 3),
-                          Row(
-                            children: [
-                              const Icon(Icons.schedule_rounded,
-                                  size: 12, color: AppColors.textTertiary),
-                              const SizedBox(width: 3),
-                              Text(time, style: AppTextStyles.bodySmall),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.monetization_on_rounded,
-                              size: 16, color: AppColors.gold),
-                          const SizedBox(width: 2),
-                          Text('$coins',
-                              style: AppTextStyles.bodyMedium.copyWith(
-                                color: AppColors.gold,
-                                fontWeight: FontWeight.w800,
-                              )),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 7),
-                        decoration: BoxDecoration(
-                          gradient: AppColors.primaryGradient,
-                          borderRadius: BorderRadius.circular(AppRadius.sm),
-                        ),
-                        child: const Text('GO',
-                            style: TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (isHot || isNew)
-          Positioned(
-            top: -7,
-            right: 14,
-            child: Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-              decoration: BoxDecoration(
-                color: isHot ? AppColors.error : AppColors.success,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Text(isHot ? 'HOT' : 'NEW',
-                  style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 9,
-                      fontWeight: FontWeight.w800)),
-            ),
-          ),
-      ],
     );
   }
 }
