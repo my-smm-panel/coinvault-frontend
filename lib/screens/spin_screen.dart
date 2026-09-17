@@ -921,12 +921,22 @@ class _SpinScreenState extends State<SpinScreen>
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        '🪙 $reward',
+                        '$reward coins',
                         style: GoogleFonts.inter(
                           color: AppColors.gold,
                           fontSize: 13,
                           fontWeight: FontWeight.w800,
                         ),
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        reward > 0
+                            ? Icons.monetization_on_rounded
+                            : Icons.history_rounded,
+                        size: 15,
+                        color: reward > 0
+                            ? AppColors.gold
+                            : AppColors.textTertiary,
                       ),
                     ],
                   ),
@@ -1277,22 +1287,62 @@ class _WheelPainter extends CustomPainter {
         Offset(textX - textPainter.width / 2, textY - textPainter.height / 2),
       );
 
-      // Small gift box above the label on the 5-coin slices, and a
-      // coin glyph on the others (design sheet icons).
+      // Prize glyph above the label: gift box on 5-coin slices, coin on the
+      // rest — drawn as vector paths (no emoji rendering issues).
       final isGift = segments[i] == 5;
-      final iconPainter = TextPainter(
-        text: TextSpan(
-          text: isGift ? '🎁' : '🪙',
-          style: TextStyle(fontSize: radius * 0.1),
-        ),
-        textDirection: TextDirection.ltr,
+      final iconSize = radius * 0.2;
+      final iconCenter = Offset(
+        textX,
+        textY - radius * 0.18,
       );
-      iconPainter.layout();
-      iconPainter.paint(
-        canvas,
-        Offset(textX - iconPainter.width / 2,
-            textY - textPainter.height / 2 - radius * 0.16),
-      );
+      _drawGiftOrCoin(canvas, iconCenter, iconSize, isGift, labelColor);
+    }
+  }
+
+  void _drawGiftOrCoin(
+      Canvas canvas, Offset c, double s, bool isGift, Color color) {
+    final paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = s * 0.09
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    if (isGift) {
+      // box
+      final r = Rect.fromCenter(center: c, width: s, height: s * 0.78);
+      canvas.drawRRect(RRect.fromRectAndRadius(r, Radius.circular(s * 0.14)),
+          paint);
+      // vertical ribbon
+      canvas.drawLine(Offset(c.dx, r.top), Offset(c.dx, r.bottom), paint);
+      // horizontal ribbon
+      canvas.drawLine(
+          Offset(r.left, c.dy + s * 0.04), Offset(r.right, c.dy + s * 0.04),
+          paint);
+      // bow loops
+      final bowR = s * 0.16;
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: Offset(c.dx - s * 0.2, r.top + bowR * 0.5),
+              width: bowR * 2,
+              height: bowR),
+          paint);
+      canvas.drawOval(
+          Rect.fromCenter(
+              center: Offset(c.dx + s * 0.2, r.top + bowR * 0.5),
+              width: bowR * 2,
+              height: bowR),
+          paint);
+    } else {
+      // coin: outer circle + inner ring + currency tick
+      canvas.drawCircle(c, s * 0.5, paint);
+      canvas.drawCircle(c, s * 0.33, paint);
+      canvas.drawLine(Offset(c.dx, c.dy - s * 0.2),
+          Offset(c.dx, c.dy + s * 0.2), paint);
+      canvas.drawLine(Offset(c.dx - s * 0.14, c.dy - s * 0.09),
+          Offset(c.dx + s * 0.14, c.dy - s * 0.09), paint);
+      canvas.drawLine(Offset(c.dx - s * 0.14, c.dy + s * 0.09),
+          Offset(c.dx + s * 0.14, c.dy + s * 0.09), paint);
     }
   }
 
