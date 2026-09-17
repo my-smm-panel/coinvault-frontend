@@ -41,6 +41,27 @@ class ProviderLogos {
   static String? assetFor(String name) =>
       assets[name.trim().toLowerCase()];
 
+  /// Real app logos for game/task apps (matched from the task title).
+  static const Map<String, String> appAssets = {
+    'mpl': 'assets/apps/mpl.png',
+    'mobile premier league': 'assets/apps/mpl.png',
+    'ludo': 'assets/apps/ludo.png',
+    'ludo supreme': 'assets/apps/ludo.png',
+    'rummy': 'assets/apps/rummy.png',
+    'rummy circle': 'assets/apps/rummy.png',
+    'dream11': 'assets/apps/dream11.png',
+    'dream 11': 'assets/apps/dream11.png',
+  };
+
+  /// Try to find a real app logo by scanning the task title for known apps.
+  static String? assetForTitle(String title) {
+    final t = title.toLowerCase();
+    for (final key in appAssets.keys) {
+      if (t.contains(key)) return appAssets[key];
+    }
+    return null;
+  }
+
   static Color colorFor(String name) =>
       colors[name.trim().toLowerCase()] ?? const Color(0xFFF66B06);
 }

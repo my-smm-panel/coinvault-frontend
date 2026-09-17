@@ -830,18 +830,29 @@ class _HomeTabState extends State<HomeTab> {
         children: [
           Row(
             children: [
-              // Real provider logo when known, else clean activity icon.
-              provider != null && ProviderLogos.assetFor(provider) != null
-                  ? ProviderLogo(provider, size: 32, radius: 9)
-                  : Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                      child: Icon(icon, size: 17, color: color),
-                    ),
+              // Real provider logo when known, else app logo from title,
+              // else clean activity icon.
+              (provider != null && ProviderLogos.assetFor(provider) != null)
+                  ? ProviderLogo(provider!, size: 32, radius: 9)
+                  : (ProviderLogos.assetForTitle(title) != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(9),
+                          child: Image.asset(
+                            ProviderLogos.assetForTitle(title)!,
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.contain,
+                          ),
+                        )
+                      : Container(
+                          width: 32,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: color.withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(9),
+                          ),
+                          child: Icon(icon, size: 17, color: color),
+                        )),
               const Spacer(),
               Container(
                 padding:
@@ -1236,7 +1247,10 @@ class _HomeTabState extends State<HomeTab> {
       children: high.map((m) {
         final coins = ((m['coins'] ?? 0) as num).toInt();
         final provider = (m['provider'] ?? m['cat'] ?? '').toString();
-        final hasLogo = ProviderLogos.assetFor(provider) != null;
+        final title = (m['title'] ?? 'Task').toString();
+        final appLogo = ProviderLogos.assetForTitle(title) ??
+            (ProviderLogos.assetFor(provider) != null ? provider : null);
+        final hasLogo = appLogo != null;
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Container(
@@ -1245,7 +1259,7 @@ class _HomeTabState extends State<HomeTab> {
             child: Row(
               children: [
                 hasLogo
-                    ? ProviderLogo(provider, size: 44, radius: 12)
+                    ? ProviderLogo(appLogo!, size: 44, radius: 12)
                     : Container(
                         width: 44,
                         height: 44,

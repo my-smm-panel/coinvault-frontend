@@ -54,3 +54,7 @@ flutter:
     - assets/scratch.png
     - assets/trophy.png
     - assets/logos/
+    - assets/apps/mpl.png
+    - assets/apps/ludo.png
+    - assets/apps/rummy.png
+    - assets/apps/dream11.png

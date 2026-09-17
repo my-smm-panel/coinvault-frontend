@@ -629,14 +629,26 @@ class _EarnScreenState extends State<EarnScreen> {
               children: [
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: (t['color'] as Color).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(t['icon'] as IconData, size: 18, color: t['color'] as Color),
-                    ),
+                    // real app logo from the task title when available
+                    ProviderLogos.assetForTitle(t['title'] as String) != null
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: Image.asset(
+                              ProviderLogos.assetForTitle(t['title'] as String)!,
+                              width: 34,
+                              height: 34,
+                              fit: BoxFit.contain,
+                            ),
+                          )
+                        : Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: (t['color'] as Color).withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(t['icon'] as IconData,
+                                size: 18, color: t['color'] as Color),
+                          ),
                     const Spacer(),
                     Text('+${t['coins']}',
                         style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: _primary)),
@@ -975,6 +987,10 @@ class _EarnScreenState extends State<EarnScreen> {
       itemBuilder: (_, i) {
         final h = high[i];
         final color = ProviderLogos.colorFor((h['provider'] as String).trim());
+        final appLogo = ProviderLogos.assetForTitle(h['title'] as String) ??
+            (ProviderLogos.assetFor((h['provider'] as String).trim()) != null
+                ? (h['provider'] as String).trim()
+                : null);
         return Container(
           padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
@@ -987,7 +1003,18 @@ class _EarnScreenState extends State<EarnScreen> {
           ),
           child: Row(
             children: [
-              ProviderLogo(h['provider'] as String, size: 46, radius: 12),
+              appLogo != null
+                  ? ProviderLogo(appLogo, size: 46, radius: 12)
+                  : Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: color.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(Icons.local_fire_department_rounded,
+                          color: color, size: 22),
+                    ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
