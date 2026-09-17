@@ -6,21 +6,28 @@ import '../screens/profile_screen.dart';
 
 /// GLOBAL CoinVault app header — identical on every screen.
 ///
-///   [CoinVault logo]                  [bell] [profile]
+///   [CoinVault wordmark]                 [bell] [profile]
 ///
 /// Reuse via `const CvHeader()`; never recreate per screen.
-/// Logo/bell/avatar sizes, spacing and colors are fixed here.
+/// Bell/avatar sizes, spacing and colors are fixed here.
+///
+/// Use `showProfile: false` ONLY where a different, bigger profile entry is
+/// intentional (e.g. Home shows its own large wallet/profile panel).
 class CvHeader extends StatelessWidget {
   final bool showBellDot;
+  final bool showProfile;
 
-  const CvHeader({super.key, this.showBellDot = false});
+  const CvHeader({
+    super.key,
+    this.showBellDot = false,
+    this.showProfile = true,
+  });
 
   // Fixed palette (identical everywhere)
   static const Color _bg = Color(0xFFFAFAF8);
   static const Color _surface = Color(0xFFFFFFFF);
   static const Color _border = Color(0xFFE7E7E7);
   static const Color _primaryText = Color(0xFF171717);
-  static const Color _coin = Color(0xFFF59E0B);
   static const Color _brown = Color(0xFF5A3825);
   static const Color _orange = Color(0xFFF59E0B);
 
@@ -37,10 +44,7 @@ class CvHeader extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // ── CoinVault logo (fixed size/spacing) ──
-                const Icon(Icons.monetization_on_rounded,
-                    color: _coin, size: 24),
-                const SizedBox(width: 7),
+                // ── CoinVault wordmark only (no coin/dollar icon) ──
                 RichText(
                   text: const TextSpan(
                     style: TextStyle(
@@ -51,9 +55,11 @@ class CvHeader extends StatelessWidget {
                     ),
                     children: [
                       TextSpan(
-                          text: 'Coin', style: TextStyle(color: _brown)),
+                          text: 'Coin',
+                          style: TextStyle(color: _brown)),
                       TextSpan(
-                          text: 'Vault', style: TextStyle(color: _orange)),
+                          text: 'Vault',
+                          style: TextStyle(color: _orange)),
                     ],
                   ),
                 ),
@@ -64,28 +70,30 @@ class CvHeader extends StatelessWidget {
                   onTap: () => _goNotifications(context),
                   dot: showBellDot,
                 ),
-                const SizedBox(width: 8),
-                // ── Profile avatar (fixed, same asset everywhere) ──
-                GestureDetector(
-                  onTap: () => _goProfile(context),
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _surface,
-                      border: Border.all(color: _border, width: 1),
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        'assets/bear_avatar.png',
-                        fit: BoxFit.cover,
-                        width: 36,
-                        height: 36,
+                if (showProfile) ...[
+                  const SizedBox(width: 8),
+                  // ── Profile avatar (fixed, same asset everywhere) ──
+                  GestureDetector(
+                    onTap: () => _goProfile(context),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: _surface,
+                        border: Border.all(color: _border, width: 1),
+                      ),
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/bear_avatar.png',
+                          fit: BoxFit.cover,
+                          width: 36,
+                          height: 36,
+                        ),
                       ),
                     ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

@@ -417,8 +417,10 @@ class _HomeTabState extends State<HomeTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const CvHeader(),
+                  const CvHeader(showProfile: false),
                   const SizedBox(height: 10),
+                  _walletCard(context, coins),
+                  const SizedBox(height: 12),
                   HomeBannerCarousel(
                     slides: [
                       BannerSlide(
@@ -836,7 +838,132 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  // ───────────────────── Referral / invite banner ─────────────────────
+  // ─────────────────────────────────────────────────────────────────────
+  // WALLET — top of Home. Orange gradient, real balance, Withdraw + History.
+  // ─────────────────────────────────────────────────────────────────────
+  Widget _walletCard(BuildContext context, int coins) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFF59E0B), Color(0xFFE8842A)],
+        ),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFF59E0B).withOpacity(0.25),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.account_balance_wallet_rounded,
+                        color: Colors.white, size: 18),
+                    const SizedBox(width: 7),
+                    const Text(
+                      'Wallet Balance',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      _fmt(coins),
+                      style: GoogleFonts.inter(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text('Coins',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        )),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                const Text(
+                  'Redeemable rewards in your vault',
+                  style: TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            children: [
+              InkWell(
+                onTap: () => _push(context, const WithdrawScreen()),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    'Withdraw',
+                    style: TextStyle(
+                      color: Color(0xFFB45309),
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              InkWell(
+                onTap: () => _push(context, const TrackingScreen()),
+                borderRadius: BorderRadius.circular(10),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Text(
+                    'History',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ───────────────────────── Referral / invite banner ─────────────────────
   Widget _referralBanner(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
