@@ -25,6 +25,211 @@ import 'withdraw_screen.dart';
 /// featured surveys → tasks of the day → offer of the day → quick earn →
 /// recommended → high-paying tasks → daily spin → daily missions →
 /// invite & earn → limited-time offers → top earners → how to earn.
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _currentIndex = 0;
+
+  final List<Widget> _screens = [
+    const HomeTab(),
+    const EarnScreen(),
+    const LeaderboardScreen(),
+    const SurveysScreen(),
+  ];
+
+  void _pushScreen(Widget page) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.surface,
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _screens,
+      ),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          border: Border(top: BorderSide(color: AppColors.border, width: 1)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _NavItem(
+                  icon: Icons.home_rounded,
+                  label: 'Home',
+                  isActive: _currentIndex == 0,
+                  onTap: () => setState(() => _currentIndex = 0),
+                ),
+                _NavItem(
+                  icon: Icons.task_alt_rounded,
+                  label: 'Earn',
+                  isActive: _currentIndex == 1,
+                  onTap: () => setState(() => _currentIndex = 1),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () => setState(() => _currentIndex = 2),
+                    borderRadius: BorderRadius.circular(28),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 52,
+                          height: 52,
+                          margin: const EdgeInsets.only(top: 2),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: AppColors.goldContainer,
+                            border: Border.all(
+                                color: _currentIndex == 2 ? AppColors.gold : AppColors.border,
+                                width: 2.5),
+                            boxShadow: _currentIndex == 2
+                                ? [BoxShadow(color: AppColors.gold.withOpacity(0.28), blurRadius: 12)]
+                                : null,
+                          ),
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/app_icon.jpg',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.emoji_events_rounded, color: AppColors.gold, size: 26),
+                            ),
+                          ),
+                        ),
+                        Text(
+                          'Ranks',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: _currentIndex == 2 ? AppColors.gold : AppColors.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                _NavItem(
+                  icon: Icons.assignment_rounded,
+                  label: 'Surveys',
+                  isActive: _currentIndex == 3,
+                  onTap: () => setState(() => _currentIndex = 3),
+                ),
+                _NavItem(
+                  icon: Icons.account_balance_wallet_rounded,
+                  label: 'Withdraw',
+                  isActive: false,
+                  onTap: () => _pushScreen(const WithdrawScreen()),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+  final int? badge;
+
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+    this.badge,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isActive ? AppColors.primaryContainer : Colors.transparent,
+                      borderRadius: BorderRadius.circular(AppRadius.full),
+                    ),
+                    child: Icon(
+                      icon,
+                      size: 24,
+                      color: isActive ? AppColors.primary : AppColors.textTertiary,
+                    ),
+                  ),
+                  if (badge != null && badge! > 0 && !isActive)
+                    Positioned(
+                      right: -6,
+                      top: -6,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: AppColors.error,
+                          borderRadius: BorderRadius.circular(AppRadius.full),
+                        ),
+                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                        child: Text(
+                          badge.toString(),
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: AppTextStyles.bodySmall.copyWith(
+                  color: isActive ? AppColors.primary : AppColors.textTertiary,
+                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Content-rich light-theme home dashboard (design sheet):
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
 
@@ -168,7 +373,7 @@ class _HomeTabState extends State<HomeTab> {
           backgroundColor: AppColors.surface,
           body: SafeArea(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
