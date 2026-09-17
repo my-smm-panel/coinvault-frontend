@@ -417,9 +417,13 @@ class _HomeTabState extends State<HomeTab> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const CvHeader(showProfile: false),
-                  const SizedBox(height: 10),
-                  _walletCard(context, coins),
+                  CvHeader(
+                    showProfile: true,
+                    profileLeft: true,
+                    showMoney: true,
+                    coins: coins,
+                    showWordmark: false,
+                  ),
                   const SizedBox(height: 12),
                   HomeBannerCarousel(
                     slides: [
@@ -509,10 +513,9 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  // ───────────────────────────── Top bar ─────────────────────────────
-  // CoinVault wordmark + coin balance pill + notification bell.
 
-  // ─────────────── Today's Earnings + Daily Goal progress ─────────────
+
+
   Widget _earningsRow(BuildContext context) {
     final earned = _todayEarned();
     final progress = (earned / _dailyGoal).clamp(0.0, 1.0);
