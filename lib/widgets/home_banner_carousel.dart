@@ -4,23 +4,26 @@ import '../core/app_theme.dart';
 
 /// Promotional carousel for the Home screen — 5 slides, auto-advancing,
 /// infinite loop, manual swipe, pagination dots (active = CoinVault orange).
-/// Existing home UI is untouched; this is purely additive.
 class BannerSlide {
   final String title;
   final String subtitle;
   final String cta;
+  final String reward;
   final IconData icon;
   final Color accent;
   final Color accentSoft;
+  final bool showBear;
   final VoidCallback onTap;
 
   const BannerSlide({
     required this.title,
     required this.subtitle,
     required this.cta,
+    required this.reward,
     required this.icon,
     required this.accent,
     required this.accentSoft,
+    this.showBear = false,
     required this.onTap,
   });
 }
@@ -72,42 +75,31 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
     super.dispose();
   }
 
-  void _onPageChanged(int index) {
-    final mapped = index % _slideCount;
-    if (mapped != _page) setState(() => _page = mapped);
-    // Re-center when drifting too far from the middle so both directions work.
-    if (index < _slideCount * 2 || index > _virtualCount - _slideCount * 2) {
-      final center = _startPage + mapped;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _controller.jumpToPage(center);
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_slideCount <= 1) {
-      return _slideCount == 1 ? _BannerCard(slide: widget.slides.first) : const SizedBox.shrink();
-    }
+    if (_slideCount <= 1) return _buildCard(0);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         SizedBox(
-          height: 132,
-          child: PageView.builder(
-            controller: _controller,
-            itemCount: _virtualCount,
-            onPageChanged: _onPageChanged,
-            itemBuilder: (context, index) =>
-                _BannerCard(slide: widget.slides[index % _slideCount]),
+          height: 128,
+          child: Listener(
+            onPointerDown: (_) => _timer?.cancel(),
+            onPointerUp: (_) => _startAutoAdvance(),
+            child: PageView.builder(
+              controller: _controller,
+              padEnds: false,
+              onPageChanged: (p) => setState(() => _page = p),
+              itemBuilder: (_, i) => _buildCard(i % _slideCount),
+            ),
           ),
         ),
-        const SizedBox(height: 10),
-        // Pagination dots
+        const SizedBox(height: 8),
+        // pagination dots
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(_slideCount, (i) {
-            final active = i == _page;
+            final active = i == (_page % _slideCount);
             return AnimatedContainer(
               duration: const Duration(milliseconds: 250),
               curve: Curves.easeOut,
@@ -124,6 +116,8 @@ class _HomeBannerCarouselState extends State<HomeBannerCarousel> {
       ],
     );
   }
+
+  Widget _buildCard(int i) => _BannerCard(slide: widget.slides[i]);
 }
 
 class _BannerCard extends StatelessWidget {
@@ -134,7 +128,7 @@ class _BannerCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 2),
-      padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+      padding: const EdgeInsets.fromLTRB(16, 12, 12, 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -151,14 +145,17 @@ class _BannerCard extends StatelessWidget {
         children: [
           // Mascot / illustration tile
           Container(
-            width: 76,
-            height: 76,
+            width: 84,
+            height: 84,
             decoration: BoxDecoration(
               color: slide.accentSoft,
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: Icon(slide.icon, color: slide.accent, size: 36),
+            child: slide.showBear
+                ? Image.asset('assets/bear_avatar.png',
+                    width: 54, height: 54, fit: BoxFit.contain)
+                : Icon(slide.icon, color: slide.accent, size: 36),
           ),
           const SizedBox(width: 14),
           // Text + CTA
@@ -167,6 +164,25 @@ class _BannerCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
+                // reward pill
+                Container(
+                  margin: const EdgeInsets.only(bottom: 5),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: slide.accent.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    slide.reward,
+                    style: TextStyle(
+                      color: slide.accent,
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.2,
+                    ),
+                  ),
+                ),
                 Text(
                   slide.title,
                   maxLines: 1,
@@ -178,7 +194,7 @@ class _BannerCard extends StatelessWidget {
                     height: 1.2,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 3),
                 Text(
                   slide.subtitle,
                   maxLines: 2,
@@ -189,7 +205,7 @@ class _BannerCard extends StatelessWidget {
                     height: 1.3,
                   ),
                 ),
-                const SizedBox(height: 9),
+                const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerLeft,
                   child: InkWell(
@@ -207,7 +223,7 @@ class _BannerCard extends StatelessWidget {
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 11.5,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
