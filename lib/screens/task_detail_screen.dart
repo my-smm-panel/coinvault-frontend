@@ -317,14 +317,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 child: ElevatedButton(
                   onPressed: _started
                       ? null
-                      : () {
-                          setState(() => _started = true);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                                content: Text(
-                                    'Task started! Complete the steps to earn coins.')),
-                          );
-                        },
+                      : () => _showConfirmation(context),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _started ? const Color(0xFFE8F0FF) : color,
                     foregroundColor: Colors.white,
@@ -360,6 +353,167 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// Rules + confirmation gate before a task actually starts.
+  /// The user must read the rules and tap "I Understand" — only then is
+  /// the task marked started. Prevents accidental taps / fraud disputes.
+  void _showConfirmation(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFFFFFFFF),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE7E7E7),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFF7E6),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.shield_rounded,
+                        color: Color(0xFFF59E0B), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Before you start',
+                      style: GoogleFonts.inter(
+                          fontSize: 17, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              ...[
+                'Coins are credited only after the partner verifies completion.',
+                'Use real, accurate information — fake details = no payout.',
+                'One attempt per user per task.',
+                'Keep the app installed until verification is complete.',
+                'Do not use VPN or emulators — rewards will be rejected.',
+              ].map((r) => Padding(
+                    padding: const EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.check_circle_rounded,
+                            size: 17, color: Color(0xFF16A34A)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            r,
+                            style: GoogleFonts.inter(
+                                fontSize: 13,
+                                height: 1.4,
+                                color: const Color(0xFF171717)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF7E6),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFF3E3C2)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.monetization_on_rounded,
+                        color: Color(0xFFF59E0B), size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Reward: +${widget.coins} coins on completion',
+                        style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: const Color(0xFF171717)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 50,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(sheetCtx),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: Color(0xFFE7E7E7)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: const Text('Cancel',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF6B7280))),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: SizedBox(
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(sheetCtx);
+                          setState(() => _started = true);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                  'Task started! Complete the steps to earn coins.'),
+                            ),
+                          );
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFF59E0B),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: const Text('I Understand, Start',
+                            style: TextStyle(fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

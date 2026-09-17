@@ -9,6 +9,7 @@ import '../services/auth_service.dart';
 import '../widgets/cv_header.dart';
 import '../widgets/home_banner_carousel.dart';
 import 'earn_screen.dart';
+import 'task_detail_screen.dart';
 import 'invite_screen.dart';
 import 'leaderboard_screen.dart';
 import 'missions_screen.dart';
@@ -762,7 +763,17 @@ class _HomeTabState extends State<HomeTab> {
         icon: Icons.task_alt_rounded,
         color: const Color(0xFF16A34A),
         cta: 'Start Task',
-        onTap: () => _push(context, const EarnScreen()),
+        onTap: () => _push(
+              context,
+              TaskDetailScreen(
+                provider: (m['provider'] ?? 'CoinVault').toString(),
+                title: (m['title'] ?? 'Task').toString(),
+                desc: (m['sub'] ?? '').toString(),
+                coins: ((m['coins'] ?? 0) as num).toInt(),
+                steps: (m['steps'] as List?)?.cast<String>() ??
+                    const ['Tap Start', 'Complete the task', 'Coins credited'],
+              ),
+            ),
       );
     }).toList();
     return SizedBox(

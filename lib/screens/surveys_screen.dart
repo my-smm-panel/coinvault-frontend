@@ -128,53 +128,62 @@ class _SurveysScreenState extends State<SurveysScreen> {
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const CvHeader(),
-            _balanceRow(),
-            const SizedBox(height: 12),
-            _searchBar(),
-            const SizedBox(height: 12),
-            _filterChips(),
-            const SizedBox(height: 6),
-            _sectionTitle(),
-            if (_loading)
-              const ShimmerCardList(
-                  rows: 4, padding: EdgeInsets.fromLTRB(16, 12, 16, 0))
-            else if (_failed)
-              Expanded(
-                child: ErrorState(
-                  message: 'Check your internet connection and try again.',
-                  onRetry: _load,
+        child: RefreshIndicator(
+          color: _orange,
+          backgroundColor: _card,
+          onRefresh: _load,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              const SliverToBoxAdapter(child: CvHeader()),
+              SliverToBoxAdapter(child: _balanceRow()),
+              const SliverToBoxAdapter(child: SizedBox(height: 12)),
+              SliverToBoxAdapter(child: _searchBar()),
+              const SliverToBoxAdapter(child: SizedBox(height: 12)),
+              SliverToBoxAdapter(child: _filterChips()),
+              const SliverToBoxAdapter(child: SizedBox(height: 6)),
+              SliverToBoxAdapter(child: _sectionTitle()),
+              if (_loading)
+                const SliverToBoxAdapter(
+                    child: ShimmerCardList(
+                        rows: 4, padding: EdgeInsets.fromLTRB(16, 12, 16, 0)))
+              else if (_failed)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: ErrorState(
+                    message:
+                        'Check your internet connection and try again.',
+                    onRetry: _load,
+                  ),
+                )
+              else if (list.isEmpty)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: EmptyState(
+                    icon: Icons.assignment_outlined,
+                    title: 'No surveys here yet',
+                    subtitle:
+                        'New surveys are added daily — check back soon.',
+                  ),
+                )
+              else
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (ctx, i) {
+                      final s =
+                          Map<String, dynamic>.from(list[i] as Map);
+                      return _surveyCard(
+                        s,
+                        boosted: i == 0, // boost on the first listing
+                      );
+                    },
+                    childCount: list.length,
+                    addAutomaticKeepAlives: false,
+                  ),
                 ),
-              )
-            else
-              Expanded(
-                child: list.isEmpty
-                    ? const EmptyState(
-                        icon: Icons.assignment_outlined,
-                        title: 'No surveys here yet',
-                        subtitle: 'New surveys are added daily — check back soon.',
-                      )
-                    : RefreshIndicator(
-                        color: _orange,
-                        backgroundColor: _card,
-                        onRefresh: _load,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                          itemCount: list.length,
-                          itemBuilder: (_, i) {
-                            final s = Map<String, dynamic>.from(list[i] as Map);
-                            return _surveyCard(
-                              s,
-                              boosted: i == 0, // boost on the first listing
-                            );
-                          },
-                        ),
-                      ),
-              ),
-          ],
+              const SliverToBoxAdapter(child: SizedBox(height: 28)),
+            ],
+          ),
         ),
       ),
     );

@@ -7,6 +7,7 @@ import '../services/app_repository.dart';
 import '../services/auth_service.dart';
 import '../widgets/state_views.dart';
 import 'provider_tasks_screen.dart';
+import 'task_detail_screen.dart';
 import 'redeem_screen.dart';
 
 class EarnScreen extends StatefulWidget {
@@ -122,7 +123,9 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
               return InkWell(
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => ProviderTasksScreen(provider: name)),
+                  MaterialPageRoute(
+                    builder: (_) => ProviderTasksScreen(provider: name),
+                  ),
                 ),
                 borderRadius: BorderRadius.circular(16),
                 child: Container(
@@ -165,7 +168,22 @@ class _EarnScreenState extends State<EarnScreen> with SingleTickerProviderStateM
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProviderTasksScreen(provider: t['provider'] as String))),
+                    onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TaskDetailScreen(
+                            provider: t['provider'] as String,
+                            title: t['title'] as String,
+                            desc: 'Complete this offer from our partner ${t['provider']} to earn coins.',
+                            coins: t['coins'] as int,
+                            steps: const [
+                              'Open the offer',
+                              'Follow the instructions',
+                              'Complete the activity',
+                              'Coins credited after verification',
+                            ],
+                          ),
+                        )),
                     borderRadius: BorderRadius.circular(16),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
