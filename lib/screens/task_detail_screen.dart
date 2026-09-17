@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
+import '../widgets/app_logo.dart';
 import '../widgets/state_views.dart';
 
 /// Full task detail page — opened from provider tasks / popular tasks.
@@ -71,8 +72,14 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                       color: AppColors.textPrimary,
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: ProviderLogo(widget.provider,
-                        size: 38, radius: 8),
+                    child: AppLogo(
+                      provider: widget.provider,
+                      title: widget.title,
+                      size: 44,
+                      radius: 10,
+                      fallbackIcon: Icons.task_alt_rounded,
+                      fallbackColor: color,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

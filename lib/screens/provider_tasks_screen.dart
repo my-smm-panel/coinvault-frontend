@@ -5,6 +5,7 @@ import '../core/provider_logos.dart';
 import '../services/app_repository.dart';
 import '../widgets/state_views.dart';
 import 'task_detail_screen.dart';
+import '../widgets/app_logo.dart';
 
 /// One provider's available tasks on its own page.
 /// Header shows the company logo big; below, only its tasks.
@@ -143,7 +144,13 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
             ),
-            child: ProviderLogo(provider, size: 44, radius: 8),
+            child: AppLogo(
+              provider: provider,
+              size: 44,
+              radius: 10,
+              fallbackIcon: Icons.task_alt_rounded,
+              fallbackColor: color,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(

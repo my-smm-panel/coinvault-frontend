@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/provider_logos.dart';
+import '../widgets/app_logo.dart';
 import '../services/app_repository.dart';
 import '../widgets/state_views.dart';
 import '../widgets/cv_header.dart';
@@ -280,7 +281,13 @@ class _SurveysScreenState extends State<SurveysScreen> {
                 // Top row: provider + verified + reward
                 Row(
                   children: [
-                    ProviderLogo(provider, size: 36),
+                    AppLogo(
+                      provider: provider,
+                      title: title,
+                      size: 40,
+                      fallbackIcon: Icons.poll_rounded,
+                      fallbackColor: const Color(0xFF3B82F6),
+                    ),
                     const SizedBox(width: 9),
                     Expanded(
                       child: Row(

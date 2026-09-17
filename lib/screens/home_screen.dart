@@ -10,7 +10,7 @@ import '../widgets/cv_header.dart';
 import '../widgets/home_banner_carousel.dart';
 import 'earn_screen.dart';
 import 'task_detail_screen.dart';
-import '../core/provider_logos.dart';
+import '../widgets/app_logo.dart';
 import 'invite_screen.dart';
 import 'leaderboard_screen.dart';
 import 'missions_screen.dart';
@@ -830,29 +830,16 @@ class _HomeTabState extends State<HomeTab> {
         children: [
           Row(
             children: [
-              // Real provider logo when known, else app logo from title,
-              // else clean activity icon.
-              (provider != null && ProviderLogos.assetFor(provider) != null)
-                  ? ProviderLogo(provider!, size: 32, radius: 9)
-                  : (ProviderLogos.assetForTitle(title) != null
-                      ? ClipRRect(
-                          borderRadius: BorderRadius.circular(9),
-                          child: Image.asset(
-                            ProviderLogos.assetForTitle(title)!,
-                            width: 32,
-                            height: 32,
-                            fit: BoxFit.contain,
-                          ),
-                        )
-                      : Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(0.12),
-                            borderRadius: BorderRadius.circular(9),
-                          ),
-                          child: Icon(icon, size: 17, color: color),
-                        )),
+              // ONE resolver: real provider logo → app logo from title →
+              // clean activity icon. Never a dummy brand logo.
+              AppLogo(
+                provider: provider,
+                title: title,
+                size: 36,
+                radius: 9,
+                fallbackIcon: icon,
+                fallbackColor: color,
+              ),
               const Spacer(),
               Container(
                 padding:
@@ -1248,9 +1235,6 @@ class _HomeTabState extends State<HomeTab> {
         final coins = ((m['coins'] ?? 0) as num).toInt();
         final provider = (m['provider'] ?? m['cat'] ?? '').toString();
         final title = (m['title'] ?? 'Task').toString();
-        final appLogo = ProviderLogos.assetForTitle(title) ??
-            (ProviderLogos.assetFor(provider) != null ? provider : null);
-        final hasLogo = appLogo != null;
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Container(
@@ -1258,18 +1242,13 @@ class _HomeTabState extends State<HomeTab> {
             decoration: _cardDec(),
             child: Row(
               children: [
-                hasLogo
-                    ? ProviderLogo(appLogo!, size: 44, radius: 12)
-                    : Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withOpacity(0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.local_fire_department_rounded,
-                            color: AppColors.primary, size: 22),
-                      ),
+                AppLogo(
+                  provider: provider,
+                  title: title,
+                  size: 44,
+                  fallbackIcon: Icons.local_fire_department_rounded,
+                  fallbackColor: AppColors.primary,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
