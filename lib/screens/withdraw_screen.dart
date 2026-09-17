@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
-import '../widgets/cv_header.dart';
-import '../services/auth_service.dart';
-import '../services/app_repository.dart';
-import '../services/api_client.dart';
 import '../models/app_models.dart';
+import '../services/api_client.dart';
+import '../services/app_repository.dart';
+import '../services/auth_service.dart';
+import '../widgets/cv_header.dart';
 
-/// Withdraw — CoinVault light theme (per design sheet).
-/// Keeps the 4 methods (UPI / Bank / PhonePe / Voucher), brand grid,
-/// ₹-based amount input and full submit logic.
+/// Withdraw — CoinVault light premium design (global header + prompt layout).
+///
+/// Global header → page title → Available Balance card → 4 method cards
+/// (vertical stack) → amount input + quick chips → primary button →
+/// security note → Recent Withdrawals.
 class WithdrawScreen extends StatefulWidget {
   const WithdrawScreen({super.key});
 
@@ -18,12 +20,16 @@ class WithdrawScreen extends StatefulWidget {
 }
 
 class _WithdrawScreenState extends State<WithdrawScreen> {
-  static const _bg = Color(0xFFF7F8FA);
+  static const _bg = Color(0xFFFAFAF8);
+  static const int _minCoins = 100;
 
   UserModel? _user;
   bool _loading = false;
-  String _selectedMethod = 'upi'; // 'upi' | 'bank' | 'phonepe' | 'voucher'
-  String _voucherBrand = 'Amazon'; // Amazon | OLA | Gift
+  String _selectedMethod = 'upi';
+  String _voucherBrand = 'Amazon';
+  List<Map<String, dynamic>> _recent = const [];
+  bool _recentLoading = false;
+
   final _upiController = TextEditingController();
   final _bankController = TextEditingController();
   final _voucherController = TextEditingController();
@@ -34,7 +40,9 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   @override
   void initState() {
     super.initState();
+    _amountController.text = '100';
     _loadUser();
+    _loadRecent();
   }
 
   Future<void> _loadUser() async {
@@ -48,44 +56,99 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     }
   }
 
-  int get _maxWithdrawableCoins {
-    final coins = _user?.coins ?? 0;
-    return (coins ~/ 100) * 100; // Round down to nearest 100
+  Future<void> _loadRecent() async {
+    setState(() => _recentLoading = true);
+    try {
+      final items = await AppRepository.instance
+          .fetchWithdrawalHistory(_user?.uid ?? '');
+      setState(() {
+        _recent = items.take(5).map((e) {
+          final m = e as Map<String, dynamic>;
+          return <String, dynamic>{
+            'method': (m['method'] as String?) ?? 'upi',
+            'coins': ((m['coins'] as num?) ?? 0).toInt(),
+            'rupees': ((m['rupees'] as num?) ??
+                    ((m['amount'] as num?) ?? 0).toDouble())
+                .toDouble(),
+            'status': (m['status'] as String?) ?? 'pending',
+          };
+        }).toList();
+      });
+    } catch (_) {
+      // keep empty
+    } finally {
+      if (mounted) setState(() => _recentLoading = false);
+    }
   }
 
-  double get _maxWithdrawableRupees => _maxWithdrawableCoins / 10;
+  int get _coins => _user?.coins ?? 0;
+  double get _rupees => _coins / 10;
 
-  @override
-  void dispose() {
-    _upiController.dispose();
-    _bankController.dispose();
-    _voucherController.dispose();
-    _amountController.dispose();
-    super.dispose();
+  int? get _enteredCoins {
+    final t = _amountController.text.trim();
+    final n = int.tryParse(t);
+    return n;
   }
 
-  void _onAmountChange(String value) {
-    // Live conversion preview only — do not auto-correct while typing.
-    setState(() {});
+  double get _enteredRupees {
+    final c = _enteredCoins;
+    return c == null ? 0 : c / 10;
+  }
+
+  bool get _canWithdraw {
+    final c = _enteredCoins;
+    return c != null && c >= _minCoins && c <= _coins;
+  }
+
+  String get _methodLabel {
+    switch (_selectedMethod) {
+      case 'bank':
+        return 'Bank Transfer';
+      case 'phonepe':
+        return 'PhonePe';
+      case 'voucher':
+        return 'Gift Cards';
+      default:
+        return 'UPI';
+    }
+  }
+
+  IconData get _methodIcon {
+    switch (_selectedMethod) {
+      case 'bank':
+        return Icons.account_balance_rounded;
+      case 'phonepe':
+        return Icons.phone_iphone_rounded;
+      case 'voucher':
+        return Icons.card_giftcard_rounded;
+      default:
+        return Icons.qr_code_rounded;
+    }
+  }
+
+  static String _fmt(int n) {
+    final s = StringBuffer();
+    final str = n.abs().toString();
+    int count = 0;
+    for (int i = str.length - 1; i >= 0; i--) {
+      if (count != 0 && count % 3 == 0) s.write(',');
+      s.write(str[i]);
+      count++;
+    }
+    final rev = s.toString().split('').reversed.join();
+    return n < 0 ? '-$rev' : rev;
   }
 
   Future<void> _submitWithdrawal() async {
     if (_user == null) return;
 
-    // Amount entered is in ₹ — convert to coins (₹1 = 10 coins).
-    final rupeesText = _amountController.text.trim();
-    final rupees = double.tryParse(rupeesText);
-    if (rupees == null || rupeesText.isEmpty) {
-      _showSnackBar('Enter amount in ₹ (e.g. 10, 50, 100)');
+    final coins = _enteredCoins;
+    if (coins == null) {
+      _showSnackBar('Enter amount in coins');
       return;
     }
-    final coins = (rupees * 10).round();
-    if (rupees < 10) {
-      _showSnackBar('Minimum withdrawal is ₹10 (100 coins)');
-      return;
-    }
-    if (rupees % 10 != 0) {
-      _showSnackBar('Amount must be in multiples of ₹10');
+    if (coins < _minCoins) {
+      _showSnackBar('Minimum withdrawal is 100 coins');
       return;
     }
     if (coins > _user!.coins) {
@@ -125,27 +188,22 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     }
 
     setState(() => _loading = true);
-
     try {
-      final repo = AppRepository.instance;
-      // Server validates + debits; throws ApiException with the server
-      // message on failure (insufficient balance, limit, validation).
-      await repo.submitWithdrawal(
+      await AppRepository.instance.submitWithdrawal(
         uid: _user!.uid,
         coins: coins,
         method: _selectedMethod,
         details: details,
       );
-
       if (mounted) {
-        // Coins deducted on server — mirror locally, instantly.
         await AuthService().deductCoins(coins);
         await AuthService().updateWithdrawInfo(
           upiId: _selectedMethod == 'upi' ? details : null,
           bankDetails: _selectedMethod == 'bank' ? details : null,
         );
-        _user = AuthService().userModel; // refresh balance
+        _user = AuthService().userModel;
         _amountController.clear();
+        await _loadRecent();
         _showSuccessDialog(coins, coins / 10);
       }
     } on ApiException catch (e) {
@@ -167,7 +225,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       builder: (_) => Dialog(
         backgroundColor: Colors.transparent,
         child: Container(
-          padding: const EdgeInsets.all(AppSpacing.xl),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: AppColors.cardBackground,
             borderRadius: BorderRadius.circular(AppRadius.xl),
@@ -177,8 +235,8 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                width: 80,
-                height: 80,
+                width: 76,
+                height: 76,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -188,29 +246,45 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                   ),
                   shape: BoxShape.circle,
                 ),
-                child:
-                    const Icon(Icons.check_rounded, size: 40, color: Colors.white),
+                child: const Icon(Icons.check_rounded,
+                    size: 38, color: Colors.white),
               ),
-              const SizedBox(height: AppSpacing.lg),
-              Text('Request Submitted!', style: AppTextStyles.headlineMedium),
-              const SizedBox(height: AppSpacing.xs),
+              const SizedBox(height: 14),
+              const Text('Request Submitted!',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  )),
+              const SizedBox(height: 6),
               Text(
-                '$coins coins (₹${rupees.toStringAsFixed(1)})',
-                style: AppTextStyles.bodyLarge.copyWith(
-                  color: AppColors.gold,
+                '${_fmt(coins)} coins (₹${rupees.toStringAsFixed(0)})',
+                style: const TextStyle(
+                  color: AppColors.primary,
                   fontWeight: FontWeight.w700,
+                  fontSize: 14,
                 ),
               ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(
-                'Payment will be processed within 24-48 hours.\nYou\'ll receive a notification when done.',
-                style: AppTextStyles.bodySmall,
+              const SizedBox(height: 8),
+              const Text(
+                'Payment will be processed within 24-48 hours.\n'
+                'You will receive a notification when done.',
+                style: TextStyle(
+                    fontSize: 12.5, color: AppColors.textSecondary),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: AppSpacing.lg),
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(AppRadius.lg),
+                    ),
+                  ),
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Done'),
                 ),
@@ -228,223 +302,22 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         content: Text(message),
         backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md)),
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(AppRadius.md)),
       ),
     );
   }
 
-  /// Orange header with back arrow + title (per design sheet).
-
-  /// White coin-balance card: big orange number + gold coin icon.
-  Widget _balanceCard() {
-    final coins = _user?.coins ?? 0;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Available Coins',
-                  style: AppTextStyles.bodyMedium.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '$coins',
-                      style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 34,
-                        fontWeight: FontWeight.w800,
-                        height: 1.1,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 5),
-                      child: Text(
-                        '= ₹${(coins / 10).toStringAsFixed(0)}',
-                        style: AppTextStyles.bodyMedium.copyWith(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: AppColors.primaryContainer,
-                    borderRadius: BorderRadius.circular(AppRadius.full),
-                  ),
-                  child: Text(
-                    '100 coins = ₹10  •  Min withdraw ₹10',
-                    style: AppTextStyles.bodySmall.copyWith(
-                      color: AppColors.primaryDark,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Container(
-            width: 56,
-            height: 56,
-            decoration: const BoxDecoration(
-              gradient: AppColors.goldGradient,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.monetization_on_rounded,
-                color: Colors.white, size: 30),
-          ),
-        ],
-      ),
-    );
+  @override
+  void dispose() {
+    _upiController.dispose();
+    _bankController.dispose();
+    _voucherController.dispose();
+    _amountController.dispose();
+    super.dispose();
   }
 
-  Widget _sectionTitle(String text, {String? trailing}) {
-    return Row(
-      children: [
-        Text(text, style: AppTextStyles.titleMedium),
-        const Spacer(),
-        if (trailing != null)
-          Text(trailing, style: AppTextStyles.bodySmall),
-      ],
-    );
-  }
-
-  /// Brand grid shown when 'Voucher' method is selected.
-  Widget _brandGrid() {
-    final brands = [
-      {'name': 'Amazon Pay', 'color': const Color(0xFFFF9900), 'icon': Icons.shopping_cart_rounded},
-      {'name': 'PhonePe', 'color': const Color(0xFF5F259F), 'icon': Icons.phone_android_rounded},
-      {'name': 'Paytm', 'color': const Color(0xFF00B9F1), 'icon': Icons.account_balance_wallet_rounded},
-      {'name': 'Flipkart', 'color': const Color(0xFF2874F0), 'icon': Icons.shopping_bag_rounded},
-      {'name': 'Google Play', 'color': const Color(0xFF34A853), 'icon': Icons.play_circle_fill_rounded},
-      {'name': 'Myntra', 'color': const Color(0xFFFF4466), 'icon': Icons.checkroom_rounded},
-      {'name': 'Ajio', 'color': const Color(0xFF2BB1E4), 'icon': Icons.shopping_basket_rounded},
-      {'name': 'Swiggy', 'color': const Color(0xFFFF5200), 'icon': Icons.restaurant_rounded},
-      {'name': 'Zomato', 'color': const Color(0xFFE23744), 'icon': Icons.restaurant_menu_rounded},
-      {'name': 'Netflix', 'color': const Color(0xFFE50914), 'icon': Icons.movie_rounded},
-      {'name': 'Spotify', 'color': const Color(0xFF1DB954), 'icon': Icons.music_note_rounded},
-      {'name': 'OLA', 'color': const Color(0xFF00C853), 'icon': Icons.directions_car_rounded},
-    ];
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        childAspectRatio: 1.1,
-        crossAxisSpacing: 8,
-        mainAxisSpacing: 8,
-      ),
-      itemCount: brands.length,
-      itemBuilder: (_, i) => _brandChip2(brands[i] as Map<String, dynamic>),
-    );
-  }
-
-  Widget _brandChip2(Map<String, dynamic> brand) {
-    final name = brand['name'] as String;
-    final color = brand['color'] as Color;
-    final icon = brand['icon'] as IconData;
-    final isSelected = _voucherBrand == name;
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
-      onTap: () => setState(() => _voucherBrand = name),
-      child: Container(
-        decoration: BoxDecoration(
-          color: isSelected ? color.withOpacity(0.12) : AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? color : AppColors.border,
-            width: isSelected ? 2 : 1,
-          ),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon,
-                color: isSelected ? color : AppColors.textTertiary, size: 24),
-            const SizedBox(height: 4),
-            Text(
-              name,
-              style: TextStyle(
-                  color: isSelected ? color : AppColors.textSecondary,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w600),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  InputDecoration _fieldDecoration({
-    required String labelText,
-    required String hintText,
-    required IconData prefixIcon,
-    String? helperText,
-    String? errorText,
-  }) {
-    return InputDecoration(
-      labelText: labelText,
-      hintText: hintText,
-      prefixIcon: Icon(prefixIcon, color: AppColors.primary),
-      helperText: helperText,
-      errorText: errorText,
-      filled: true,
-      fillColor: AppColors.cardBackground,
-      labelStyle: AppTextStyles.bodyMedium
-          .copyWith(color: AppColors.textSecondary, fontSize: 13),
-      hintStyle: AppTextStyles.bodySmall,
-      helperStyle:
-          AppTextStyles.bodySmall.copyWith(fontSize: 11),
-      errorStyle: AppTextStyles.bodySmall
-          .copyWith(color: AppColors.error, fontSize: 11),
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.border, width: 1.5),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.primary, width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.error, width: 1.5),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        borderSide: const BorderSide(color: AppColors.error, width: 2),
-      ),
-    );
-  }
-
+  // ───────────────────────────── UI ──────────────────────────────────────
   @override
   Widget build(BuildContext context) {
     if (_user == null) {
@@ -452,9 +325,9 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         backgroundColor: _bg,
         body: SafeArea(
           child: Column(
-            children: [
-              const CvHeader(),
-              const Expanded(
+            children: const [
+              CvHeader(),
+              Expanded(
                 child: Center(
                   child: CircularProgressIndicator(color: AppColors.primary),
                 ),
@@ -469,159 +342,89 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       backgroundColor: _bg,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(
-              AppSpacing.md, AppSpacing.sm, AppSpacing.md, 28),
+          padding: const EdgeInsets.fromLTRB(18, 6, 18, 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const CvHeader(),
-              const SizedBox(height: AppSpacing.md),
+              const SizedBox(height: 12),
+              const Text(
+                'Withdraw',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                  height: 1.2,
+                ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Redeem your coins for rewards',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const SizedBox(height: 18),
+
+              // Available balance (compact)
               _balanceCard(),
-              const SizedBox(height: AppSpacing.xl),
-              _sectionTitle('Withdraw via',
-                  trailing:
-                      'Max ₹${_maxWithdrawableRupees.toStringAsFixed(0)}'),
-              const SizedBox(height: AppSpacing.md),
-              Row(
-                children: [
-                  Expanded(
-                    child: _MethodCard(
-                      icon: Icons.qr_code_rounded,
-                      title: 'UPI',
-                      subtitle: 'Instant',
-                      isSelected: _selectedMethod == 'upi',
-                      color: const Color(0xFF10B981),
-                      onTap: () =>
-                          setState(() => _selectedMethod = 'upi'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _MethodCard(
-                      icon: Icons.account_balance_rounded,
-                      title: 'Bank',
-                      subtitle: '1-2 days',
-                      isSelected: _selectedMethod == 'bank',
-                      color: const Color(0xFF3B82F6),
-                      onTap: () =>
-                          setState(() => _selectedMethod = 'bank'),
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 20),
+
+              // Methods
+              const Text(
+                'Choose a withdrawal method',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 10),
-              Row(
-                children: [
-                  Expanded(
-                    child: _MethodCard(
-                      icon: Icons.phone_iphone_rounded,
-                      title: 'PhonePe',
-                      subtitle: 'Wallet',
-                      isSelected: _selectedMethod == 'phonepe',
-                      color: const Color(0xFF5F259F),
-                      onTap: () =>
-                          setState(() => _selectedMethod = 'phonepe'),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _MethodCard(
-                      icon: Icons.card_giftcard_rounded,
-                      title: 'Voucher',
-                      subtitle: 'Gift cards',
-                      isSelected: _selectedMethod == 'voucher',
-                      color: const Color(0xFFEC4899),
-                      onTap: () =>
-                          setState(() => _selectedMethod = 'voucher'),
-                    ),
-                  ),
-                ],
-              ),
-              if (_selectedMethod == 'voucher') ...[
-                const SizedBox(height: AppSpacing.md),
-                _brandGrid(),
-              ],
-              const SizedBox(height: AppSpacing.xl),
-              _sectionTitle('Details'),
-              const SizedBox(height: AppSpacing.sm),
-              if (_selectedMethod == 'upi')
-                TextField(
-                  controller: _upiController,
-                  style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: _fieldDecoration(
-                    labelText: 'UPI ID',
-                    hintText: 'yourname@upi',
-                    prefixIcon: Icons.qr_code_rounded,
-                    errorText: _upiError,
-                  ),
-                  keyboardType: TextInputType.emailAddress,
-                  textInputAction: TextInputAction.next,
-                )
-              else if (_selectedMethod == 'bank')
-                TextField(
-                  controller: _bankController,
-                  style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: _fieldDecoration(
-                    labelText: 'Bank Details',
-                    hintText: 'Account Holder Name, Account Number, IFSC',
-                    prefixIcon: Icons.account_balance_rounded,
-                    errorText: _bankError,
-                  ),
-                  maxLines: 2,
-                  textInputAction: TextInputAction.next,
-                )
-              else
-                TextField(
-                  controller: _voucherController,
-                  style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: _fieldDecoration(
-                    labelText: _selectedMethod == 'phonepe'
-                        ? 'PhonePe Number'
-                        : 'Mobile / Email',
-                    hintText: _selectedMethod == 'phonepe'
-                        ? '10-digit mobile'
-                        : 'Email where voucher is sent',
-                    prefixIcon: _selectedMethod == 'phonepe'
-                        ? Icons.phone_iphone_rounded
-                        : Icons.alternate_email_rounded,
-                  ),
-                  keyboardType: TextInputType.text,
-                  textInputAction: TextInputAction.next,
+              _methodRow('upi', Icons.qr_code_rounded, 'UPI',
+                  'Fast digital payout', const Color(0xFF10B981)),
+              const SizedBox(height: 10),
+              _methodRow('bank', Icons.account_balance_rounded, 'Bank Transfer',
+                  'Transfer directly to your bank', const Color(0xFF3B82F6)),
+              const SizedBox(height: 10),
+              _methodRow('phonepe', Icons.phone_iphone_rounded, 'PhonePe',
+                  'Digital wallet payout', const Color(0xFF5F259F)),
+              const SizedBox(height: 10),
+              _methodRow('voucher', Icons.card_giftcard_rounded, 'Gift Cards',
+                  'Redeem available vouchers', const Color(0xFFEC4899)),
+
+              // Account details per method
+              const SizedBox(height: 18),
+              _detailsField(),
+              const SizedBox(height: 16),
+
+              // Amount
+              const Text(
+                'Enter withdrawal amount',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
                 ),
-              const SizedBox(height: AppSpacing.lg),
-              Builder(builder: (_) {
-                final t = _amountController.text.trim();
-                final r = double.tryParse(t);
-                final preview =
-                    (r != null && t.isNotEmpty) ? ' ≈ ${(r * 10).round()} coins' : '';
-                return TextField(
-                  controller: _amountController,
-                  style: const TextStyle(color: AppColors.textPrimary),
-                  decoration: _fieldDecoration(
-                    labelText: 'Amount (₹)',
-                    hintText: 'Enter amount — e.g. 10, 50, 100',
-                    prefixIcon: Icons.currency_rupee_rounded,
-                    helperText:
-                        'Available: ₹${_maxWithdrawableRupees.toStringAsFixed(1)}${preview.isEmpty ? '' : ' • You entered:$preview'}',
-                  ),
-                  keyboardType:
-                      const TextInputType.numberWithOptions(decimal: true),
-                  onChanged: _onAmountChange,
-                  textInputAction: TextInputAction.done,
-                );
-              }),
-              const SizedBox(height: AppSpacing.xl),
+              ),
+              const SizedBox(height: 10),
+              _amountField(),
+              const SizedBox(height: 10),
+              _quickChips(),
+              const SizedBox(height: 18),
+
+              // Primary button
               SizedBox(
                 width: double.infinity,
-                height: 56,
+                height: 54,
                 child: ElevatedButton(
-                  onPressed: _loading || _maxWithdrawableCoins < 100
-                      ? null
-                      : _submitWithdrawal,
+                  onPressed:
+                      _loading || !_canWithdraw ? null : _submitWithdrawal,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
-                    disabledBackgroundColor: AppColors.border,
-                    disabledForegroundColor: AppColors.textTertiary,
+                    disabledBackgroundColor: const Color(0xFFE7E7E7),
+                    disabledForegroundColor: const Color(0xFF9CA3AF),
+                    foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -635,18 +438,46 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                               strokeWidth: 2, color: Colors.white),
                         )
                       : Text(
-                          _maxWithdrawableCoins >= 100
-                              ? 'REQUEST WITHDRAWAL'
-                              : 'MINIMUM 100 COINS REQUIRED',
-                          style: AppTextStyles.labelLarge.copyWith(
-                            fontWeight: FontWeight.w800,
+                          'Withdraw ₹${_enteredRupees.toStringAsFixed(0)}',
+                          style: const TextStyle(
                             fontSize: 15,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                 ),
               ),
-              const SizedBox(height: AppSpacing.md),
-              _termsCard(),
+              const SizedBox(height: 12),
+
+              // Security note
+              Row(
+                children: const [
+                  Icon(Icons.lock_outline_rounded,
+                      size: 13, color: AppColors.textSecondary),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Withdrawals may require verification before processing.',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              // Recent withdrawals
+              const Text(
+                'Recent Withdrawals',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              _recentList(),
             ],
           ),
         ),
@@ -654,59 +485,82 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     );
   }
 
-  /// Light "info" card replacing the old dark terms list.
-  Widget _termsCard() {
-    const terms = [
-      'Minimum withdrawal is ₹10 (100 coins)',
-      'Payments are processed within 24-48 hours',
-      'Earn more coins from tasks, surveys & games',
-    ];
+  Widget _balanceCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
       decoration: BoxDecoration(
-        color: AppColors.primaryContainer,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: const [
-              Icon(Icons.info_outline_rounded,
-                  size: 16, color: AppColors.primaryDark),
-              SizedBox(width: 6),
-              Text(
-                'Withdrawal terms',
-                style: TextStyle(
-                  color: AppColors.primaryDark,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w800,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Available Balance',
+                  style: TextStyle(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          ...terms.map(
-            (t) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 3),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(Icons.check_circle_rounded,
-                      size: 15, color: AppColors.success),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      t,
-                      style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
+                const SizedBox(height: 6),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    const Icon(Icons.monetization_on_rounded,
+                        color: AppColors.primary, size: 22),
+                    const SizedBox(width: 6),
+                    Text(
+                      _fmt(_coins),
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                        height: 1.1,
                       ),
                     ),
+                    const SizedBox(width: 5),
+                    const Text('Coins',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textSecondary,
+                        )),
+                  ],
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  '≈ ₹${_rupees.toStringAsFixed(0)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
                   ),
-                ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFF7E6),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+              border: Border.all(color: AppColors.primary.withOpacity(0.25)),
+            ),
+            child: Text(
+              'Min: $_minCoins Coins',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primaryDark,
               ),
             ),
           ),
@@ -714,71 +568,389 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       ),
     );
   }
-}
 
-class _MethodCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final bool isSelected;
-  final VoidCallback onTap;
-  final Color color;
-
-  const _MethodCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.isSelected,
-    required this.onTap,
-    this.color = AppColors.primary,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
+  Widget _methodRow(
+      String key, IconData icon, String title, String subtitle, Color color) {
+    final selected = _selectedMethod == key;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedMethod = key),
       child: Container(
-        padding: const EdgeInsets.all(AppSpacing.md),
+        padding: const EdgeInsets.all(13),
         decoration: BoxDecoration(
-          color: AppColors.cardBackground,
+          color: selected
+              ? const Color(0xFFFFFBF2)
+              : AppColors.cardBackground,
           borderRadius: BorderRadius.circular(AppRadius.lg),
           border: Border.all(
-            color: isSelected ? color : AppColors.border,
-            width: isSelected ? 2 : 1.5,
+            color: selected ? AppColors.primary : AppColors.border,
+            width: selected ? 1.8 : 1,
           ),
-          boxShadow: isSelected ? AppShadows.card : null,
+          boxShadow: selected ? AppShadows.card : null,
         ),
-        child: Column(
+        child: Row(
           children: [
             Container(
-              padding: const EdgeInsets.all(12),
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: isSelected
-                    ? color
-                    : color.withOpacity(0.12),
+                color: selected ? color : color.withOpacity(0.12),
                 borderRadius: BorderRadius.circular(AppRadius.md),
               ),
-              child: Icon(
-                icon,
-                size: 26,
-                color: isSelected ? Colors.white : color,
+              child: Icon(icon,
+                  size: 20, color: selected ? Colors.white : color),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      )),
+                  const SizedBox(height: 2),
+                  Text(subtitle,
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: AppColors.textSecondary,
+                      )),
+                ],
               ),
             ),
-            const SizedBox(height: AppSpacing.md),
-            Text(title,
-                style: AppTextStyles.bodyMedium.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: isSelected ? color : AppColors.textPrimary,
-                )),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: AppTextStyles.bodySmall,
-              textAlign: TextAlign.center,
+            Icon(
+              selected
+                  ? Icons.radio_button_checked_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              color: selected ? AppColors.primary : const Color(0xFFC9CDD4),
+              size: 20,
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _detailsField() {
+    if (_selectedMethod == 'upi') {
+      return _field(
+        controller: _upiController,
+        label: 'UPI ID',
+        hint: 'yourname@upi',
+        icon: Icons.qr_code_rounded,
+        error: _upiError,
+      );
+    } else if (_selectedMethod == 'bank') {
+      return _field(
+        controller: _bankController,
+        label: 'Bank Details',
+        hint: 'Account Holder Name, Account Number, IFSC',
+        icon: Icons.account_balance_rounded,
+        error: _bankError,
+        maxLines: 2,
+      );
+    }
+    return _field(
+      controller: _voucherController,
+      label: _selectedMethod == 'phonepe' ? 'PhonePe Number' : 'Mobile / Email',
+      hint: _selectedMethod == 'phonepe'
+          ? '10-digit mobile'
+          : 'Email where voucher is sent',
+      icon: _selectedMethod == 'phonepe'
+          ? Icons.phone_iphone_rounded
+          : Icons.alternate_email_rounded,
+    );
+  }
+
+  Widget _field({
+    required TextEditingController controller,
+    required String label,
+    required String hint,
+    required IconData icon,
+    String? error,
+    int maxLines = 1,
+  }) {
+    return TextField(
+      controller: controller,
+      style: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+      ),
+      maxLines: maxLines,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle:
+            const TextStyle(color: AppColors.textSecondary, fontSize: 12.5),
+        hintText: hint,
+        hintStyle: const TextStyle(color: Color(0xFFB9BDC4), fontSize: 13),
+        prefixIcon: Icon(icon, color: AppColors.primary, size: 19),
+        errorText: error,
+        filled: true,
+        fillColor: AppColors.cardBackground,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.border, width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide:
+              const BorderSide(color: AppColors.primary, width: 1.8),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.error, width: 1.5),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(AppRadius.md),
+          borderSide: const BorderSide(color: AppColors.error, width: 2),
+        ),
+      ),
+    );
+  }
+
+  Widget _amountField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: Border.all(
+          color: _canWithdraw ? AppColors.primary : AppColors.border,
+          width: _canWithdraw ? 1.8 : 1,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(left: 13),
+            child: Icon(Icons.monetization_on_rounded,
+                color: AppColors.primary, size: 20),
+          ),
+          Expanded(
+            child: TextField(
+              controller: _amountController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+              decoration: const InputDecoration(
+                hintText: '100 Coins',
+                hintStyle:
+                    TextStyle(color: Color(0xFFB9BDC4), fontSize: 15),
+                border: InputBorder.none,
+                contentPadding:
+                    EdgeInsets.symmetric(horizontal: 12, vertical: 13),
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 14),
+            child: Text(
+              '₹${_enteredRupees.toStringAsFixed(0)}',
+              style: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _quickChips() {
+    const amounts = [100, 250, 500, 1000];
+    return Row(
+      children: amounts.map((a) {
+        final active = _enteredCoins == a;
+        return Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(
+                right: a == amounts.last ? 0 : 8, left: a == 100 ? 0 : 0),
+            child: GestureDetector(
+              onTap: () =>
+                  setState(() => _amountController.text = a.toString()),
+              child: Container(
+                height: 38,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: active
+                      ? AppColors.primary
+                      : AppColors.cardBackground,
+                  borderRadius: BorderRadius.circular(AppRadius.md),
+                  border: Border.all(
+                    color: active ? AppColors.primary : AppColors.border,
+                  ),
+                ),
+                child: Text(
+                  _fmt(a),
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: active
+                        ? Colors.white
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _recentList() {
+    if (_recentLoading) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(
+          child: SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: AppColors.primary),
+          ),
+        ),
+      );
+    }
+    if (_recent.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(AppRadius.lg),
+          border: Border.all(color: AppColors.border),
+        ),
+        child: const Text(
+          'No withdrawals yet',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 12.5, color: AppColors.textSecondary),
+        ),
+      );
+    }
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.cardBackground,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < _recent.length; i++) ...[
+            _recentRow(_recent[i]),
+            if (i != _recent.length - 1)
+              const Divider(height: 1, color: AppColors.border),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _recentRow(Map<String, dynamic> item) {
+    final method = (item['method'] as String?) ?? 'upi';
+    final coins = (item['coins'] as num?)?.toInt() ?? 0;
+    final rupees = (item['rupees'] as num?)?.toDouble() ?? coins / 10;
+    final status = (item['status'] as String?) ?? 'pending';
+
+    IconData icon;
+    Color iconColor;
+    switch (method) {
+      case 'bank':
+        icon = Icons.account_balance_rounded;
+        iconColor = const Color(0xFF3B82F6);
+        break;
+      case 'phonepe':
+        icon = Icons.phone_iphone_rounded;
+        iconColor = const Color(0xFF5F259F);
+        break;
+      case 'voucher':
+        icon = Icons.card_giftcard_rounded;
+        iconColor = const Color(0xFFEC4899);
+        break;
+      default:
+        icon = Icons.qr_code_rounded;
+        iconColor = const Color(0xFF10B981);
+    }
+
+    String statusLabel;
+    Color statusColor;
+    switch (status.toLowerCase()) {
+      case 'paid':
+      case 'completed':
+      case 'success':
+        statusLabel = 'Completed';
+        statusColor = AppColors.success;
+        break;
+      case 'failed':
+      case 'rejected':
+        statusLabel = 'Failed';
+        statusColor = AppColors.error;
+        break;
+      default:
+        statusLabel = 'Processing';
+        statusColor = AppColors.primary;
+    }
+
+    final methodName = method == 'bank'
+        ? 'Bank Transfer'
+        : (method == 'voucher' ? 'Gift Cards' : method[0].toUpperCase() + method.substring(1));
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: iconColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(AppRadius.md),
+            ),
+            child: Icon(icon, size: 18, color: iconColor),
+          ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Text(methodName,
+                style: const TextStyle(
+                  fontSize: 13.5,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                )),
+          ),
+          Text(
+            '${_fmt(coins)} Coins · ₹${rupees.toStringAsFixed(0)}',
+            style: const TextStyle(
+              fontSize: 12,
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(AppRadius.full),
+            ),
+            child: Text(
+              statusLabel,
+              style: TextStyle(
+                fontSize: 10.5,
+                fontWeight: FontWeight.w800,
+                color: statusColor,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
