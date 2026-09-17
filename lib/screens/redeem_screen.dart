@@ -18,19 +18,26 @@ class _RedeemScreenState extends State<RedeemScreen> {
 
   // 12 famous Indian / global gift card brands
   static const _brands = [
-    {'name': 'Amazon Pay',    'color': Color(0xFFFF9900), 'icon': Icons.shopping_cart_rounded},
-    {'name': 'PhonePe',       'color': Color(0xFF5F259F), 'icon': Icons.phone_android_rounded},
-    {'name': 'Paytm',         'color': Color(0xFF00B9F1), 'icon': Icons.account_balance_wallet_rounded},
-    {'name': 'Flipkart',      'color': Color(0xFF2874F0), 'icon': Icons.shopping_bag_rounded},
-    {'name': 'Google Play',   'color': Color(0xFF34A853), 'icon': Icons.play_circle_fill_rounded},
-    {'name': 'Myntra',        'color': Color(0xFFFF4466), 'icon': Icons.checkroom_rounded},
-    {'name': 'Ajio',          'color': Color(0xFF2BB1E4), 'icon': Icons.shopping_basket_rounded},
-    {'name': 'Swiggy',        'color': Color(0xFFFF5200), 'icon': Icons.restaurant_rounded},
-    {'name': 'Zomato',        'color': Color(0xFFE23744), 'icon': Icons.restaurant_menu_rounded},
-    {'name': 'Netflix',       'color': Color(0xFFE50914), 'icon': Icons.movie_rounded},
-    {'name': 'Spotify',       'color': Color(0xFF1DB954), 'icon': Icons.music_note_rounded},
-    {'name': 'OLA',           'color': Color(0xFF00C853), 'icon': Icons.directions_car_rounded},
+    {'name': 'Amazon Pay',    'color': Color(0xFFFF9900), 'img': 'assets/brands/amazon.png'},
+    {'name': 'PhonePe',       'color': Color(0xFF5F259F), 'img': 'assets/brands/phonepe.png'},
+    {'name': 'Paytm',         'color': Color(0xFF00B9F1), 'img': 'assets/brands/paytm.png'},
+    {'name': 'Flipkart',      'color': Color(0xFF2874F0), 'img': 'assets/brands/flipkart.png'},
+    {'name': 'Google Play',   'color': Color(0xFF34A853), 'img': 'assets/brands/googleplay.png'},
+    {'name': 'Myntra',        'color': Color(0xFFFF4466), 'img': 'assets/brands/myntra.png'},
+    {'name': 'Ajio',          'color': Color(0xFF2BB1E4), 'img': 'assets/brands/ajio.png'},
+    {'name': 'Swiggy',        'color': Color(0xFFFF5200), 'img': 'assets/brands/swiggy.png'},
+    {'name': 'Zomato',        'color': Color(0xFFE23744), 'img': 'assets/brands/zomato.png'},
+    {'name': 'Netflix',       'color': Color(0xFFE50914), 'img': 'assets/brands/netflix.png'},
+    {'name': 'Spotify',       'color': Color(0xFF1DB954), 'img': 'assets/brands/spotify.png'},
+    {'name': 'OLA',           'color': Color(0xFF00C853), 'img': 'assets/brands/ola.png'},
   ];
+
+  static String _brandImg(String name) {
+    for (final b in _brands) {
+      if (b['name'] == name) return b['img'] as String;
+    }
+    return 'assets/brands/amazon.png';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,7 +72,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
   Widget _brandCard(Map<String, dynamic> brand) {
     final name = brand['name'] as String;
     final color = brand['color'] as Color;
-    final icon = brand['icon'] as IconData;
+    final img = brand['img'] as String;
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -87,8 +94,18 @@ class _RedeemScreenState extends State<RedeemScreen> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
-                child: Icon(icon,
-                    color: color, size: 26),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    img,
+                    width: 30,
+                    height: 30,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Icon(
+                        Icons.card_giftcard_rounded,
+                        color: color, size: 24),
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -131,10 +148,18 @@ class _RedeemScreenState extends State<RedeemScreen> {
                     color: brandColor.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(
-                      _brands.firstWhere((b) => b['name'] == brand)['icon']
-                          as IconData,
-                      color: brandColor, size: 20),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset(
+                      _brandImg(brand),
+                      width: 22,
+                      height: 22,
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Icon(
+                          Icons.card_giftcard_rounded,
+                          color: brandColor, size: 20),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Text(brand, style: TextStyle(color: brandColor, fontSize: 18)),

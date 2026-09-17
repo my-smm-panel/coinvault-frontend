@@ -1,20 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
-import 'invite_screen.dart';
-import '../services/auth_service.dart';
 import '../models/app_models.dart';
+import '../services/auth_service.dart';
 import '../widgets/state_views.dart';
 import 'earn_screen.dart';
-import 'leaderboard_screen.dart';
-import 'history_screen.dart';
-import 'notifications_screen.dart';
-import 'refer_screen.dart';
-import 'withdraw_screen.dart';
 import 'help_screen.dart';
+import 'history_screen.dart';
+import 'invite_screen.dart';
+import 'leaderboard_screen.dart';
+import 'notifications_screen.dart';
+import 'withdraw_screen.dart';
 
-/// Profile - own CoinVault style: centered bear avatar overlapping
-/// an orange header, gold balance pill, 2x2 stats grid, grid menu.
+/// Profile — CoinVault light premium design (global header, readable text).
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -26,8 +24,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   UserModel? _user;
   bool _loading = true;
 
-  static const _bg = Color(0xFFF7F8FA);
+  static const _bg = Color(0xFFFAFAF8);
   static const _card = Color(0xFFFFFFFF);
+  static const _border = Color(0xFFE7E7E7);
+  static const _textPrimary = Color(0xFF171717);
+  static const _textSecondary = Color(0xFF6B7280);
 
   @override
   void initState() {
@@ -58,6 +59,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
+  static String _fmt(int n) {
+    final s = StringBuffer();
+    final str = n.abs().toString();
+    int count = 0;
+    for (int i = str.length - 1; i >= 0; i--) {
+      if (count != 0 && count % 3 == 0) s.write(',');
+      s.write(str[i]);
+      count++;
+    }
+    final rev = s.toString().split('').reversed.join();
+    return n < 0 ? '-$rev' : rev;
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -69,43 +83,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_user == null) {
       return Scaffold(
         backgroundColor: _bg,
-        appBar: AppBar(title: const Text('Profile')),
+        appBar: AppBar(
+          title: const Text('Profile'),
+          backgroundColor: _bg,
+          foregroundColor: _textPrimary,
+          elevation: 0,
+        ),
         body: const Center(
           child: Text('Please sign in',
-              style: TextStyle(color: Colors.white70)),
+              style: TextStyle(color: _textSecondary, fontSize: 14)),
         ),
       );
     }
+
     final user = _user!;
-    final spinsLeft =
-        (2 - user.dailySpinsUsed).clamp(0, 2).toString();
+    final spinsLeft = (2 - user.dailySpinsUsed).clamp(0, 2).toString();
+    final name = user.displayName.isEmpty ? 'User' : user.displayName;
+
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
         child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(18, 6, 18, 28),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _header(user),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Column(
-                  children: [
-                    _balanceCard(user),
-                    const SizedBox(height: 12),
-                    _statsGrid(user, spinsLeft),
-                    const SizedBox(height: 16),
-                    _gridMenu(),
-                    const SizedBox(height: 8),
-                    if ((user.upiId ?? '').isNotEmpty ||
-                        (user.bankDetails ?? '').isNotEmpty)
-                      _payoutCard(user),
-                    const SizedBox(height: 8),
-                    const Text('CoinVault v1.0.0',
-                        style: TextStyle(
-                            color: Colors.white38, fontSize: 11)),
-                    const SizedBox(height: 12),
-                  ],
+              // ── Title ──
+              const Text(
+                'My Profile',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w800,
+                  color: _textPrimary,
+                  height: 1.2,
                 ),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Manage your account & rewards',
+                style: TextStyle(fontSize: 13, color: _textSecondary),
+              ),
+              const SizedBox(height: 18),
+
+              // ── Profile card ──
+              _profileCard(user, name),
+              const SizedBox(height: 14),
+
+              // ── Stats grid ──
+              _statsGrid(user, spinsLeft),
+              const SizedBox(height: 14),
+
+              // ── Payout details ──
+              if ((user.upiId ?? '').isNotEmpty ||
+                  (user.bankDetails ?? '').isNotEmpty) ...[
+                _payoutCard(user),
+                const SizedBox(height: 14),
+              ],
+
+              // ── Menu ──
+              const Text(
+                'Account',
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: _textPrimary,
+                ),
+              ),
+              const SizedBox(height: 10),
+              _menuList(),
+              const SizedBox(height: 16),
+
+              Center(
+                child: const Text('CoinVault v1.0.0',
+                    style:
+                        TextStyle(color: Color(0xFFB9BDC4), fontSize: 11)),
               ),
             ],
           ),
@@ -114,142 +165,91 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  /// Orange header with centered avatar overlapping the bottom edge.
-  Widget _header(UserModel user) {
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Container(
-          width: double.infinity,
-          padding:
-              const EdgeInsets.fromLTRB(16, 12, 16, 56),
-          decoration: const BoxDecoration(
-            gradient: AppColors.brandHeader,
-            borderRadius: BorderRadius.vertical(
-                bottom: Radius.circular(28)),
-          ),
-          child: Row(
-            children: [
-              const Text('My Profile',
-                  style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800)),
-              const Spacer(),
-              InkWell(
-                onTap: () => _push(const HelpScreen()),
-                borderRadius: BorderRadius.circular(20),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.25),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Row(
-                    children: [
-                      Icon(Icons.settings_rounded,
-                          color: AppColors.textPrimary, size: 15),
-                      SizedBox(width: 4),
-                      Text('Help',
-                          style: TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700)),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: -44,
-          child: Center(
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _bg,
-                border: Border.all(
-                    color: AppColors.gold, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withOpacity(0.4),
-                    blurRadius: 20,
-                  ),
-                ],
-              ),
-              child: CircleAvatar(
-                radius: 42,
-                backgroundColor: Colors.white10,
-                backgroundImage: user.photoUrl != null
-                    ? NetworkImage(user.photoUrl!)
-                    : const AssetImage('assets/app_icon.jpg')
-                        as ImageProvider,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _balanceCard(UserModel user) {
+  Widget _profileCard(UserModel user, String name) {
     return Container(
-      margin: const EdgeInsets.only(top: 56),
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: _card,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-            color: AppColors.gold.withOpacity(0.4)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
+        boxShadow: AppShadows.card,
       ),
-      child: Column(
+      child: Row(
         children: [
-          Text(
-            user.displayName.isEmpty ? 'User' : user.displayName,
-            style: const TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 19,
-                fontWeight: FontWeight.w800),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (user.email != null && user.email!.isNotEmpty)
-            Text(user.email!,
-                style: const TextStyle(
-                    color: Colors.white54, fontSize: 12),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 8),
           Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 20, vertical: 8),
+            padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              gradient: AppColors.goldGradient,
-              borderRadius: BorderRadius.circular(24),
+              shape: BoxShape.circle,
+              border: Border.all(color: AppColors.primary, width: 2),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
+            child: ClipOval(
+              child: Image.asset(
+                'assets/bear_avatar.png',
+                fit: BoxFit.cover,
+                width: 56,
+                height: 56,
+                errorBuilder: (_, __, ___) => Container(
+                  width: 56,
+                  height: 56,
+                  color: const Color(0xFFFFF7E6),
+                  child: const Icon(Icons.person_rounded, size: 28),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.monetization_on_rounded,
-                    color: AppColors.textPrimary, size: 20),
-                const SizedBox(width: 6),
-                Text('${user.coins} coins',
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
+                    color: _textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                if (user.email != null && user.email!.isNotEmpty)
+                  Text(
+                    user.email!,
                     style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 17,
-                        fontWeight: FontWeight.w800)),
+                        color: _textSecondary, fontSize: 12),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.monetization_on_rounded,
+                        color: AppColors.primary, size: 16),
+                    const SizedBox(width: 5),
+                    Text(
+                      '${_fmt(user.coins)} Coins',
+                      style: const TextStyle(
+                        color: _textPrimary,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '≈ ₹${(user.coins / 10).toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        color: _textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          Text('≈ ₹${(user.coins / 10).toStringAsFixed(2)}',
-              style: const TextStyle(
-                  color: Colors.white54, fontSize: 12)),
         ],
       ),
     );
@@ -262,38 +262,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 2.1,
+      childAspectRatio: 2.3,
       children: [
-        _stat('Withdrawable', '${user.coins}',
-            Icons.payments_rounded, AppColors.primary),
+        _stat('Withdrawable', _fmt(user.coins), Icons.payments_rounded,
+            AppColors.primary),
         _stat('Spins Left', spinsLeft, Icons.donut_large_rounded,
-            AppColors.gold),
-        _stat('Total Earned', '${user.coins}',
-            Icons.emoji_events_rounded, const Color(0xFF16A34A)),
+            const Color(0xFFF59E0B)),
+        _stat('Total Earned', _fmt(user.coins), Icons.emoji_events_rounded,
+            const Color(0xFF16A34A)),
         _stat('Rate', '100 = ₹10', Icons.currency_rupee_rounded,
             const Color(0xFF3B82F6)),
       ],
     );
   }
 
-  Widget _stat(
-      String label, String value, IconData icon, Color color) {
+  Widget _stat(String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: _card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: _border),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.15),
+              color: color.withOpacity(0.12),
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: color, size: 20),
+            child: Icon(icon, color: color, size: 19),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -303,14 +302,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               children: [
                 Text(value,
                     style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 16,
+                        color: _textPrimary,
+                        fontSize: 15,
                         fontWeight: FontWeight.w800),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 Text(label,
                     style: const TextStyle(
-                        color: Colors.white54, fontSize: 11)),
+                        color: _textSecondary, fontSize: 10.5)),
               ],
             ),
           ),
@@ -319,88 +318,86 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  /// Vertical list rows (text-based, not square grid).
-  Widget _gridMenu() {
+  Widget _menuList() {
     final items = [
-      ['History', 'View all tasks & payouts',
-        Icons.history_rounded, const Color(0xFF14B8A6),
-        const HistoryScreen()],
-      ['Payouts', 'Withdrawal transactions',
-        Icons.payments_rounded, AppColors.primary,
-        const HistoryScreen(initialTab: 'Payouts')],
-      ['Ranks', 'Leaderboard standings',
-        Icons.emoji_events_rounded, AppColors.gold,
-        const LeaderboardScreen()],
-      ['Refer & Earn', 'Invite friends, bonus coins',
-        Icons.group_add_rounded, const Color(0xFFEC4899),
-        const InviteScreen()],
-      ['Earn More', 'Tasks & offers',
-        Icons.task_alt_rounded, const Color(0xFF3B82F6),
-        const EarnScreen()],
-      ['Withdraw', 'Request payout',
-        Icons.account_balance_wallet_rounded,
-        AppColors.primary, const WithdrawScreen()],
-      ['Notifications', 'Alerts & updates',
-        Icons.notifications_rounded, const Color(0xFFF59E0B),
-        const NotificationsScreen()],
+      ['History', 'View all tasks & payouts', Icons.history_rounded,
+          const Color(0xFF14B8A6), const HistoryScreen()],
+      ['Payouts', 'Withdrawal transactions', Icons.payments_rounded,
+          AppColors.primary, const HistoryScreen(initialTab: 'Payouts')],
+      ['Ranks', 'Leaderboard standings', Icons.emoji_events_rounded,
+          const Color(0xFFF59E0B), const LeaderboardScreen()],
+      ['Refer & Earn', 'Invite friends, bonus coins', Icons.group_add_rounded,
+          const Color(0xFFEC4899), const InviteScreen()],
+      ['Earn More', 'Tasks & offers', Icons.task_alt_rounded,
+          const Color(0xFF3B82F6), const EarnScreen()],
+      ['Withdraw', 'Request payout', Icons.account_balance_wallet_rounded,
+          AppColors.primary, const WithdrawScreen()],
+      ['Notifications', 'Alerts & updates', Icons.notifications_rounded,
+          const Color(0xFFF59E0B), const NotificationsScreen()],
+      ['Help & Support', 'FAQs and contact', Icons.help_outline_rounded,
+          const Color(0xFF8B5CF6), const HelpScreen()],
     ];
-    return Column(
-      children: [
-        ...items.map((e) => _row(
-            e[0] as String, e[1] as String, e[2] as IconData,
-            e[3] as Color, () => _push(e[4] as Widget))),
-        _row('Logout', 'Sign out', Icons.logout_rounded,
-            const Color(0xFFEF4444), _signOut),
-      ],
+    return Container(
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < items.length; i++) ...[
+            _row(
+              items[i][0] as String,
+              items[i][1] as String,
+              items[i][2] as IconData,
+              items[i][3] as Color,
+              () => _push(items[i][4] as Widget),
+            ),
+            if (i != items.length - 1)
+              const Divider(height: 1, color: _border),
+          ],
+        ],
+      ),
     );
   }
 
   Widget _row(String title, String sub, IconData icon, Color color,
       VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-              horizontal: 14, vertical: 14),
-          decoration: BoxDecoration(
-            color: _card,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: Colors.white10),
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 20),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(9),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(11),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title,
-                        style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700)),
-                    Text(sub,
-                        style: const TextStyle(
-                            color: Colors.white54,
-                            fontSize: 11)),
-                  ],
-                ),
+              child: Icon(icon, color: color, size: 19),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title,
+                      style: const TextStyle(
+                          color: _textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text(sub,
+                      style: const TextStyle(
+                          color: _textSecondary, fontSize: 11)),
+                ],
               ),
-              const Icon(Icons.chevron_right_rounded,
-                  color: Colors.white38),
-            ],
-          ),
+            ),
+            const Icon(Icons.chevron_right_rounded,
+                color: Color(0xFFB9BDC4)),
+          ],
         ),
       ),
     );
@@ -413,27 +410,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: _card,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: _border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Payout Details',
-              style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
+          Row(
+            children: const [
+              Icon(Icons.account_balance_wallet_rounded,
+                  size: 17, color: AppColors.primary),
+              SizedBox(width: 7),
+              Text('Payout Details',
+                  style: TextStyle(
+                      color: _textPrimary,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w800)),
+            ],
+          ),
+          const SizedBox(height: 8),
           if ((user.upiId ?? '').isNotEmpty)
             Text('UPI: ${user.upiId}',
                 style: const TextStyle(
-                    color: Colors.white54, fontSize: 12)),
+                    color: _textSecondary, fontSize: 12.5)),
           if ((user.bankDetails ?? '').isNotEmpty)
             Text('Bank: ${user.bankDetails}',
                 style: const TextStyle(
-                    color: Colors.white54, fontSize: 12),
+                    color: _textSecondary, fontSize: 12.5),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => _push(const WithdrawScreen()),
+              icon: const Icon(Icons.edit_rounded, size: 16),
+              label: const Text('Update Payout Details'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: const BorderSide(color: AppColors.primary, width: 1.2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -784,19 +784,50 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
 
   // ───────────────────────── Gift card brands ────────────────────────────
   static const _brands = [
-    {'name': 'Amazon Pay', 'color': Color(0xFFFF9900), 'icon': Icons.shopping_cart_rounded},
-    {'name': 'PhonePe', 'color': Color(0xFF5F259F), 'icon': Icons.phone_android_rounded},
-    {'name': 'Paytm', 'color': Color(0xFF00B9F1), 'icon': Icons.account_balance_wallet_rounded},
-    {'name': 'Flipkart', 'color': Color(0xFF2874F0), 'icon': Icons.shopping_bag_rounded},
-    {'name': 'Google Play', 'color': Color(0xFF34A853), 'icon': Icons.play_circle_fill_rounded},
-    {'name': 'Myntra', 'color': Color(0xFFFF4466), 'icon': Icons.checkroom_rounded},
-    {'name': 'Ajio', 'color': Color(0xFF2BB1E4), 'icon': Icons.shopping_basket_rounded},
-    {'name': 'Swiggy', 'color': Color(0xFFFF5200), 'icon': Icons.restaurant_rounded},
-    {'name': 'Zomato', 'color': Color(0xFFE23744), 'icon': Icons.restaurant_menu_rounded},
-    {'name': 'Netflix', 'color': Color(0xFFE50914), 'icon': Icons.movie_rounded},
-    {'name': 'Spotify', 'color': Color(0xFF1DB954), 'icon': Icons.music_note_rounded},
-    {'name': 'OLA', 'color': Color(0xFF00C853), 'icon': Icons.directions_car_rounded},
+    {'name': 'Amazon Pay', 'color': Color(0xFFFF9900), 'img': 'assets/brands/amazon.png'},
+    {'name': 'PhonePe', 'color': Color(0xFF5F259F), 'img': 'assets/brands/phonepe.png'},
+    {'name': 'Paytm', 'color': Color(0xFF00B9F1), 'img': 'assets/brands/paytm.png'},
+    {'name': 'Flipkart', 'color': Color(0xFF2874F0), 'img': 'assets/brands/flipkart.png'},
+    {'name': 'Google Play', 'color': Color(0xFF34A853), 'img': 'assets/brands/googleplay.png'},
+    {'name': 'Myntra', 'color': Color(0xFFFF4466), 'img': 'assets/brands/myntra.png'},
+    {'name': 'Ajio', 'color': Color(0xFF2BB1E4), 'img': 'assets/brands/ajio.png'},
+    {'name': 'Swiggy', 'color': Color(0xFFFF5200), 'img': 'assets/brands/swiggy.png'},
+    {'name': 'Zomato', 'color': Color(0xFFE23744), 'img': 'assets/brands/zomato.png'},
+    {'name': 'Netflix', 'color': Color(0xFFE50914), 'img': 'assets/brands/netflix.png'},
+    {'name': 'Spotify', 'color': Color(0xFF1DB954), 'img': 'assets/brands/spotify.png'},
+    {'name': 'OLA', 'color': Color(0xFF00C853), 'img': 'assets/brands/ola.png'},
   ];
+
+  static String _brandImage(String name) {
+    switch (name) {
+      case 'Amazon Pay':
+        return 'assets/brands/amazon.png';
+      case 'PhonePe':
+        return 'assets/brands/phonepe.png';
+      case 'Paytm':
+        return 'assets/brands/paytm.png';
+      case 'Flipkart':
+        return 'assets/brands/flipkart.png';
+      case 'Google Play':
+        return 'assets/brands/googleplay.png';
+      case 'Myntra':
+        return 'assets/brands/myntra.png';
+      case 'Ajio':
+        return 'assets/brands/ajio.png';
+      case 'Swiggy':
+        return 'assets/brands/swiggy.png';
+      case 'Zomato':
+        return 'assets/brands/zomato.png';
+      case 'Netflix':
+        return 'assets/brands/netflix.png';
+      case 'Spotify':
+        return 'assets/brands/spotify.png';
+      case 'OLA':
+        return 'assets/brands/ola.png';
+      default:
+        return 'assets/brands/amazon.png';
+    }
+  }
 
   Widget _brandGrid() {
     return GridView.count(
@@ -808,8 +839,6 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
       childAspectRatio: 1.05,
       children: _brands.map((b) {
         final name = b['name'] as String;
-        final color = b['color'] as Color;
-        final icon = b['icon'] as IconData;
         final selected = _voucherBrand == name;
         return GestureDetector(
           onTap: () => setState(() => _voucherBrand = name),
@@ -827,14 +856,21 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(AppRadius.sm),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(AppRadius.sm),
+                  child: Image.asset(
+                    _brandImage(name),
+                    width: 34,
+                    height: 34,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 34,
+                      height: 34,
+                      color: AppColors.surfaceVariant,
+                      child: const Icon(Icons.card_giftcard_rounded,
+                          size: 18, color: AppColors.textSecondary),
+                    ),
                   ),
-                  child: Icon(icon, size: 18, color: color),
                 ),
                 const SizedBox(height: 6),
                 Text(

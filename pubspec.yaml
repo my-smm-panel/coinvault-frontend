@@ -33,6 +33,18 @@ flutter:
     - assets/bear_earn.png
     - assets/google_g.png
     - assets/bear_avatar.png
+    - assets/brands/amazon.png
+    - assets/brands/phonepe.png
+    - assets/brands/paytm.png
+    - assets/brands/flipkart.png
+    - assets/brands/googleplay.png
+    - assets/brands/myntra.png
+    - assets/brands/ajio.png
+    - assets/brands/swiggy.png
+    - assets/brands/zomato.png
+    - assets/brands/netflix.png
+    - assets/brands/spotify.png
+    - assets/brands/ola.png
     - assets/login_screen.png
     - assets/coin_zip.png
     - assets/logo_circle.png
