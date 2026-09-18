@@ -170,7 +170,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Enter amount (₹)',
-                    style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                 const SizedBox(height: 6),
                 TextField(
                   controller: ctrl,
@@ -178,11 +178,11 @@ class _RedeemScreenState extends State<RedeemScreen> {
                   style: const TextStyle(color: AppColors.textPrimary, fontSize: 18),
                   decoration: InputDecoration(
                     hintText: 'e.g. 50',
-                    hintStyle: const TextStyle(color: Colors.white24),
+                    hintStyle: const TextStyle(color: AppColors.textTertiary),
                     prefixText: '₹ ',
                     prefixStyle: TextStyle(color: brandColor, fontSize: 18),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.07),
+                    fillColor: AppColors.surfaceVariant,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide.none,
@@ -200,7 +200,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Coins needed',
-                          style: TextStyle(color: Colors.white54, fontSize: 12)),
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                       Text('$coinsNeeded coins',
                           style: TextStyle(color: brandColor,
                               fontSize: 12,
@@ -212,9 +212,9 @@ class _RedeemScreenState extends State<RedeemScreen> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Your balance',
-                          style: TextStyle(color: Colors.white54, fontSize: 12)),
+                          style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                       Text('$balance coins',
-                          style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                         style: const TextStyle(color: AppColors.textPrimary, fontSize: 12)),
                     ],
                   ),
                 ],
@@ -224,7 +224,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
                 child: const Text('Cancel',
-                    style: TextStyle(color: Colors.white54)),
+                    style: TextStyle(color: AppColors.textSecondary)),
               ),
               ElevatedButton(
                 onPressed: valid
@@ -237,7 +237,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
                   backgroundColor: brandColor,
                   foregroundColor: Colors.white,
                   disabledBackgroundColor: brandColor.withOpacity(0.25),
-                  disabledForegroundColor: Colors.white38,
+                  disabledForegroundColor: AppColors.textSecondary,
                   shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10)),
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),

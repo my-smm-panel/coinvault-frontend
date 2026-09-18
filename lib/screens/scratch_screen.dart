@@ -68,7 +68,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
                     Text(
                       'One free scratch card every day 🎫',
                       style: GoogleFonts.inter(
-                          color: Colors.white54, fontSize: 13),
+                          color: AppColors.textSecondary, fontSize: 13),
                     ),
                     const SizedBox(height: 28),
 
@@ -118,7 +118,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
                                     style: GoogleFonts.inter(
                                       color: _revealed
                                           ? AppColors.goldLight
-                                          : Colors.white38,
+                                          : AppColors.textSecondary,
                                       fontSize: _revealed ? 22 : 14,
                                       fontWeight: _revealed
                                           ? FontWeight.w900
@@ -204,13 +204,13 @@ class _ScratchScreenState extends State<ScratchScreen> {
                       Text(
                         'Keep scratching…',
                         style: GoogleFonts.inter(
-                            color: Colors.white38, fontSize: 12),
+                            color: AppColors.textSecondary, fontSize: 12),
                       )
                     else
                       Text(
                         '👆 Swipe your finger on the card',
                         style: GoogleFonts.inter(
-                            color: Colors.white38, fontSize: 12),
+                            color: AppColors.textSecondary, fontSize: 12),
                       ),
 
                     const SizedBox(height: 24),
@@ -257,7 +257,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
                                       color: best
                                           ? AppColors.gold
                                               .withOpacity(0.5)
-                                          : Colors.white12),
+                                          : AppColors.border),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -267,13 +267,13 @@ class _ScratchScreenState extends State<ScratchScreen> {
                                         size: 14,
                                         color: best
                                             ? AppColors.gold
-                                            : Colors.white54),
+                                            : AppColors.textSecondary),
                                     const SizedBox(width: 5),
                                     Text('$c coins',
                                         style: GoogleFonts.inter(
                                             color: best
                                                 ? AppColors.gold
-                                                : Colors.white,
+                                                : AppColors.textPrimary,
                                             fontSize: 12,
                                             fontWeight:
                                                 FontWeight.w600)),
@@ -286,7 +286,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
                           Text(
                             '1 scratch daily • resets at midnight',
                             style: GoogleFonts.inter(
-                                color: Colors.white38, fontSize: 11),
+                                color: AppColors.textSecondary, fontSize: 11),
                           ),
                         ],
                       ),

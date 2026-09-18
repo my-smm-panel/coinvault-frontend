@@ -197,7 +197,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
                   children: [
                     Text(t['title'] as String,
                         style: const TextStyle(
-                            color: Colors.white,
+                            color: AppColors.textPrimary,
                             fontSize: 14,
                             fontWeight: FontWeight.w800),
                         maxLines: 1,
@@ -205,7 +205,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
                     const SizedBox(height: 2),
                     Text(t['desc'] as String,
                         style: const TextStyle(
-                            color: Colors.white54, fontSize: 11),
+                            color: AppColors.textSecondary, fontSize: 11),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis),
                   ],
@@ -254,7 +254,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(e.value,
                             style: const TextStyle(
-                                color: Colors.white70, fontSize: 12)),
+                                color: AppColors.textPrimary, fontSize: 12)),
                       ),
                     ),
                   ],

@@ -103,7 +103,7 @@ class _QuizScreenState extends State<QuizScreen> {
               Text(
                 '$_score / ${_questions.length} correct',
                 style: GoogleFonts.inter(
-                    color: Colors.white,
+                    color: AppColors.textPrimary,
                     fontSize: 22,
                     fontWeight: FontWeight.w900),
               ),
@@ -113,7 +113,7 @@ class _QuizScreenState extends State<QuizScreen> {
                     ? 'You earned $_earned coins! 🪙'
                     : 'Need 3+ correct to earn. Try again tomorrow!',
                 style: GoogleFonts.inter(
-                    color: Colors.white70, fontSize: 13),
+                    color: AppColors.textSecondary, fontSize: 13),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 18),
@@ -334,7 +334,7 @@ class _QuizScreenState extends State<QuizScreen> {
                           foregroundColor: Colors.white,
                           disabledBackgroundColor:
                               const Color(0xFFE8F0FF),
-                          disabledForegroundColor: Colors.white38,
+                          disabledForegroundColor: AppColors.textSecondary,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(26)),
@@ -355,7 +355,7 @@ class _QuizScreenState extends State<QuizScreen> {
                         child: Text(
                           'Correct answer highlighted in green',
                           style: GoogleFonts.inter(
-                              color: Colors.white38, fontSize: 11),
+                              color: AppColors.textSecondary, fontSize: 11),
                         ),
                       ),
                   ],

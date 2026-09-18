@@ -24,6 +24,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   static const _bg = Color(0xFFF7F8FA);
   static const _card = Color(0xFFFFFFFF);
+  static const _border = AppColors.border;
 
   static const _tileColors = [
     Color(0xFFF66B06),
@@ -148,7 +149,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
         decoration: BoxDecoration(
           color: _card,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: _border),
         ),
         child: Row(
           children: ['Tasks', 'Payouts'].map((t) {
@@ -176,13 +177,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           size: 16,
                           color: active
                               ? Colors.white
-                              : Colors.white54),
+                              : AppColors.textSecondary),
                       const SizedBox(width: 6),
                       Text(t,
                           style: TextStyle(
                               color: active
                                   ? Colors.white
-                                  : Colors.white54,
+                                  : AppColors.textPrimary,
                               fontSize: 14,
                               fontWeight: FontWeight.w800)),
                     ],
@@ -412,7 +413,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     Expanded(
                       child: Text(sub,
                           style: const TextStyle(
-                              color: Colors.white54,
+                              color: AppColors.textSecondary,
                               fontSize: 11),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis),
@@ -457,12 +458,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
       children: [
         const SizedBox(height: 60),
         const Icon(Icons.inbox_rounded,
-            color: Colors.white24, size: 56),
+            color: AppColors.textTertiary, size: 56),
         const SizedBox(height: 12),
         Text(msg,
             textAlign: TextAlign.center,
             style:
-                const TextStyle(color: Colors.white54, fontSize: 14)),
+                const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
       ],
     );
   }

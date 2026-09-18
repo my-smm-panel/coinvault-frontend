@@ -56,11 +56,20 @@ class _MissionsScreenState extends State<MissionsScreen> {
     } catch (_) {}
 
     if (!mounted) return;
+    // Server-authoritative remaining spins → derive used count.
+    int remaining = 2;
+    try {
+      final r = await AppRepository.instance.spinsRemainingToday();
+      if (r != null) remaining = r;
+      else remaining = auth.getRemainingSpins(); // offline fallback
+    } catch (_) {
+      remaining = auth.getRemainingSpins();
+    }
     setState(() {
       _coins = coins;
       _tasksCompleted = tasksDone;
       // Spins used today — clamped to the daily limit.
-      _spinsUsedToday = (2 - auth.getRemainingSpins()).clamp(0, 2);
+      _spinsUsedToday = (2 - remaining).clamp(0, 2);
       _loading = false;
     });
   }

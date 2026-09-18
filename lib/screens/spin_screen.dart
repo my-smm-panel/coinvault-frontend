@@ -79,46 +79,37 @@ class _SpinScreenState extends State<SpinScreen>
 
   Future<void> _loadSpins() async {
     // Server is source of truth for remaining spins (backend enforces limit).
-    var serverOk = false;
-    try {
-      final status = await AppRepository.instance.spinStatus();
-      if (status != null && mounted) {
-        final limit = (status['dailyLimit'] ?? 2) as int;
-        final used = (status['spinsUsed'] ?? 0) as int;
-        final left = (limit - used).clamp(0, limit);
-        setState(() {
-          _remainingSpins = left;
-          _statusMessage = left > 0
-              ? 'You have $left free spin${left > 1 ? 's' : ''}'
-              : 'No spins left today';
-        });
-        serverOk = true;
-      }
-    } catch (_) {}
+    final status = await AppRepository.instance.spinStatus();
+    if (!mounted) return;
+    if (status != null) {
+      final limit = (status['dailyLimit'] ?? 2) as int;
+      final used = (status['spinsUsed'] ?? 0) as int;
+      final left = (limit - used).clamp(0, limit);
+      setState(() {
+        _remainingSpins = left;
+        _statusMessage = left > 0
+            ? 'You have $left free spin${left > 1 ? 's' : ''}'
+            : 'No spins left today';
+      });
+    }
     // Total ever won (real backend history).
     try {
       final h = await AppRepository.instance.spinHistoryList();
+      if (!mounted) return;
       var sum = 0;
       for (final e in h) {
         if (e is Map) sum += (((e['reward'] ?? 0) as num).toInt());
       }
-      if (mounted) setState(() => _totalWon = sum);
-      // Recent wins feed (real backend history).
-      if (mounted) setState(() => _recentWins = h.take(3).toList());
+      setState(() {
+        _totalWon = sum;
+        _recentWins = h.take(3).toList();
+      });
     } catch (_) {}
     try {
       final auth = AuthService();
       final um = auth.userModel;
       if (mounted && um != null) setState(() => _coins = um.coins);
     } catch (_) {}
-    if (!mounted || serverOk) return;
-    final auth = AuthService();
-    setState(() {
-      _remainingSpins = auth.getRemainingSpins();
-      _statusMessage = _remainingSpins > 0
-          ? 'You have $_remainingSpins free spin${_remainingSpins > 1 ? 's' : ''}'
-          : 'No spins left today';
-    });
   }
 
   void _onAnimationStatus(AnimationStatus status) {
@@ -146,6 +137,7 @@ class _SpinScreenState extends State<SpinScreen>
       }
       auth.recordSpin(); // no await
       if (!mounted) return;
+      // Optimistic decrement for instant feedback.
       setState(() {
         _lastReward = reward;
         _coins = auth.userModel?.coins ?? _coins; // wallet updates NOW
@@ -155,7 +147,9 @@ class _SpinScreenState extends State<SpinScreen>
             ? 'You have $_remainingSpins free spin${_remainingSpins > 1 ? 's' : ''} left'
             : 'No spins left today';
       });
-      _loadSpins(); // refresh exact server count (background)
+      // Refresh exact server count BEFORE showing the result dialog, so the
+      // value the user sees is the one the backend actually credited.
+      await _loadSpins();
       if (mounted) _showResultDialog();
     } on ApiException catch (e) {
       if (!mounted) return;
@@ -180,16 +174,9 @@ class _SpinScreenState extends State<SpinScreen>
 
   void _spin() {
     // Blocked while spinning, redeeming result, or out of spins.
+    // _remainingSpins is already server-authoritative (set by _loadSpins),
+    // so we don't re-check against the cached user model here.
     if (_spinning || _redeeming || _remainingSpins <= 0) return;
-
-    final auth = AuthService();
-    if (!auth.canSpin()) {
-      setState(() {
-        _remainingSpins = 0;
-        _statusMessage = 'No spins left today';
-      });
-      return;
-    }
 
     setState(() {
       _spinning = true;

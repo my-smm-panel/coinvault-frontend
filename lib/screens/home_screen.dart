@@ -246,6 +246,7 @@ class _HomeTabState extends State<HomeTab> {
   List<dynamic> _activity = [];
   Map<String, dynamic> _leaderboard = {};
   bool _loadingHome = true;
+  int _spinsUsedToday = 0; // server-authoritative; set in _loadHomeData
 
   static const int _dailyGoal = 500;
 
@@ -262,6 +263,7 @@ class _HomeTabState extends State<HomeTab> {
     final results = await Future.wait([
       repo.fetchSurveys(),
       repo.fetchOffers(),
+      repo.spinsRemainingToday(), // 2 — server-authoritative spin count
     ]);
     if (!mounted) return;
     setState(() {
@@ -281,6 +283,10 @@ class _HomeTabState extends State<HomeTab> {
                     .toList(),
               })
           .toList();
+      // Spins used today (server truth) — clamped 0..2.
+      final remaining = results[2] as int?;
+      _spinsUsedToday =
+          remaining == null ? 0 : (2 - remaining).clamp(0, 2);
       _loadingHome = false;
     });
   }
@@ -1390,7 +1396,7 @@ class _HomeTabState extends State<HomeTab> {
 
   // ───────────────────────── Daily missions ────────────────────────────────
   Widget _missionsRow(BuildContext context) {
-    final spinsUsed = (2 - AuthService().getRemainingSpins()).clamp(0, 2);
+    final spinsUsed = _spinsUsedToday;
     final missions = [
       {'t': 'Complete 3 Surveys', 'cur': 2, 'target': 3, 'r': 100,
        'i': Icons.poll_rounded, 'col': const Color(0xFF3B82F6)},

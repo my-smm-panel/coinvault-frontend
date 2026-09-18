@@ -55,7 +55,7 @@ class _AppShimmerState extends State<AppShimmer>
             end: Alignment.centerRight,
             colors: const [
               Color(0xFFFFFFFF),
-              Color(0xFF23232E),
+              Color(0xFFE7E7E7),
               Color(0xFFFFFFFF),
             ],
             stops: [
@@ -89,7 +89,7 @@ class ShimmerCardList extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFFFFFFFF),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: AppColors.border),
         ),
         child: Row(
           children: const [
@@ -146,7 +146,7 @@ class EmptyState extends StatelessWidget {
               title,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppColors.textPrimary,
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
@@ -156,7 +156,7 @@ class EmptyState extends StatelessWidget {
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white54, fontSize: 13),
+                style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
               ),
             ],
           ],
@@ -191,13 +191,13 @@ class ErrorState extends StatelessWidget {
             const SizedBox(height: 14),
             const Text(
               'Couldn’t load data',
-              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700),
+              style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 6),
             Text(
               message,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white54, fontSize: 13),
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(

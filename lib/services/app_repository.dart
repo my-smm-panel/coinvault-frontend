@@ -212,6 +212,16 @@ class AppRepository {
     }
   }
 
+  /// Convenience: remaining spins today from the SERVER (not cached model).
+  /// Returns null when unreachable so the caller can decide the fallback.
+  Future<int?> spinsRemainingToday() async {
+    final s = await spinStatus();
+    if (s == null) return null;
+    final limit = (s['dailyLimit'] ?? 2) as int;
+    final used = (s['spinsUsed'] ?? 0) as int;
+    return (limit - used).clamp(0, limit);
+  }
+
   /// Server-authoritative spin. Reward is decided + credited by the backend
   /// (Supabase ledger). Returns data {rewardType, coins, spinId, dailyLimit}.
   /// Throws ApiException when limit is over, session expired, or offline.

@@ -55,6 +55,7 @@ class _TrackingScreenState extends State<TrackingScreen>
         repo.fetchActivity(), // 0
         repo.fetchWithdrawalHistory(auth.userModel?.uid ?? ''), // 1
         repo.referralInfo(), // 2
+        repo.spinsRemainingToday(), // 3 — server-authoritative spin count
       ]);
 
       // activity
@@ -95,7 +96,14 @@ class _TrackingScreenState extends State<TrackingScreen>
       final u = auth.userModel;
       if (u != null) {
         _coins = u.coins;
-        _spins = u.dailySpinsUsed;
+      }
+      // Spins used: derive from the server-authoritative remaining count
+      // so the displayed value never disagrees with the spin screen.
+      final remaining = results[3] as int?;
+      if (remaining != null) {
+        _spins = (2 - remaining).clamp(0, 2);
+      } else if (u != null) {
+        _spins = u.dailySpinsUsed; // offline fallback
       }
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');

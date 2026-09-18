@@ -199,7 +199,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     Text(
                       widget.desc,
                       style: GoogleFonts.inter(
-                          color: Colors.white54, fontSize: 13, height: 1.5),
+                          color: AppColors.textSecondary, fontSize: 13, height: 1.5),
                     ),
 
                     const SizedBox(height: 20),
@@ -267,7 +267,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                                           child: Text(
                                             e.value,
                                             style: GoogleFonts.inter(
-                                                color: Colors.white70,
+                                                color: AppColors.textPrimary,
                                                 fontSize: 13,
                                                 height: 1.4),
                                           ),
@@ -329,7 +329,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                     backgroundColor: _started ? const Color(0xFFE8F0FF) : color,
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: const Color(0xFFE8F0FF),
-                    disabledForegroundColor: Colors.white54,
+                    disabledForegroundColor: AppColors.textSecondary,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(26),
@@ -343,13 +343,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                             ? Icons.hourglass_top_rounded
                             : Icons.play_arrow_rounded,
                         size: 22,
-                        color: _started ? Colors.white54 : Colors.white,
+                        color: _started ? AppColors.textSecondary : Colors.white,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         _started ? 'In Progress…' : 'Start Task',
                         style: GoogleFonts.inter(
-                          color: _started ? Colors.white54 : Colors.white,
+                          color: _started ? AppColors.textSecondary : Colors.white,
                           fontWeight: FontWeight.w800,
                           fontSize: 15,
                         ),
@@ -532,13 +532,13 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       child: Row(
         children: [
           const Icon(Icons.info_outline_rounded,
-              size: 14, color: Colors.white38),
+              size: 14, color: AppColors.textSecondary),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               text,
               style: GoogleFonts.inter(
-                  color: Colors.white54, fontSize: 12),
+                  color: AppColors.textSecondary, fontSize: 12),
             ),
           ),
         ],

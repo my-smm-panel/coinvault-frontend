@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
 import '../models/app_models.dart';
+import '../services/app_repository.dart';
 import '../services/auth_service.dart';
 import '../widgets/state_views.dart';
 import 'earn_screen.dart';
@@ -46,13 +47,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
     } else {
       setState(() => _loading = false);
     }
+    // Refresh server-authoritative remaining spins so the "Spins left"
+    // tile matches what the spin screen enforces.
+    try {
+      final left = await AppRepository.instance.spinsRemainingToday();
+      if (!mounted || left == null) return;
+      setState(() => _spinsLeft = left);
+    } catch (_) {}
   }
+
+  int _spinsLeft = 0;
 
   Future<void> _signOut() async {
     await AuthService().signOut();
     if (mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
     }
+  }
+
+  /// Confirm before logging out — prevents accidental taps from losing the
+  /// session while a withdrawal is pending.
+  Future<void> _confirmLogout() async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: const Text('Logout?'),
+        content: const Text(
+            'You will be signed out of CoinVault. Your coins and progress stay safe.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) await _signOut();
   }
 
   void _push(Widget page) {
@@ -97,7 +138,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     final user = _user!;
-    final spinsLeft = (2 - user.dailySpinsUsed).clamp(0, 2).toString();
+    final spinsLeft = _spinsLeft.toString();
     final name = user.displayName.isEmpty ? 'User' : user.displayName;
 
     return Scaffold(
@@ -151,6 +192,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 10),
               _menuList(),
+              const SizedBox(height: 22),
+
+              // ── Logout ──
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: OutlinedButton.icon(
+                  onPressed: _confirmLogout,
+                  icon: const Icon(Icons.logout_rounded, size: 19),
+                  label: const Text('Logout',
+                      style:
+                          TextStyle(fontSize: 15, fontWeight: FontWeight.w800)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.error,
+                    side: BorderSide(color: AppColors.error.withOpacity(0.5), width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(height: 16),
 
               Center(
