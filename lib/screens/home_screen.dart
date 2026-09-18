@@ -260,15 +260,16 @@ class _HomeTabState extends State<HomeTab> {
 
   Future<void> _loadHomeData() async {
     final repo = AppRepository.instance;
-    final results = await Future.wait([
+    final results = await Future.wait<dynamic>([
       repo.fetchSurveys(),
       repo.fetchOffers(),
       repo.spinsRemainingToday(), // 2 — server-authoritative spin count
     ]);
     if (!mounted) return;
     setState(() {
-      _surveys = results[0] ?? [];
-      final allOffers = (results[1] ?? []).cast<Map>();
+      _surveys = (results[0] as List<dynamic>?) ?? [];
+      final allOffers =
+          ((results[1] as List<dynamic>?) ?? []).cast<Map>();
       _offers = allOffers;
       _tasks = allOffers
           .where((o) => ((o['type'] ?? '').toString().startsWith('INSTALL')))

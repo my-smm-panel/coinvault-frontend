@@ -51,7 +51,7 @@ class _TrackingScreenState extends State<TrackingScreen>
     try {
       final repo = AppRepository.instance;
       final auth = AuthService();
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         repo.fetchActivity(), // 0
         repo.fetchWithdrawalHistory(auth.userModel?.uid ?? ''), // 1
         repo.referralInfo(), // 2
