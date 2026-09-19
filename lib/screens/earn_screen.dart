@@ -8,7 +8,6 @@ import '../services/auth_service.dart';
 import '../widgets/cv_header.dart';
 import '../widgets/state_views.dart';
 import 'quiz_screen.dart';
-import 'missions_screen.dart';
 import 'surveys_screen.dart';
 import 'task_detail_screen.dart';
 import 'tracking_screen.dart';
@@ -51,43 +50,6 @@ class _EarnScreenState extends State<EarnScreen> {
 
   static const List<String> _cats = [
     'All', 'Surveys', 'Tasks', 'Offers', 'Quizzes', 'Quick Earn',
-  ];
-
-  static const List<Map<String, dynamic>> _quizzes = [
-    {'title': 'General Knowledge', 'q': 10, 'coins': 100, 'icon': Icons.school_rounded, 'color': Color(0xFF3B82F6)},
-    {'title': 'Sports Quiz', 'q': 8, 'coins': 80, 'icon': Icons.sports_soccer_rounded, 'color': Color(0xFF16A34A)},
-    {'title': 'Fun Trivia', 'q': 5, 'coins': 50, 'icon': Icons.celebration_rounded, 'color': Color(0xFF8B5CF6)},
-  ];
-
-  static const List<Map<String, dynamic>> _quickEarn = [
-    {'title': 'Daily Check-in', 'coins': 20, 'icon': Icons.calendar_today_rounded, 'color': Color(0xFFF59E0B)},
-    {'title': 'Short Survey', 'coins': 50, 'icon': Icons.poll_rounded, 'color': Color(0xFF3B82F6)},
-    {'title': 'Mini Quiz', 'coins': 40, 'icon': Icons.quiz_rounded, 'color': Color(0xFF8B5CF6)},
-    {'title': 'Daily Mission', 'coins': 100, 'icon': Icons.flag_rounded, 'color': Color(0xFF16A34A)},
-  ];
-
-  static const List<Map<String, dynamic>> _featured = [
-    {'title': 'Quick Opinion Survey', 'provider': 'CPX Research', 'coins': 450, 'min': 8, 'badge': 'Popular', 'icon': Icons.poll_rounded, 'color': Color(0xFF3B82F6)},
-    {'title': 'Product Feedback', 'provider': 'BitLabs', 'coins': 700, 'min': 12, 'badge': 'New', 'icon': Icons.rate_review_rounded, 'color': Color(0xFF16A34A)},
-    {'title': 'App Discovery Task', 'provider': 'PubScale', 'coins': 900, 'min': 15, 'badge': 'High Reward', 'icon': Icons.rocket_launch_rounded, 'color': Color(0xFFF59E0B)},
-  ];
-
-  static const List<Map<String, dynamic>> _staticTasks = [
-    {'title': 'Try a New App', 'coins': 600, 'min': 10, 'req': 'Install + open', 'icon': Icons.download_rounded, 'color': Color(0xFF3B82F6)},
-    {'title': 'Complete Registration', 'coins': 800, 'min': 8, 'req': 'Sign up with valid details', 'icon': Icons.person_add_rounded, 'color': Color(0xFF16A34A)},
-    {'title': 'Explore & Complete', 'coins': 1200, 'min': 20, 'req': 'Reach level 3', 'icon': Icons.explore_rounded, 'color': Color(0xFF8B5CF6)},
-  ];
-
-  static const List<Map<String, dynamic>> _staticOffers = [
-    {'title': 'Mega App Offer', 'provider': 'PubScale', 'coins': 3000, 'min': 25, 'milestones': 4, 'done': 0},
-    {'title': 'Finance Bundle', 'provider': 'CPI Droid', 'coins': 2200, 'min': 30, 'milestones': 4, 'done': 1},
-  ];
-
-  static const List<Map<String, dynamic>> _tips = [
-    {'t': 'Complete your profile', 'd': 'Full profiles get more survey matches.', 'icon': Icons.person_rounded},
-    {'t': 'Check surveys regularly', 'd': 'New surveys fill up fast.', 'icon': Icons.refresh_rounded},
-    {'t': 'Read task requirements', 'd': 'Follow every step to get credited.', 'icon': Icons.checklist_rounded},
-    {'t': 'Submit valid proof', 'd': 'Screenshots must be genuine.', 'icon': Icons.verified_rounded},
   ];
 
   @override
@@ -386,96 +348,7 @@ class _EarnScreenState extends State<EarnScreen> {
 
   // ───────────────────────── featured carousel ────────────────────────────
   Widget _featuredCarousel() {
-    return SizedBox(
-      height: 200,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        physics: const BouncingScrollPhysics(),
-        itemCount: _featured.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (_, i) {
-          final f = _featured[i];
-          final coins = f['coins'] as int;
-          return Container(
-            width: 236,
-            padding: const EdgeInsets.all(14),
-            decoration: _cardDec(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: (f['color'] as Color).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Icon(f['icon'] as IconData, size: 18, color: f['color'] as Color),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(f['provider'] as String,
-                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: _sub),
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ),
-                    _badge(f['badge'] as String),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(f['title'] as String,
-                    style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: _text),
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
-                const Spacer(),
-                Row(
-                  children: [
-                    Text('+$coins',
-                        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _primary)),
-                    const Text(' Coins',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _primary)),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: _border.withOpacity(0.5),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.schedule_rounded, size: 11, color: _sub),
-                          const SizedBox(width: 3),
-                          Text('${f['min']} min',
-                              style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: _sub)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                SizedBox(
-                  width: double.infinity,
-                  height: 38,
-                  child: ElevatedButton(
-                    onPressed: () => _push(SurveysScreen(
-                      initialProvider: f['provider'] as String,
-                    )),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Start', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+    return const SizedBox(height: 0);
   }
 
   Widget _badge(String text) {
@@ -616,7 +489,6 @@ class _EarnScreenState extends State<EarnScreen> {
                 'icon': Icons.download_rounded,
                 'color': ProviderLogos.colorFor((o['provider'] ?? '').toString()),
               }),
-      ..._staticTasks,
     ];
     if (tasks.isEmpty) return _emptyStrip('No tasks right now');
     return SizedBox(
@@ -708,7 +580,6 @@ class _EarnScreenState extends State<EarnScreen> {
                 'milestones': 4,
                 'done': 0,
               }),
-      ..._staticOffers,
     ];
     return ListView.separated(
       shrinkWrap: true,
@@ -843,120 +714,12 @@ class _EarnScreenState extends State<EarnScreen> {
 
   // ───────────────────────── quizzes ──────────────────────────────────────
   Widget _quizzesCarousel() {
-    return SizedBox(
-      height: 150,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        physics: const BouncingScrollPhysics(),
-        itemCount: _quizzes.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (_, i) {
-          final q = _quizzes[i];
-          return GestureDetector(
-            onTap: () => _push(const QuizScreen()),
-            child: Container(
-              width: 180,
-              padding: const EdgeInsets.all(13),
-              decoration: _cardDec(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: (q['color'] as Color).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(q['icon'] as IconData, size: 20, color: q['color'] as Color),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(q['title'] as String,
-                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: _text),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 3),
-                  Text('${q['q']} Questions',
-                      style: const TextStyle(fontSize: 11, color: _sub)),
-                  const Spacer(),
-                  Row(
-                    children: [
-                      Text('+${q['coins']}',
-                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: _primary)),
-                      const Text(' Coins',
-                          style: TextStyle(fontSize: 10, color: _primary, fontWeight: FontWeight.w700)),
-                      const Spacer(),
-                      const Text('Play',
-                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: _primary)),
-                      const Icon(Icons.arrow_forward_rounded, size: 13, color: _primary),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
+    return const SizedBox(height: 0);
   }
 
   // ───────────────────────── quick earn grid ──────────────────────────────
   Widget _quickEarnGrid() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: _quickEarn.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 2.4,
-        ),
-        itemBuilder: (_, i) {
-          final q = _quickEarn[i];
-          return GestureDetector(
-            onTap: () {
-              if (i == 1) {
-                _push(const SurveysScreen());
-              } else if (i == 2) {
-                _push(const QuizScreen());
-              } else if (i == 3) {
-                _push(const MissionsScreen());
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Check-in bonus claimed! +20 coins')),
-                );
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              decoration: _cardDec(),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: (q['color'] as Color).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(q['icon'] as IconData, size: 18, color: q['color'] as Color),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(q['title'] as String,
-                        style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _text),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ),
-                  Text('+${q['coins']}',
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: _primary)),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
-    );
+    return const SizedBox(height: 0);
   }
 
   // ───────────────────────── high reward ──────────────────────────────────
@@ -1192,47 +955,7 @@ class _EarnScreenState extends State<EarnScreen> {
 
   // ───────────────────────── tips ─────────────────────────────────────────
   Widget _tipsSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: _tips.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          mainAxisSpacing: 10,
-          crossAxisSpacing: 10,
-          childAspectRatio: 3.1,
-        ),
-        itemBuilder: (_, i) {
-          final t = _tips[i];
-          return Container(
-            padding: const EdgeInsets.all(11),
-            decoration: _cardDec(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Icon(t['icon'] as IconData, size: 15, color: _primary),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(t['t'] as String,
-                          style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: _text),
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(t['d'] as String,
-                    style: const TextStyle(fontSize: 10, color: _sub, height: 1.3),
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
-              ],
-            ),
-          );
-        },
-      ),
-    );
+    return const SizedBox(height: 0);
   }
 
   // ───────────────────────── shared bits ──────────────────────────────────
