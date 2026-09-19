@@ -1229,14 +1229,7 @@ class _HomeTabState extends State<HomeTab> {
             .where((o) => ((o['coins'] ?? 0) as num).toInt() >= 500)
             .take(4)
     ];
-    if (high.isEmpty) {
-      // static demo fallback so the section is never empty
-      high.addAll([
-        {'title': 'Install & Explore', 'coins': 600, 'cat': 'Apps'},
-        {'title': 'Complete KYC', 'coins': 800, 'cat': 'Finance'},
-        {'title': 'Reach Level 5', 'coins': 1200, 'cat': 'Games'},
-      ]);
-    }
+    if (high.isEmpty) return const SizedBox.shrink(); // no fake fallback
     return Column(
       children: high.map((m) {
         final coins = ((m['coins'] ?? 0) as num).toInt();
