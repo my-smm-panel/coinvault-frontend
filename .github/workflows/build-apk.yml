@@ -56,33 +56,42 @@ jobs:
             "https://api.telegram.org/bot${TG_TOKEN}/sendDocument" -o /tmp/tg.json
           python3 -c "import json;d=json.load(open('/tmp/tg.json'));print('TELEGRAM SENT OK' if d.get('ok') else 'TELEGRAM FAIL: '+str(d)[:250])"
 
-      - name: Web link for APK (direct download)
-        # Telegram delivery can land in archive/folders; this guarantees a
-        # plain browser-downloadable link every build.
+      - name: Publish APK to GitHub Release (direct web link)
+        # Public hosts reject APKs; GitHub Releases gives a plain
+        # browser-downloadable link that anyone can open without logging in.
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
         run: |
           APK=$(find build/app/outputs/flutter-apk -name "*arm64*v8a*release.apk" | head -1)
-          echo "hosting $APK ($(du -h "$APK" | cut -f1)) ..."
-          URL=""
-          URL=$(curl -s -m 240 -F "reqtype=fileupload" -F "fileToUpload=@$APK" https://catbox.moe/user/api.php)
-          echo "catbox reply: [$URL]"
-          case "$URL" in
-            https*) echo "WEB LINK: $URL" ;;
-            *) URL=$(curl -s -m 240 -F "file=@$APK" https://0x0.st)
-               echo "0x0.st reply: [$URL]" ;;
-          esac
-          case "$URL" in
-            https*)
-              echo "::notice title=APK ready::$URL"
-              curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
-                -d chat_id=6769498003 \
-                -d "text=CoinVault APK ready — direct download: $URL" \
-                -o /tmp/tg2.json
-              python3 -c "import json;d=json.load(open('/tmp/tg2.json'));print('LINK MSG SENT OK' if d.get('ok') else 'LINK MSG FAIL: '+str(d)[:200])"
-              ;;
-            *) echo "ALL HOSTS FAILED" ;;
-          esac
+          TAG="apk-$(date -u +%Y%m%d-%H%M%S)"
+          echo "creating release $TAG for $APK ($(du -h "$APK" | cut -f1)) ..."
+          RESP=$(curl -s -X POST \
+            -H "Authorization: token ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" \
+            -d "{\"tag_name\":\"${TAG}\",\"name\":\"CoinVault APK ${TAG}\",\"body\":\"arm64-v8a release build. Install after enabling 'Install unknown apps' for your browser.\"}")
+          UPLOAD_URL=$(echo "$RESP" | python3 -c "import sys,json;print(json.load(sys.stdin).get('upload_url',''))" | sed 's/{?name,label}//')
+          ASSET_URL=""
+          if [ -n "$UPLOAD_URL" ]; then
+            ASSET_URL=$(curl -s -X POST \
+              -H "Authorization: token ${GITHUB_TOKEN}" \
+              -H "Content-Type: application/vnd.android.package-archive" \
+              --data-binary "@$APK" \
+              "${UPLOAD_URL}?name=coinvault-arm64-v8a.apk" \
+              | python3 -c "import sys,json;print(json.load(sys.stdin).get('browser_download_url',''))")
+          fi
+          echo "ASSET URL: [$ASSET_URL]"
+          if [ -n "$ASSET_URL" ]; then
+            echo "::notice title=APK ready::$ASSET_URL"
+            curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+              -d chat_id=6769498003 \
+              -d "text=CoinVault APK ready - download: $ASSET_URL" \
+              -o /tmp/tg2.json
+            python3 -c "import json;d=json.load(open('/tmp/tg2.json'));print('LINK MSG SENT OK' if d.get('ok') else 'LINK MSG FAIL: '+str(d)[:200])"
+          else
+            echo "RELEASE PUBLISH FAILED"; exit 1
+          fi
 
       - name: Upload all APKs (artifact backup)
         uses: actions/upload-artifact@v4
