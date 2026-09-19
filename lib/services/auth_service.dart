@@ -169,17 +169,26 @@ class AuthService extends ChangeNotifier {
       final googleUser = await GoogleSignIn(
         scopes: ['email', 'profile'],
         serverClientId: '839337325039-8mao9qj110cfsvol4qcn7dsogickv9hg.apps.googleusercontent.com',
-      ).signIn();
+      ).signIn().timeout(
+        const Duration(seconds: 90),
+        onTimeout: () => null, // picker never returned — treat as cancel
+      );
       if (googleUser == null) {
         debugPrint('GoogleSignIn: user dismissed account picker');
         return null; // real cancel - let UI show it
       }
-      final googleAuth = await googleUser.authentication;
+      final googleAuth = await googleUser.authentication.timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw Exception('Google authentication timed out'),
+      );
       final credential = firebase_auth.GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
-      final userCred = await _auth.signInWithCredential(credential);
+      final userCred = await _auth.signInWithCredential(credential).timeout(
+        const Duration(seconds: 30),
+        onTimeout: () => throw Exception('Firebase sign-in timed out'),
+      );
       if (userCred.user != null) {
         await _loadUserModel(userCred.user!);
         return _userModel;

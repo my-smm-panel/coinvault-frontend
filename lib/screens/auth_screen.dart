@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'home_screen.dart';
 
 /// Premium light login screen: brand wordmark, big bear mascot (vector),
 /// welcome line, single "Continue with Google" button, terms footer.
@@ -14,6 +15,31 @@ class AuthScreen extends StatefulWidget {
 class _AuthScreenState extends State<AuthScreen> {
   bool _loading = false;
   String? _error;
+  bool _navigated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Login can complete via the authStateChanges listener (not just the
+    // direct return value), so listen too — otherwise the button unlocks and
+    // the screen just sits there after a successful sign-in.
+    AuthService().addListener(_onAuthChanged);
+  }
+
+  @override
+  void dispose() {
+    AuthService().removeListener(_onAuthChanged);
+    super.dispose();
+  }
+
+  void _onAuthChanged() {
+    if (!_navigated && AuthService().isLoggedIn && mounted) {
+      _navigated = true;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomeScreen()),
+      );
+    }
+  }
 
   static const Color _bg = Color(0xFFFAFAF8);
   static const Color _surface = Color(0xFFFFFFFF);
@@ -29,14 +55,21 @@ class _AuthScreenState extends State<AuthScreen> {
       _error = null;
     });
     try {
-      await AuthService().signInWithGoogle();
+      final model = await AuthService().signInWithGoogle();
+      if (model == null && mounted && !_navigated) {
+        // Picker dismissed without an account — unlock the button, no error.
+        setState(() => _loading = false);
+        return;
+      }
+      // Success: the listener (or this) routes to Home.
+      _onAuthChanged();
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _error = e.toString().replaceFirst('Exception: ', '');
       });
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && !_navigated) setState(() => _loading = false);
     }
   }
 
