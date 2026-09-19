@@ -50,6 +50,8 @@ class AuthService extends ChangeNotifier {
   void _onAuthStateChanged(firebase_auth.User? user) {
     _currentUser = user;
     if (user != null) {
+      // Fire-and-forget: the load is now non-blocking, and the UI routes
+      // to Home from the notifyListeners inside _loadUserModel.
       _loadUserModel(user);
     } else {
       _userModel = null;
@@ -58,31 +60,21 @@ class AuthService extends ChangeNotifier {
   }
 
   Future<void> _loadUserModel(firebase_auth.User firebaseUser) async {
-    // Try to load from local cache first (instant UI)
+    _currentUser = firebaseUser;
+
+    // 1. Set the user IMMEDIATELY from the Firebase profile so login
+    //    completes and the UI can leave the auth screen. Backend sync
+    //    must never block the sign-in flow (that is what freezes the
+    //    login page with the spinner spinning).
     final prefs = await SharedPreferences.getInstance();
     final cached = prefs.getString('user_${firebaseUser.uid}');
     if (cached != null) {
       try {
         final data = json.decode(cached);
         _userModel = UserModel.fromFirebase(data, firebaseUser.uid);
-        notifyListeners();
       } catch (_) {}
     }
-
-    // Always refresh backend JWT + profile in background so realtime
-    // data (spin/tasks/withdrawals/leaderboard) never goes stale.
-    _loginToBackend(firebaseUser);
-    if (_userModel == null) {
-      await _refreshProfileFromBackend(firebaseUser);
-      if (_userModel != null) return;
-    } else {
-      // Cached session: refresh profile silently without blocking.
-      _refreshProfileFromBackend(firebaseUser);
-      return;
-    }
-    // Backend unavailable or unknown user: build from Firebase profile
-    // (never leave _userModel null for a signed-in user)
-    _userModel = UserModel(
+    _userModel ??= UserModel(
       uid: firebaseUser.uid,
       displayName: firebaseUser.displayName ?? 'User',
       email: firebaseUser.email,
@@ -90,11 +82,12 @@ class AuthService extends ChangeNotifier {
     );
     await _cacheUserModel();
     notifyListeners();
-    // Mirror to Firebase RTDB (fast counter, fire-and-forget)
-    FirebaseStats.syncUser(_userModel!);
-    // Login to backend (Render API) to get JWT for spin/withdraw calls.
-    // Never blocks the app - local session works even if backend is down.
+
+    // 2. Background: refresh backend profile + exchange idToken for a JWT.
+    //    Fire-and-forget — the user is already in and the app works offline.
+    _refreshProfileFromBackend(firebaseUser);
     _loginToBackend(firebaseUser);
+    FirebaseStats.syncUser(_userModel!);
   }
 
   /// Fetch backend profile and merge (keeps Firebase name/photo).
@@ -189,8 +182,11 @@ class AuthService extends ChangeNotifier {
         const Duration(seconds: 30),
         onTimeout: () => throw Exception('Firebase sign-in timed out'),
       );
+      // Credential is in: kick off the user load (fast — no backend await)
+      // and return. The auth_screen listener routes to Home the instant the
+      // user model is ready.
       if (userCred.user != null) {
-        await _loadUserModel(userCred.user!);
+        _loadUserModel(userCred.user!);
         return _userModel;
       }
       return null;
