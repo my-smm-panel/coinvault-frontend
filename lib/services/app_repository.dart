@@ -318,7 +318,7 @@ class AppRepository {
   /// Fetch user activity feed (real endpoint: GET /api/user/activity).
   Future<List<dynamic>> fetchActivity() async {
     try {
-      final res = await _api.get('/api/user/activity');
+      final res = await _api.get('/api/users/activity');
       if (res is Map && res['success'] == true) {
         final d = res['data'];
         return d is List ? d : [];
