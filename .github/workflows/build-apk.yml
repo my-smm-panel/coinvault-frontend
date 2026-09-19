@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # publish the APK as a GitHub Release (direct web link)
     steps:
       - name: Checkout
         uses: actions/checkout@v4
