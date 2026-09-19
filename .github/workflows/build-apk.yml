@@ -58,6 +58,7 @@ jobs:
 
       - name: Upload all APKs (artifact backup)
         uses: actions/upload-artifact@v4
+        continue-on-error: true   # storage quota may be full; APK is already delivered to Telegram
         with:
           name: coinvault-release-apks
           path: build/app/outputs/flutter-apk/*.apk
