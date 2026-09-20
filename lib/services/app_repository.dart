@@ -315,7 +315,7 @@ class AppRepository {
     }
   }
 
-  /// Fetch user activity feed (real endpoint: GET /api/user/activity).
+  /// Fetch user activity feed (real endpoint: GET /api/users/activity).
   Future<List<dynamic>> fetchActivity() async {
     try {
       final res = await _api.get('/api/users/activity');
@@ -326,6 +326,21 @@ class AppRepository {
       return [];
     } catch (_) {
       return [];
+    }
+  }
+
+  /// Gift cards catalogue from backend (real endpoint: GET /api/giftcards).
+  /// Returns [] when empty; null when the API is unreachable.
+  Future<List<dynamic>?> fetchGiftCards() async {
+    try {
+      final res = await _api.get('/api/giftcards', auth: false);
+      if (res is Map && res['success'] == true) {
+        final d = res['data'];
+        return d is List ? d : [];
+      }
+      return [];
+    } catch (_) {
+      return null;
     }
   }
 

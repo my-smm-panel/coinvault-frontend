@@ -30,6 +30,9 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   List<Map<String, dynamic>> _recent = const [];
   bool _recentLoading = false;
 
+  // Gift-card brands come from the backend — never hardcoded.
+  List<Map<String, dynamic>> _brands = [];
+
   final _upiController = TextEditingController();
   final _bankController = TextEditingController();
   final _voucherController = TextEditingController();
@@ -43,6 +46,20 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     _amountController.text = '100';
     _loadUser();
     _loadRecent();
+    _loadBrands();
+  }
+
+  Future<void> _loadBrands() async {
+    final list = await AppRepository.instance.fetchGiftCards();
+    if (!mounted || list == null) return;
+    final brands = list
+        .whereType<Map>()
+        .map((e) => <String, dynamic>{'name': (e['name'] ?? e['brand'] ?? 'Gift Card').toString()})
+        .toList();
+    setState(() {
+      _brands = brands;
+      if (brands.isNotEmpty) _voucherBrand = brands.first['name'] as String;
+    });
   }
 
   Future<void> _loadUser() async {
@@ -783,20 +800,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   }
 
   // ───────────────────────── Gift card brands ────────────────────────────
-  static const _brands = [
-    {'name': 'Amazon Pay', 'color': Color(0xFFFF9900), 'img': 'assets/brands/amazon.png'},
-    {'name': 'PhonePe', 'color': Color(0xFF5F259F), 'img': 'assets/brands/phonepe.png'},
-    {'name': 'Paytm', 'color': Color(0xFF00B9F1), 'img': 'assets/brands/paytm.png'},
-    {'name': 'Flipkart', 'color': Color(0xFF2874F0), 'img': 'assets/brands/flipkart.png'},
-    {'name': 'Google Play', 'color': Color(0xFF34A853), 'img': 'assets/brands/googleplay.png'},
-    {'name': 'Myntra', 'color': Color(0xFFFF4466), 'img': 'assets/brands/myntra.png'},
-    {'name': 'Ajio', 'color': Color(0xFF2BB1E4), 'img': 'assets/brands/ajio.png'},
-    {'name': 'Swiggy', 'color': Color(0xFFFF5200), 'img': 'assets/brands/swiggy.png'},
-    {'name': 'Zomato', 'color': Color(0xFFE23744), 'img': 'assets/brands/zomato.png'},
-    {'name': 'Netflix', 'color': Color(0xFFE50914), 'img': 'assets/brands/netflix.png'},
-    {'name': 'Spotify', 'color': Color(0xFF1DB954), 'img': 'assets/brands/spotify.png'},
-    {'name': 'OLA', 'color': Color(0xFF00C853), 'img': 'assets/brands/ola.png'},
-  ];
+    // _brands is loaded from the backend in _loadBrands().
 
   static String _brandImage(String name) {
     switch (name) {
@@ -830,6 +834,13 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   }
 
   Widget _brandGrid() {
+    if (_brands.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Text('No gift cards available yet',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+      );
+    }
     return GridView.count(
       crossAxisCount: 3,
       shrinkWrap: true,

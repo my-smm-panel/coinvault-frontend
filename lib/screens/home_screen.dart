@@ -480,60 +480,35 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  // ───────────────────────── Promo carousel ────────────────────────────────
+  // ───────────────────────── Promo carousel ───────────────────────────────
+  // Slides are built from REAL offers fetched from the backend — never
+  // hardcoded. If the backend returns no offers, the carousel is hidden.
   Widget _promoCarousel(BuildContext context) {
+    final offers = _offers.take(5).toList();
+    if (offers.isEmpty) return const SizedBox.shrink();
+
+    const accents = [
+      Color(0xFFF59E0B), Color(0xFF16A34A), Color(0xFF3B82F6),
+      Color(0xFF8B5CF6), Color(0xFFEC4899),
+    ];
+    const accentSofts = [
+      Color(0xFFFFF7E6), Color(0xFFE9F7EE), Color(0xFFEAF1FF),
+      Color(0xFFF1ECFE), Color(0xFFFDF0F6),
+    ];
+
     return HomeBannerCarousel(
       slides: [
-        BannerSlide(
-          title: 'Offer of the Day',
-          subtitle: "Complete today's featured offer",
-          cta: 'View Offer',
-          icon: Icons.local_fire_department_rounded,
-          accent: const Color(0xFFF59E0B),
-          accentSoft: const Color(0xFFFFF7E6),
-          reward: '+1,500 Coins',
-          onTap: () => _push(context, const EarnScreen()),
-        ),
-        BannerSlide(
-          title: 'Task of the Day',
-          subtitle: 'Finish this task and earn extra coins',
-          cta: 'Start Task',
-          icon: Icons.task_alt_rounded,
-          accent: const Color(0xFF16A34A),
-          accentSoft: const Color(0xFFE9F7EE),
-          reward: '+750 Coins',
-          onTap: () => _push(context, const EarnScreen()),
-        ),
-        BannerSlide(
-          title: 'Featured Survey',
-          subtitle: 'Your opinion can earn you coins',
-          cta: 'Take Survey',
-          icon: Icons.poll_rounded,
-          accent: const Color(0xFF3B82F6),
-          accentSoft: const Color(0xFFEAF1FF),
-          reward: 'Up to 500 Coins',
-          onTap: () => _push(context, const SurveysScreen()),
-        ),
-        BannerSlide(
-          title: 'Limited Time',
-          subtitle: 'Extra rewards available today',
-          cta: 'Explore',
-          icon: Icons.bolt_rounded,
-          accent: const Color(0xFF8B5CF6),
-          accentSoft: const Color(0xFFF1ECFE),
-          reward: 'Earn More',
-          onTap: () => _push(context, const EarnScreen()),
-        ),
-        BannerSlide(
-          title: 'Mega Offer',
-          subtitle: 'Complete multiple milestones',
-          cta: 'View Offer',
-          icon: Icons.emoji_events_rounded,
-          accent: const Color(0xFFEC4899),
-          accentSoft: const Color(0xFFFDF0F6),
-          reward: 'Up to 3,000 Coins',
-          onTap: () => _push(context, const EarnScreen()),
-        ),
+        for (var i = 0; i < offers.length; i++)
+          BannerSlide(
+            title: (offers[i]['title'] ?? 'Offer').toString(),
+            subtitle: (offers[i]['shortDesc'] ?? offers[i]['description'] ?? 'Tap to view offer').toString(),
+            cta: 'View Offer',
+            icon: Icons.local_offer_rounded,
+            accent: accents[i % accents.length],
+            accentSoft: accentSofts[i % accentSofts.length],
+            reward: '+${((offers[i]['coins'] ?? 0) as num).toInt()} Coins',
+            onTap: () => _push(context, const EarnScreen()),
+          ),
       ],
     );
   }
@@ -1125,20 +1100,31 @@ class _HomeTabState extends State<HomeTab> {
 
   // ───────────────────────── Recommended ───────────────────────────────────
   Widget _recommendedRow(BuildContext context) {
-    final recs = <Map<String, dynamic>>[
-      {'t': 'Short Survey', 'c': 120, 'm': '3 min', 'i': Icons.poll_rounded,
-       'col': const Color(0xFF3B82F6), 'cta': 'Take Survey',
-       'go': () => _push(context, const SurveysScreen())},
-      {'t': 'Quick Task', 'c': 250, 'm': '5 min', 'i': Icons.bolt_rounded,
-       'col': const Color(0xFF16A34A), 'cta': 'Start',
-       'go': () => _push(context, const EarnScreen())},
-      {'t': 'High Reward Offer', 'c': 1500, 'm': '~15 min',
-       'i': Icons.emoji_events_rounded, 'col': AppColors.primary,
-       'cta': 'View Offer', 'go': () => _push(context, const EarnScreen())},
-      {'t': 'New Survey', 'c': 320, 'm': '6 min', 'i': Icons.fiber_new_rounded,
-       'col': const Color(0xFFEC4899), 'cta': 'Start',
-       'go': () => _push(context, const SurveysScreen())},
-    ];
+    // Built from REAL backend data — surveys + offers. Never hardcoded.
+    final recs = <Map<String, dynamic>>[];
+    for (final s in _surveys.take(2)) {
+      recs.add({
+        't': (s['title'] ?? 'Survey').toString(),
+        'c': ((s['coins'] ?? s['reward'] ?? 0) as num).toInt(),
+        'm': 'Survey',
+        'i': Icons.poll_rounded,
+        'col': const Color(0xFF3B82F6),
+        'cta': 'Take Survey',
+        'go': () => _push(context, const SurveysScreen()),
+      });
+    }
+    for (final o in _offers.take(2)) {
+      recs.add({
+        't': (o['title'] ?? 'Offer').toString(),
+        'c': ((o['coins'] ?? 0) as num).toInt(),
+        'm': 'Offer',
+        'i': Icons.local_offer_rounded,
+        'col': AppColors.primary,
+        'cta': 'View Offer',
+        'go': () => _push(context, const EarnScreen()),
+      });
+    }
+    if (recs.isEmpty) return const SizedBox.shrink();
     return SizedBox(
       height: 132,
       child: ListView.separated(
@@ -1390,14 +1376,21 @@ class _HomeTabState extends State<HomeTab> {
 
   // ───────────────────────── Daily missions ────────────────────────────────
   Widget _missionsRow(BuildContext context) {
+    // Missions derived from REAL activity — no hardcoded progress or rewards.
     final spinsUsed = _spinsUsedToday;
-    final missions = [
-      {'t': 'Complete 3 Surveys', 'cur': 2, 'target': 3, 'r': 100,
-       'i': Icons.poll_rounded, 'col': const Color(0xFF3B82F6)},
-      {'t': 'Complete 2 Tasks', 'cur': 1, 'target': 2, 'r': 150,
-       'i': Icons.task_alt_rounded, 'col': const Color(0xFF16A34A)},
-      {'t': 'Use 2 Free Spins', 'cur': spinsUsed, 'target': 2, 'r': 20,
-       'i': Icons.donut_large_rounded, 'col': const Color(0xFFF59E0B)},
+      final surveysDone = _activity
+          .where((a) => a is Map && (a['type'] ?? a['source'] ?? '').toString().toUpperCase().contains('SURVEY'))
+          .length;
+      final tasksDone = _activity
+          .where((a) => a is Map && (a['type'] ?? a['source'] ?? '').toString().toUpperCase().contains('TASK'))
+          .length;
+      final missions = [
+        {'t': 'Complete 3 Surveys', 'cur': surveysDone, 'target': 3,
+         'i': Icons.poll_rounded, 'col': const Color(0xFF3B82F6)},
+        {'t': 'Complete 2 Tasks', 'cur': tasksDone, 'target': 2,
+         'i': Icons.task_alt_rounded, 'col': const Color(0xFF16A34A)},
+        {'t': 'Use 2 Free Spins', 'cur': spinsUsed, 'target': 2,
+         'i': Icons.donut_large_rounded, 'col': const Color(0xFFF59E0B)},
     ];
     return Column(
       children: missions.map((m) {
@@ -1450,7 +1443,7 @@ class _HomeTabState extends State<HomeTab> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Text('+${m['r']}',
+                Text('${(progress * 100).toInt()}%',
                     style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
@@ -1492,7 +1485,7 @@ class _HomeTabState extends State<HomeTab> {
                     style: TextStyle(
                         fontSize: 12, color: AppColors.textSecondary)),
                 const SizedBox(height: 4),
-                const Text('+100 Coins per friend who joins',
+                const Text('Coins for every friend who joins',
                     style: TextStyle(
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
@@ -1539,15 +1532,20 @@ class _HomeTabState extends State<HomeTab> {
 
   // ───────────────────────── Limited-time offers ───────────────────────────
   Widget _limitedOffers(BuildContext context) {
+    // Built from REAL offers — no hardcoded rewards.
     final now = DateTime.now();
-    final offers = <Map<String, dynamic>>[
-      {'t': 'Flash Survey', 'c': 500, 'h': 4, 'i': Icons.poll_rounded,
-       'col': const Color(0xFF3B82F6), 'req': 'Complete 1 survey'},
-      {'t': 'Task Marathon', 'c': 900, 'h': 9, 'i': Icons.task_alt_rounded,
-       'col': const Color(0xFF16A34A), 'req': 'Finish 3 tasks'},
-      {'t': 'Spin Bonus', 'c': 150, 'h': 2, 'i': Icons.donut_large_rounded,
-       'col': const Color(0xFFF59E0B), 'req': 'Use daily spins'},
-    ];
+    final offers = <Map<String, dynamic>>[];
+    for (final o in _offers.take(5)) {
+      offers.add({
+        't': (o['title'] ?? 'Offer').toString(),
+        'c': ((o['coins'] ?? 0) as num).toInt(),
+        'h': 24,
+        'i': Icons.local_offer_rounded,
+        'col': AppColors.primary,
+        'req': (o['shortDesc'] ?? o['description'] ?? 'Complete to earn').toString(),
+      });
+    }
+    if (offers.isEmpty) return const SizedBox.shrink();
     return SizedBox(
       height: 150,
       child: ListView.separated(

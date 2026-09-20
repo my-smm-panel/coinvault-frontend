@@ -735,9 +735,8 @@ class _EarnScreenState extends State<EarnScreen> {
                 'min': (((o['coins'] ?? 0) as num).toInt() ~/ 40).clamp(5, 40),
                 'badge': 'High Reward',
               }),
-      {'title': 'Mega App Offer', 'provider': 'PubScale', 'coins': 3000, 'min': 25, 'badge': 'High Reward'},
-      {'title': 'Premium Survey Bundle', 'provider': 'Cint', 'coins': 1500, 'min': 18, 'badge': 'Popular'},
     ];
+    if (high.isEmpty) return const SizedBox.shrink();
     return ListView.separated(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -827,7 +826,6 @@ class _EarnScreenState extends State<EarnScreen> {
             'coins': ((s['rewardCoins'] ?? s['coins'] ?? 0) as num).toInt(),
             'min': int.tryParse((s['durationMinutes'] ?? 5).toString()) ?? 5,
           }),
-      {'title': 'New Quiz Live', 'sub': 'General Knowledge', 'coins': 100, 'min': 5},
     ];
     if (fresh.isEmpty) return _emptyStrip('Nothing new today');
     return SizedBox(
@@ -894,12 +892,26 @@ class _EarnScreenState extends State<EarnScreen> {
 
   // ───────────────────────── recommended ──────────────────────────────────
   Widget _recommendedSection() {
-    final rec = <Map<String, dynamic>>[
-      {'title': 'Short Survey', 'coins': 50, 'min': 3, 'icon': Icons.poll_rounded, 'color': const Color(0xFF3B82F6), 'page': const SurveysScreen()},
-      {'title': 'High Reward Task', 'coins': 900, 'min': 15, 'icon': Icons.rocket_launch_rounded, 'color': _primary, 'page': const TaskDetailScreen(provider: 'PubScale', title: 'High Reward Task', desc: 'Complete this offer to earn coins.', coins: 900, steps: ['Open', 'Complete', 'Get coins'])},
-      {'title': 'New Offer', 'coins': 700, 'min': 12, 'icon': Icons.local_offer_rounded, 'color': const Color(0xFF16A34A), 'page': const TaskDetailScreen(provider: 'CPI Droid', title: 'New Offer', desc: 'Complete this offer to earn coins.', coins: 700, steps: ['Open', 'Complete', 'Get coins'])},
-      {'title': 'Quick Quiz', 'coins': 100, 'min': 4, 'icon': Icons.quiz_rounded, 'color': const Color(0xFF8B5CF6), 'page': const QuizScreen()},
-    ];
+    // Built from REAL offers — no hardcoded rewards or tasks.
+    final rec = <Map<String, dynamic>>[];
+    for (final o in _offers.take(4)) {
+      final coins = ((o['coins'] ?? 0) as num).toInt();
+      rec.add({
+        'title': (o['title'] ?? 'Offer').toString(),
+        'coins': coins,
+        'min': (coins ~/ 40).clamp(3, 40),
+        'icon': Icons.local_offer_rounded,
+        'color': _primary,
+        'page': TaskDetailScreen(
+          provider: (o['provider'] ?? 'Partner').toString(),
+          title: (o['title'] ?? 'Offer').toString(),
+          desc: (o['shortDesc'] ?? o['description'] ?? 'Complete this offer to earn coins.').toString(),
+          coins: coins,
+          steps: ((o['instructions'] ?? []) as List).map((e) => e.toString()).toList(),
+        ),
+      });
+    }
+    if (rec.isEmpty) return const SizedBox.shrink();
     return SizedBox(
       height: 140,
       child: ListView.separated(

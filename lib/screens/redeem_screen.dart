@@ -16,27 +16,69 @@ class RedeemScreen extends StatefulWidget {
 class _RedeemScreenState extends State<RedeemScreen> {
   static const _bg = Color(0xFFF7F8FA);
 
-  // 12 famous Indian / global gift card brands
-  static const _brands = [
-    {'name': 'Amazon Pay',    'color': Color(0xFFFF9900), 'img': 'assets/brands/amazon.png'},
-    {'name': 'PhonePe',       'color': Color(0xFF5F259F), 'img': 'assets/brands/phonepe.png'},
-    {'name': 'Paytm',         'color': Color(0xFF00B9F1), 'img': 'assets/brands/paytm.png'},
-    {'name': 'Flipkart',      'color': Color(0xFF2874F0), 'img': 'assets/brands/flipkart.png'},
-    {'name': 'Google Play',   'color': Color(0xFF34A853), 'img': 'assets/brands/googleplay.png'},
-    {'name': 'Myntra',        'color': Color(0xFFFF4466), 'img': 'assets/brands/myntra.png'},
-    {'name': 'Ajio',          'color': Color(0xFF2BB1E4), 'img': 'assets/brands/ajio.png'},
-    {'name': 'Swiggy',        'color': Color(0xFFFF5200), 'img': 'assets/brands/swiggy.png'},
-    {'name': 'Zomato',        'color': Color(0xFFE23744), 'img': 'assets/brands/zomato.png'},
-    {'name': 'Netflix',       'color': Color(0xFFE50914), 'img': 'assets/brands/netflix.png'},
-    {'name': 'Spotify',       'color': Color(0xFF1DB954), 'img': 'assets/brands/spotify.png'},
-    {'name': 'OLA',           'color': Color(0xFF00C853), 'img': 'assets/brands/ola.png'},
-  ];
+  // Brand list is loaded from the backend on init — never hardcoded.
+  List<Map<String, dynamic>> _brands = [];
+  bool _loading = true;
+  bool _failed = false;
 
-  static String _brandImg(String name) {
-    for (final b in _brands) {
-      if (b['name'] == name) return b['img'] as String;
-    }
-    return 'assets/brands/amazon.png';
+  // Fallback brand assets exist for known names; unknown names get a generic icon.
+  static const _brandAssets = {
+    'Amazon Pay': 'assets/brands/amazon.png',
+    'PhonePe': 'assets/brands/phonepe.png',
+    'Paytm': 'assets/brands/paytm.png',
+    'Flipkart': 'assets/brands/flipkart.png',
+    'Google Play': 'assets/brands/googleplay.png',
+    'Myntra': 'assets/brands/myntra.png',
+    'Ajio': 'assets/brands/ajio.png',
+    'Swiggy': 'assets/brands/swiggy.png',
+    'Zomato': 'assets/brands/zomato.png',
+    'Netflix': 'assets/brands/netflix.png',
+    'Spotify': 'assets/brands/spotify.png',
+    'OLA': 'assets/brands/ola.png',
+  };
+
+  static const _brandColors = {
+    'Amazon Pay': Color(0xFFFF9900),
+    'PhonePe': Color(0xFF5F259F),
+    'Paytm': Color(0xFF00B9F1),
+    'Flipkart': Color(0xFF2874F0),
+    'Google Play': Color(0xFF34A853),
+    'Myntra': Color(0xFFFF4466),
+    'Ajio': Color(0xFF2BB1E4),
+    'Swiggy': Color(0xFFFF5200),
+    'Zomato': Color(0xFFE23744),
+    'Netflix': Color(0xFFE50914),
+    'Spotify': Color(0xFF1DB954),
+    'OLA': Color(0xFF00C853),
+  };
+
+  static String _brandImg(String name) =>
+      _brandAssets[name] ?? 'assets/brands/amazon.png';
+
+  static Color _brandColor(String name) =>
+      _brandColors[name] ?? AppColors.primary;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
+    final list = await AppRepository.instance.fetchGiftCards();
+    if (!mounted) return;
+    setState(() {
+      _loading = false;
+      _failed = list == null;
+      _brands = (list ?? [])
+          .whereType<Map>()
+          .map((e) => <String, dynamic>{'name': (e['name'] ?? e['brand'] ?? 'Gift Card').toString()})
+          .toList();
+    });
   }
 
   @override
@@ -55,24 +97,59 @@ class _RedeemScreenState extends State<RedeemScreen> {
                 color: AppColors.textPrimary, fontSize: 20, fontWeight: FontWeight.w800)),
         centerTitle: false,
       ),
-      body: GridView.builder(
-        padding: const EdgeInsets.all(16),
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          childAspectRatio: 1,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+      body: _body(),
+    );
+  }
+
+  Widget _body() {
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+    if (_failed) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.wifi_off_rounded, size: 40, color: AppColors.textSecondary),
+            const SizedBox(height: 10),
+            const Text('Could not load gift cards',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            const SizedBox(height: 12),
+            TextButton(onPressed: _load, child: const Text('Retry')),
+          ],
         ),
-        itemCount: _brands.length,
-        itemBuilder: (_, i) => _brandCard(_brands[i]),
+      );
+    }
+    if (_brands.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.card_giftcard_rounded, size: 40, color: AppColors.textSecondary),
+            SizedBox(height: 10),
+            Text('No gift cards available yet',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          ],
+        ),
+      );
+    }
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        childAspectRatio: 1,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
       ),
+      itemCount: _brands.length,
+      itemBuilder: (_, i) => _brandCard(_brands[i]),
     );
   }
 
   Widget _brandCard(Map<String, dynamic> brand) {
     final name = brand['name'] as String;
-    final color = brand['color'] as Color;
-    final img = brand['img'] as String;
+    final color = _brandColor(name);
+    final img = _brandImg(name);
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
