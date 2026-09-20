@@ -215,7 +215,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
                                   ),
                                   child: Center(
                                     child: Text(
-                                      '+ $ {_reward > 0 ? _reward : "??"}',
+                                      '+${_reward > 0 ? _reward : "??"}',
                                       style: GoogleFonts.inter(
                                         color: _reward > 0
                                             ? AppColors.goldLight
