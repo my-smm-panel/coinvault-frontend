@@ -43,7 +43,6 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   @override
   void initState() {
     super.initState();
-    _amountController.text = '100';
     _loadUser();
     _loadRecent();
     _loadBrands();
@@ -70,6 +69,13 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         _upiController.text = _user?.upiId ?? '';
         _bankController.text = _user?.bankDetails ?? '';
       });
+      // Dynamic default amount — not hardcoded 100
+      if (mounted) {
+        final coins = _user?.coins ?? 0;
+        _amountController.text = coins >= 100 ? '100' : (coins > 0 ? coins.toString() : '100');
+      }
+    } else {
+      _amountController.text = '100';
     }
   }
 

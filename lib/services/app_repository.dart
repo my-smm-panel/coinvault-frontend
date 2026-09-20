@@ -361,13 +361,65 @@ class AppRepository {
   Future<List<dynamic>> fetchWithdrawalHistory(String uid) async {
     try {
       final res = await _api.get('/api/withdrawals/my');
-      if (res is Map && res['success'] == true && res['data'] is Map) {
+      if (res is Map && res['success'] == true) {
         final items = res['data']['items'] ?? res['data']['withdrawals'] ?? res['data']['data'];
         return items is List ? items : [];
       }
       return [];
     } catch (_) {
       return [];
+    }
+  }
+
+  /// Fetch today's daily quiz (public, no auth). Returns questions + config.
+  Future<Map<String, dynamic>?> fetchQuiz() async {
+    try {
+      final res = await _api.get('/api/quiz', auth: false);
+      if (res is Map && res['success'] == true && res['data'] is Map) {
+        return Map<String, dynamic>.from(res['data'] as Map);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Submit quiz answers (auth required). Returns correctCount + coinsEarned.
+  Future<Map<String, dynamic>?> submitQuiz(List<int> answers) async {
+    try {
+      final res = await _api.post('/api/quiz/submit', {'answers': answers});
+      if (res is Map && res['success'] == true && res['data'] is Map) {
+        return Map<String, dynamic>.from(res['data'] as Map);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Scratch card — server picks reward, credits wallet. Auth required.
+  Future<Map<String, dynamic>?> scratchCard() async {
+    try {
+      final res = await _api.post('/api/scratch', {});
+      if (res is Map && res['success'] == true && res['data'] is Map) {
+        return Map<String, dynamic>.from(res['data'] as Map);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  /// Scratch status — remaining count + last reward. Auth required.
+  Future<Map<String, dynamic>?> scratchStatus() async {
+    try {
+      final res = await _api.get('/api/scratch/status');
+      if (res is Map && res['success'] == true && res['data'] is Map) {
+        return Map<String, dynamic>.from(res['data'] as Map);
+      }
+      return null;
+    } catch (_) {
+      return null;
     }
   }
 }

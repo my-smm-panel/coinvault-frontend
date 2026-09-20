@@ -19,7 +19,7 @@ class _InviteScreenState extends State<InviteScreen> {
   static const _bg = Color(0xFFF7F8FA);
 
   bool _loading = true;
-  String _code = 'CV123456';
+  String _code = '';
   int _successful = 0;
   int _pending = 0;
   int _earned = 0;

@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-
 import '../core/app_theme.dart';
+import '../services/app_repository.dart';
+import '../services/auth_service.dart';
 
-/// Daily Quiz — simple math/general quiz, coins on correct answers.
+/// Daily Quiz — backend-fetched questions (GET /api/quiz) + submit (POST /api/quiz/submit).
 class QuizScreen extends StatefulWidget {
   const QuizScreen({super.key});
 
@@ -17,61 +18,98 @@ class _QuizScreenState extends State<QuizScreen> {
   int? _selected;
   bool _answered = false;
   int _earned = 0;
+  int _correctCount = 0;
 
-  static const _questions = [
-    {
-      'q': '100 coins equal how much money?',
-      'options': ['₹1', '₹10', '₹100', '₹1000'],
-      'answer': 1,
-    },
-    {
-      'q': 'Which is India\'s UPI based fast payment?',
-      'options': ['PayTM', 'UPI', 'Both are UPI apps', 'None'],
-      'answer': 2,
-    },
-    {
-      'q': 'How many free spins do you get daily?',
-      'options': ['1', '2', '5', '10'],
-      'answer': 1,
-    },
-    {
-      'q': 'What is 25 + 75?',
-      'options': ['90', '100', '110', '125'],
-      'answer': 1,
-    },
-    {
-      'q': 'Which app gives coins for tasks & spins?',
-      'options': ['CoinVault', 'Others', 'No app', 'Cannot say'],
-      'answer': 0,
-    },
-  ];
+  // Backend-fetched state
+  List<Map<String, dynamic>>? _questions;
+  bool _loading = true;
+  bool _submitting = false;
+  bool _done = false;
+  int _coinsPerCorrect = 2;
+  int _passThreshold = 3;
+  final List<int?> _answers = List.filled(5, null);
 
   void _pick(int i) {
-    if (_answered) return;
+    if (_answered || _done || _submitting) return;
     setState(() {
       _selected = i;
       _answered = true;
-      if (i == _questions[_index]['answer'] as int) {
+      _answers[_index] = i;
+      if (i == (_questions?[_index]['answer'] as int? ?? -1)) {
         _score++;
-        _earned += 2;
       }
     });
   }
 
   void _next() {
-    if (_index < _questions.length - 1) {
+    if (_done) return;
+    if (_index < (_questions?.length ?? 0) - 1) {
       setState(() {
         _index++;
         _selected = null;
         _answered = false;
       });
     } else {
-      _showResult();
+      _submitQuiz();
+    }
+  }
+
+  Future<void> _loadQuiz() async {
+    final data = await AppRepository.instance.fetchQuiz();
+    if (!mounted) return;
+    if (data != null && data['questions'] is List) {
+      setState(() {
+        _questions = List<Map<String, dynamic>>.from(data['questions'] as List);
+        _coinsPerCorrect = data['coinsPerCorrect'] as int? ?? 2;
+        _passThreshold = data['passThreshold'] as int? ?? 3;
+        _loading = false;
+        _answers.fillRange(0, _questions!.length, null);
+      });
+    } else {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _submitQuiz() async {
+    if (_submitting) return;
+    setState(() => _submitting = true);
+    try {
+      // Build compact answers list (only answered indices)
+      final List<int> compact = <int>[];
+      for (var i = 0; i < _answers.length; i++) {
+        if (_answers[i] != null) compact.add(_answers[i]!);
+      }
+      if (compact.length < _questions?.length) {
+        // Fill unanswered with first option to avoid backend 400
+        for (var i = 0; i < _answers.length; i++) {
+          if (_answers[i] == null) compact.add(0);
+          else compact.add(_answers[i]!);
+        }
+      }
+      final res = await AppRepository.instance.submitQuiz(compact);
+      if (!mounted) return;
+      if (res != null) {
+        setState(() {
+          _correctCount = res['correctCount'] as int? ?? 0;
+          _earned = res['coinsEarned'] as int? ?? 0;
+          _done = true;
+          // Optimistic local coin update if auth available
+          try {
+            AuthService().addCoins(_earned);
+          } catch (_) {}
+        });
+      } else {
+        setState(() => _done = true);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _done = true);
+    } finally {
+      if (mounted) setState(() => _submitting = false);
     }
   }
 
   void _showResult() {
-    final passed = _score >= 3;
+    final passed = _earned > 0;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -81,31 +119,30 @@ class _QuizScreenState extends State<QuizScreen> {
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
             gradient: LinearGradient(
-                colors: [AppColors.surface, AppColors.spinCard]),
+              colors: [AppColors.surface, AppColors.spinCard],
+            ),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-                color:
-                    (passed ? AppColors.gold : AppColors.primary)
-                        .withOpacity(0.5),
-                width: 1.5),
+              color: (passed ? AppColors.gold : AppColors.primary).withOpacity(0.5),
+              width: 1.5,
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                passed
-                    ? Icons.emoji_events_rounded
-                    : Icons.replay_rounded,
+                passed ? Icons.emoji_events_rounded : Icons.replay_rounded,
                 size: 64,
                 color: passed ? AppColors.gold : AppColors.primary,
               ),
               const SizedBox(height: 12),
               Text(
-                '$_score / ${_questions.length} correct',
+                '$_score / ${_questions?.length ?? 0} correct',
                 style: GoogleFonts.inter(
-                    color: AppColors.textPrimary,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900),
+                  color: AppColors.textPrimary,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
@@ -113,7 +150,9 @@ class _QuizScreenState extends State<QuizScreen> {
                     ? 'You earned $_earned coins! 🪙'
                     : 'Need 3+ correct to earn. Try again tomorrow!',
                 style: GoogleFonts.inter(
-                    color: AppColors.textSecondary, fontSize: 13),
+                  color: AppColors.textSecondary,
+                  fontSize: 13,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 18),
@@ -130,11 +169,16 @@ class _QuizScreenState extends State<QuizScreen> {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24)),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
                   ),
-                  child: Text('Done',
-                      style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w800, fontSize: 15)),
+                  child: Text(
+                    'Done',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                    ),
+                  ),
                 ),
               ),
             ],
@@ -145,17 +189,73 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _loadQuiz();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final q = _questions[_index];
-    final options = (q['options'] as List).cast<String>();
-    final correct = q['answer'] as int;
+    if (_loading) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF7F8FA),
+        body: SafeArea(
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const CircularProgressIndicator(color: AppColors.primary),
+                const SizedBox(height: 16),
+                Text(
+                  'Loading Quiz...',
+                  style: GoogleFonts.inter(color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_done) {
+      _showResult();
+      return Scaffold(
+        backgroundColor: const Color(0xFFF7F8FA),
+        body: SafeArea(
+          child: Center(
+            child: Text(
+              'Submitting results...',
+              style: GoogleFonts.inter(color: AppColors.textSecondary),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final q = _questions?[_index];
+    if (q == null) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF7F8FA),
+        body: SafeArea(
+          child: Center(
+            child: Text(
+              'No questions available',
+              style: GoogleFonts.inter(color: AppColors.textSecondary),
+            ),
+          ),
+        ),
+      );
+    }
+
+    final options = List<String>.from(q['options'] ?? []);
+    final correct = q['answer'] as int? ?? -1;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF7F8FA),
       body: SafeArea(
         child: Column(
           children: [
-            // ===== Header =====
+            // Header
             Padding(
               padding: const EdgeInsets.fromLTRB(4, 6, 16, 0),
               child: Row(
@@ -165,11 +265,14 @@ class _QuizScreenState extends State<QuizScreen> {
                         color: Colors.white, size: 20),
                     onPressed: () => Navigator.of(context).maybePop(),
                   ),
-                  Text('Daily Quiz',
-                      style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w800)),
+                  Text(
+                    'Daily Quiz',
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(
@@ -177,187 +280,191 @@ class _QuizScreenState extends State<QuizScreen> {
                     decoration: BoxDecoration(
                       color: const Color(0xFFFFFFFF),
                       borderRadius: BorderRadius.circular(16),
-                      border:
-                          Border.all(color: AppColors.gold.withOpacity(0.4)),
+                      border: Border.all(
+                          color: AppColors.gold.withOpacity(0.4)),
                     ),
                     child: Row(
                       children: [
                         const Icon(Icons.monetization_on_rounded,
                             color: AppColors.gold, size: 14),
                         const SizedBox(width: 4),
-                        Text('$_earned',
-                            style: GoogleFonts.inter(
-                                color: AppColors.goldLight,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w800)),
+                        Text(
+                          '$_earned',
+                          style: GoogleFonts.inter(
+                            color: AppColors.goldLight,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                 ],
               ),
             ),
-
-            // ===== Progress =====
+            // Progress
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
               child: Row(
-                children: List.generate(_questions.length, (i) {
+                children: List.generate(_questions!.length, (i) {
                   return Expanded(
                     child: Container(
-                      height: 4,
-                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      height: 6,
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
                       decoration: BoxDecoration(
                         color: i <= _index
                             ? AppColors.primary
-                            : Colors.white.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(2),
+                            : AppColors.border,
+                        borderRadius: BorderRadius.circular(3),
                       ),
                     ),
                   );
                 }),
               ),
             ),
-
+            const SizedBox(height: 16),
+            // Question
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 8),
                     Text(
-                      'Question ${_index + 1} of ${_questions.length}',
+                      'Q${_index + 1}',
                       style: GoogleFonts.inter(
-                          color: AppColors.primaryLight,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700),
+                        color: AppColors.primary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     Text(
                       q['q'] as String,
                       style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          height: 1.3),
+                        color: AppColors.textPrimary,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                     const SizedBox(height: 24),
-
-                    // ===== Options =====
-                    ...options.asMap().entries.map((e) {
-                      final i = e.key;
-                      final opt = e.value;
-                      Color bg = const Color(0xFFFFFFFF);
-                      Color border = Colors.white.withOpacity(0.08);
-                      Color text = Colors.white;
-                      IconData? trailing;
-
-                      if (_answered) {
-                        if (i == correct) {
-                          bg = const Color(0xFFE6F4EC);
-                          border = const Color(0xFF1E7A55);
-                          text = const Color(0xFF4ADE80);
-                          trailing = Icons.check_rounded;
-                        } else if (i == _selected) {
-                          bg = const Color(0xFFFFE9EC);
-                          border = const Color(0xFF5A2A2E);
-                          text = const Color(0xFFEF4444);
-                          trailing = Icons.close_rounded;
-                        }
-                      }
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => _pick(i),
-                            borderRadius: BorderRadius.circular(14),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 15),
-                              decoration: BoxDecoration(
-                                color: bg,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: border),
+                    // Options
+                    ...List.generate(options.length, (i) {
+                      final isSelected = _selected == i;
+                      final isCorrect = i == correct;
+                      final showResult = _answered;
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: GestureDetector(
+                          onTap: () => _pick(i),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: showResult
+                                  ? (isCorrect
+                                      ? AppColors.gold.withOpacity(0.12)
+                                      : isSelected && !isCorrect
+                                          ? AppColors.primary.withOpacity(0.12)
+                                          : const Color(0xFFFFFFFF))
+                                  : const Color(0xFFFFFFFF),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: showResult
+                                    ? (isCorrect
+                                        ? AppColors.gold
+                                        : isSelected && !isCorrect
+                                            ? AppColors.primary
+                                            : AppColors.border)
+                                    : AppColors.border,
+                                width: showResult ? 2 : 1,
                               ),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 28,
-                                    height: 28,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      border: Border.all(color: border),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        String.fromCharCode(65 + i),
-                                        style: GoogleFonts.inter(
-                                            color: text,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w800),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: Text(
-                                      opt,
-                                      style: GoogleFonts.inter(
-                                          color: text,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.04),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 28,
+                                  child: Text(
+                                    '${i + 1}',
+                                    style: GoogleFonts.inter(
+                                      color: isCorrect
+                                          ? AppColors.gold
+                                          : isSelected && !isCorrect
+                                              ? AppColors.primary
+                                              : AppColors.textSecondary,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w700,
                                     ),
                                   ),
-                                  if (trailing != null)
-                                    Icon(trailing,
-                                        color: text, size: 20),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    options[i],
+                                    style: GoogleFonts.inter(
+                                      color: showResult && isCorrect
+                                          ? AppColors.gold
+                                          : AppColors.textPrimary,
+                                      fontSize: 15,
+                                      fontWeight: isCorrect
+                                          ? FontWeight.w700
+                                          : FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                if (showResult) ...[
+                                  const SizedBox(width: 8),
+                                  Icon(
+                                    isCorrect
+                                        ? Icons.check_circle_rounded
+                                        : isSelected && !isCorrect
+                                            ? Icons.cancel_rounded
+                                            : Icons.radio_button_unchecked_rounded,
+                                    color: isCorrect
+                                        ? AppColors.gold
+                                        : isSelected && !isCorrect
+                                            ? AppColors.primary
+                                            : AppColors.textSecondary,
+                                    size: 20,
+                                  ),
                                 ],
-                              ),
+                              ],
                             ),
                           ),
                         ),
                       );
                     }),
-
-                    const SizedBox(height: 8),
-
-                    // ===== Next button =====
+                    const SizedBox(height: 20),
+                    // Next/Done button
                     SizedBox(
                       width: double.infinity,
-                      height: 52,
                       child: ElevatedButton(
-                        onPressed: _answered ? _next : null,
+                        onPressed: _submitting ? null : _next,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          disabledBackgroundColor:
-                              const Color(0xFFE8F0FF),
-                          disabledForegroundColor: AppColors.textSecondary,
                           elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(26)),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
                         ),
                         child: Text(
-                          _index == _questions.length - 1
-                              ? 'See Result'
-                              : 'Next Question',
+                          _index < (_questions!.length - 1) ? 'Next' : 'Submit',
                           style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w800, fontSize: 15),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
                     ),
-
-                    const SizedBox(height: 12),
-                    if (_answered && _selected != correct)
-                      Center(
-                        child: Text(
-                          'Correct answer highlighted in green',
-                          style: GoogleFonts.inter(
-                              color: AppColors.textSecondary, fontSize: 11),
-                        ),
-                      ),
                   ],
                 ),
               ),
