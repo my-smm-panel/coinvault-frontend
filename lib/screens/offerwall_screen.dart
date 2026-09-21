@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/provider_logos.dart';
 import '../widgets/app_logo.dart';
@@ -50,7 +51,8 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
       if (data == null) {
         _failed = true;
       } else {
-        _offers = data;
+        final items = data['data'] ?? data['offers'] ?? [];
+        _offers = items is List ? items : [];
       }
     });
   }
@@ -89,21 +91,33 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
     final clickUrl = await OfferwallService.instance.startOffer(id);
     if (!mounted) return;
     if (clickUrl != null && clickUrl.isNotEmpty) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => OfferDetailScreen(
-            offerId: id,
-            provider: (s['provider'] ?? '').toString(),
-            title: (s['title'] ?? 'Offer').toString(),
-            coins: ((s['coins'] ?? 0) as num).toInt(),
-          ),
-        ),
-      );
+      // Validate URL is HTTPS before opening
+      final uri = Uri.tryParse(clickUrl);
+      if (uri != null && uri.scheme == 'https') {
+        // Open in external browser — preserves Offerwall.GG tracking chain
+        // CoinVault → Offerwall.GG → Advertiser
+        try {
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+        } catch (_) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Could not open offer link')),
+            );
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Unable to open this offer right now.')),
+          );
+        }
+      }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not start offer. Please try again.')),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to open this offer right now.')),
+        );
+      }
     }
   }
 

@@ -10,53 +10,48 @@ class OfferwallService {
   final ApiClient _api = ApiClient.instance;
 
   /// Fetch the Offerwall.GG offer list.
-  /// Calls GET /api/offers?provider=offerwall_gg.
-  /// Returns null on network/server error.
-  Future<List<dynamic>?> fetchOffers() async {
+  /// Calls GET /api/offers/offerwall-gg (authenticated).
+  /// Returns the raw response data on success, null on network/server error.
+  Future<Map<String, dynamic>?> fetchOffers() async {
     try {
-      final res = await _api.get('/api/offers?provider=offerwall_gg', auth: false);
-      if (res is Map && res['data'] is Map) {
-        final items = res['data']['items'];
-        return items is List ? items : [];
+      final res = await _api.get('/api/offers/offerwall-gg');
+      if (res is Map) {
+        return Map<String, dynamic>.from(res);
       }
-      if (res is Map && res['data'] is List) {
-        return res['data'] as List;
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Start an offer — gets the clickUrl for redirect.
+  /// Calls POST /api/offers/offerwall-gg/:id/start (authenticated).
+  /// Returns the redirectUrl string on success, null on error.
+  Future<String?> startOffer(String offerId) async {
+    try {
+      final res = await _api.post('/api/offers/offerwall-gg/$offerId/start', {});
+      if (res is Map && res['success'] == true) {
+        final data = res['data'] as Map<String, dynamic>?;
+        if (data != null) {
+          return data['redirectUrl'] as String?;
+        }
+        // Fallback: check top-level redirectUrl
+        return res['redirectUrl'] as String?;
       }
-      return [];
+      return null;
     } catch (_) {
       return null;
     }
   }
 
   /// Fetch full details for a single offer.
-  /// Calls GET /api/offers/:id.
+  /// Calls GET /api/offers/offerwall-gg/:id (authenticated).
   /// Returns null on error.
   Future<Map<String, dynamic>?> fetchOfferDetail(String id) async {
     try {
-      final res = await _api.get('/api/offers/$id', auth: false);
-      if (res is Map && res['success'] == true && res['data'] is Map) {
-        return Map<String, dynamic>.from(res['data'] as Map);
-      }
+      final res = await _api.get('/api/offers/offerwall-gg/$id');
       if (res is Map && res['data'] is Map) {
         return Map<String, dynamic>.from(res['data'] as Map);
-      }
-      return null;
-    } catch (_) {
-      return null;
-    }
-  }
-
-  /// Start an offer — registers IN_PROGRESS and returns the clickUrl.
-  /// Calls POST /api/offers/:id/start.
-  /// Returns the clickUrl string on success, null on error.
-  Future<String?> startOffer(String id) async {
-    try {
-      final res = await _api.post('/api/offers/$id/start', {});
-      if (res is Map && res['success'] == true && res['data'] is Map) {
-        final data = res['data'] as Map;
-        return data['clickUrl'] as String? ??
-            data['externalUrl'] as String? ??
-            data['url'] as String?;
       }
       return null;
     } catch (_) {
