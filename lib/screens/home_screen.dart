@@ -37,13 +37,6 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  final List<Widget> _screens = [
-    const HomeTab(),
-    const EarnScreen(),
-    const LeaderboardScreen(),
-    const SurveysScreen(),
-  ];
-
   void _pushScreen(Widget page) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
@@ -52,10 +45,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.surface,
-      body: IndexedStack(
-        index: _currentIndex,
-        children: _screens,
-      ),
+      body: _currentIndex == 0
+          ? const HomeTab()
+          : _currentIndex == 1
+              ? const EarnScreen()
+              : _currentIndex == 2
+                  ? const LeaderboardScreen()
+                  : const SurveysScreen(),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: AppColors.surface,

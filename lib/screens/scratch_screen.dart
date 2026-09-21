@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../core/app_theme.dart';
@@ -21,8 +20,6 @@ class _ScratchScreenState extends State<ScratchScreen> {
   bool _loading = true;
   bool _claiming = false;
   int _remaining = 1;
-
-  static const _rewards = [2, 3, 5, 10, 3, 2, 5, 3]; // visual-only when offline
 
   void _newCard() {
     setState(() {
@@ -61,12 +58,20 @@ class _ScratchScreenState extends State<ScratchScreen> {
           AuthService().addCoins(reward);
         } catch (_) {}
       } else {
-        // Fallback: visual-only reward (backend unreachable)
-        setState(() => _reward = _rewards[math.Random().nextInt(_rewards.length)]);
+        // Backend unreachable — show error, no fake reward
+        setState(() => _reward = 0);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not claim reward. Please try again.')),
+          );
+        }
       }
     } catch (_) {
       if (mounted) {
-        setState(() => _reward = _rewards[math.Random().nextInt(_rewards.length)]);
+        setState(() => _reward = 0);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Something went wrong. Please try again.')),
+        );
       }
     } finally {
       if (mounted) setState(() => _claiming = false);

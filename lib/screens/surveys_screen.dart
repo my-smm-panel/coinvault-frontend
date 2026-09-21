@@ -426,7 +426,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
                     SizedBox(width: 5),
                     Icon(Icons.timer_rounded, color: Colors.white, size: 11),
                     SizedBox(width: 2),
-                    Text('23:14 left',
+                    Text('Limited time',
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 10,
