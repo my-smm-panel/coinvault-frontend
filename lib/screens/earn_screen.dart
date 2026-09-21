@@ -12,6 +12,7 @@ import 'quiz_screen.dart';
 import 'surveys_screen.dart';
 import 'task_detail_screen.dart';
 import 'offerwall_screen.dart';
+import 'offer_detail_screen.dart';
 import 'tracking_screen.dart';
 
 /// CoinVault — Earn tab (light design sheet).

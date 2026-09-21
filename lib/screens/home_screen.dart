@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_theme.dart';
+import '../core/provider_logos.dart';
 import '../services/app_repository.dart';
 import '../services/offerwall_service.dart';
 import '../services/auth_service.dart';
@@ -11,6 +12,7 @@ import '../widgets/cv_header.dart';
 import '../widgets/home_banner_carousel.dart';
 import 'earn_screen.dart';
 import 'task_detail_screen.dart';
+import 'offer_detail_screen.dart';
 import '../widgets/app_logo.dart';
 import 'invite_screen.dart';
 import 'leaderboard_screen.dart';
