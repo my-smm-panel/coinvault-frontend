@@ -8,9 +8,9 @@ plugins {
 
 android {
     namespace = "come.coinvaukt.in"
-    compileSdk = 35
+    compileSdk = 34
     buildToolsVersion = "29.0.3"
-    ndkVersion = "27.0.12077973"
+    ndkVersion = "26.3.11579264"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

@@ -79,7 +79,7 @@ class _QuizScreenState extends State<QuizScreen> {
       for (var i = 0; i < _answers.length; i++) {
         if (_answers[i] != null) compact.add(_answers[i]!);
       }
-      if (compact.length < _questions?.length) {
+      if (compact.length < (_questions?.length ?? 0)) {
         // Fill unanswered with first option to avoid backend 400
         for (var i = 0; i < _answers.length; i++) {
           if (_answers[i] == null) compact.add(0);
