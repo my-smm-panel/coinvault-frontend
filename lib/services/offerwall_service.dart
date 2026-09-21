@@ -78,11 +78,11 @@ class OfferwallService {
   final ApiClient _api = ApiClient.instance;
 
   /// Fetch the Offerwall.GG offer list.
-  /// Calls GET /api/offers/offerwall-gg (authenticated).
+  /// Calls GET /api/offerwall-gg (authenticated).
   /// Returns parsed offers on success, null on network/server error.
   Future<List<OfferwallOffer>?> fetchOffers() async {
     try {
-      final res = await _api.get('/api/offers/offerwall-gg');
+      final res = await _api.get('/api/offerwall-gg');
       if (res is Map) {
         final data = res['data'];
         List<dynamic> items;
@@ -105,11 +105,11 @@ class OfferwallService {
   }
 
   /// Start an offer — gets the clickUrl for redirect.
-  /// Calls POST /api/offers/offerwall-gg/:id/start (authenticated).
+  /// Calls POST /api/offerwall-gg/:id/start (authenticated).
   /// Returns the redirectUrl string on success, null on error.
   Future<String?> startOffer(String offerId) async {
     try {
-      final res = await _api.post('/api/offers/offerwall-gg/$offerId/start', {});
+      final res = await _api.post('/api/offerwall-gg/$offerId/start', {});
       if (res is Map && res['success'] == true) {
         final data = res['data'] as Map<String, dynamic>?;
         if (data != null) {
@@ -125,11 +125,11 @@ class OfferwallService {
   }
 
   /// Fetch full details for a single offer.
-  /// Calls GET /api/offers/offerwall-gg/:id (authenticated).
+  /// Calls GET /api/offerwall-gg/:id (authenticated).
   /// Returns null on error.
   Future<OfferwallOffer?> fetchOfferDetail(String id) async {
     try {
-      final res = await _api.get('/api/offers/offerwall-gg/$id');
+      final res = await _api.get('/api/offerwall-gg/$id');
       if (res is Map) {
         final data = res['data'];
         if (data is Map) {
