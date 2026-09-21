@@ -12,7 +12,7 @@ import 'offer_detail_screen.dart';
 /// Header (title + subtitle + bell + avatar) → filter chips →
 /// "Available Offers" section → vertical offer cards
 /// (provider logo, title, provider name, short requirement, reward, time, Start button).
-/// Data from GET /api/offers?provider=offerwall_gg (Supabase); start via startOffer().
+/// Data from GET /api/offers/offerwall-gg (authenticated); start via startOffer().
 class OfferwallScreen extends StatefulWidget {
   const OfferwallScreen({super.key});
 
@@ -22,7 +22,7 @@ class OfferwallScreen extends StatefulWidget {
 
 class _OfferwallScreenState extends State<OfferwallScreen> {
   String _filter = 'All Providers';
-  List<dynamic> _offers = [];
+  List<OfferwallOffer> _offers = [];
   bool _loading = true;
   bool _failed = false;
 
@@ -51,44 +51,36 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
       if (data == null) {
         _failed = true;
       } else {
-        final items = data['data'] ?? data['offers'] ?? [];
-        _offers = items is List ? items : [];
+        _offers = data;
       }
     });
   }
 
   /// Providers available in the fetched data (dynamic, never hardcoded).
   List<String> get _providers => _offers
-      .map((o) => (o as Map)['provider']?.toString() ?? '')
+      .map((o) => o.provider)
       .where((p) => p.isNotEmpty)
       .toSet()
       .toList();
 
   /// Filter by the ACTUAL provider identifier field, not visual hiding.
-  /// 'Offerwall.GG' chip selects only Offerwall.GG offers.
-  List<dynamic> get _filtered {
+  List<OfferwallOffer> get _filtered {
     var list = _offers;
     if (_filter == 'Offerwall.GG') {
-      list = list.where((raw) {
-        final o = raw as Map;
-        final provider = (o['provider'] ?? '').toString().toLowerCase();
-        return provider == 'offerwall_gg' ||
-            provider == 'offerwall.gg' ||
-            provider == 'offerwallgg';
+      list = list.where((o) {
+        final p = o.provider.toLowerCase();
+        return p == 'offerwall_gg' ||
+            p == 'offerwall.gg' ||
+            p == 'offerwallgg';
       }).toList();
     } else if (_filter != 'All Providers' && _providers.contains(_filter)) {
-      list = list.where((raw) {
-        final o = raw as Map;
-        return (o['provider'] ?? '').toString() == _filter;
-      }).toList();
+      list = list.where((o) => o.provider == _filter).toList();
     }
     return list;
   }
 
-  Future<void> _startOffer(Map s) async {
-    final id = (s['id'] ?? '').toString();
-    if (id.isEmpty) return;
-    final clickUrl = await OfferwallService.instance.startOffer(id);
+  Future<void> _startOffer(OfferwallOffer offer) async {
+    final clickUrl = await OfferwallService.instance.startOffer(offer.id);
     if (!mounted) return;
     if (clickUrl != null && clickUrl.isNotEmpty) {
       // Validate URL is HTTPS before opening
@@ -119,6 +111,20 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
         );
       }
     }
+  }
+
+  void _openDetail(OfferwallOffer offer) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => OfferDetailScreen(
+          offerId: offer.id,
+          provider: offer.provider,
+          title: offer.title,
+          coins: offer.coinReward,
+        ),
+      ),
+    );
   }
 
   @override
@@ -166,11 +172,7 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
               else
                 SliverList(
                   delegate: SliverChildBuilderDelegate(
-                    (ctx, i) {
-                      final o =
-                          Map<String, dynamic>.from(list[i] as Map);
-                      return _offerCard(o);
-                    },
+                    (ctx, i) => _offerCard(list[i]),
                     childCount: list.length,
                     addAutomaticKeepAlives: false,
                   ),
@@ -248,112 +250,125 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
   }
 
   // ─────────────────────────── OFFER CARD ───────────────────────────
-  Widget _offerCard(Map s) {
-    final title = (s['title'] ?? 'Offer').toString();
-    final coins = ((s['coins'] ?? 0) as num).toInt();
-    final provider = (s['provider'] ?? '').toString();
-    final shortReq = (s['shortRequirement'] ?? s['shortDesc'] ?? s['description'] ?? '').toString();
-    final estimatedTime = (s['estimatedTime'] ?? s['duration'] ?? '').toString();
+  Widget _offerCard(OfferwallOffer offer) {
+    final title = offer.title.isEmpty ? 'Offer' : offer.title;
+    final coins = offer.coinReward;
+    final provider = offer.provider.isEmpty ? 'Offerwall.GG' : offer.provider;
+    final shortReq = offer.shortRequirement ?? '';
+    final estimatedTime = offer.estimatedTime ?? '';
     final color = ProviderLogos.colorFor(provider);
+    final inr = (coins / 10).toStringAsFixed(0);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12, top: 4),
-      decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _border),
-        boxShadow: const [
-          BoxShadow(color: Color(0x0F000000), blurRadius: 8, offset: Offset(0, 2)),
-        ],
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(15),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Top row: provider logo + name + reward
-            Row(
-              children: [
-                AppLogo(
-                  provider: provider,
-                  title: title,
-                  size: 40,
-                  fallbackIcon: Icons.local_offer_rounded,
-                  fallbackColor: color,
-                ),
-                const SizedBox(width: 9),
-                Expanded(
-                  child: Text(
-                    provider.isEmpty ? 'Offerwall.GG' : provider,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: _primaryText,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
+    return GestureDetector(
+      onTap: () => _openDetail(offer),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12, top: 4),
+        decoration: BoxDecoration(
+          color: _card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _border),
+          boxShadow: const [
+            BoxShadow(color: Color(0x0F000000), blurRadius: 8, offset: Offset(0, 2)),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(15),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top row: provider logo + name + reward
+              Row(
+                children: [
+                  AppLogo(
+                    provider: provider,
+                    title: title,
+                    size: 40,
+                    fallbackIcon: Icons.local_offer_rounded,
+                    fallbackColor: color,
+                  ),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      provider,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _primaryText,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
-                ),
-                const Spacer(),
-                Text('+${_fmt(coins)} Coins',
-                    style: const TextStyle(
-                        color: Color(0xFF5A3825),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800)),
-              ],
-            ),
-            const SizedBox(height: 10),
-            // Title
-            Text(title,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                    color: _primaryText,
-                    fontSize: 15.5,
-                    fontWeight: FontWeight.w700,
-                    height: 1.25)),
-            const SizedBox(height: 7),
-            // Short requirement
-            if (shortReq.isNotEmpty)
-              Text(shortReq,
+                  const Spacer(),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('+${_fmt(coins)} Coins',
+                          style: const TextStyle(
+                              color: Color(0xFF5A3825),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800)),
+                      Text('≈ ₹$inr',
+                          style: const TextStyle(
+                              color: _secondaryText,
+                              fontSize: 10)),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              // Title
+              Text(title,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                      color: _secondaryText, fontSize: 12, height: 1.3)),
-            const SizedBox(height: 7),
-            // Meta row
-            Row(
-              children: [
-                if (estimatedTime.isNotEmpty) ...[
-                  const Icon(Icons.access_time_rounded,
-                      color: _secondaryText, size: 14),
-                  const SizedBox(width: 4),
-                  Text(estimatedTime,
-                      style: const TextStyle(
-                          color: _secondaryText, fontSize: 12)),
-                ],
-                const Spacer(),
-                // Start Offer button
-                SizedBox(
-                  height: 34,
-                  child: ElevatedButton(
-                    onPressed: () => _startOffer(s),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _orange,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18)),
+                      color: _primaryText,
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                      height: 1.25)),
+              const SizedBox(height: 7),
+              // Short requirement
+              if (shortReq.isNotEmpty)
+                Text(shortReq,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        color: _secondaryText, fontSize: 12, height: 1.3)),
+              const SizedBox(height: 7),
+              // Meta row
+              Row(
+                children: [
+                  if (estimatedTime.isNotEmpty) ...[
+                    const Icon(Icons.access_time_rounded,
+                        color: _secondaryText, size: 14),
+                    const SizedBox(width: 4),
+                    Text(estimatedTime,
+                        style: const TextStyle(
+                            color: _secondaryText, fontSize: 12)),
+                  ],
+                  const Spacer(),
+                  // Start Offer button
+                  SizedBox(
+                    height: 34,
+                    child: ElevatedButton(
+                      onPressed: () => _startOffer(offer),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _orange,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18)),
+                      ),
+                      child: const Text('Start Offer',
+                          style: TextStyle(
+                              fontSize: 12.5, fontWeight: FontWeight.w700)),
                     ),
-                    child: const Text('Start Offer',
-                        style: TextStyle(
-                            fontSize: 12.5, fontWeight: FontWeight.w700)),
                   ),
-                ),
-              ],
-            ),
-          ],
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

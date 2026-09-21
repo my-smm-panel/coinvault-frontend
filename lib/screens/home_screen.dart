@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
+import '../services/offerwall_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/cv_header.dart';
 import '../widgets/home_banner_carousel.dart';
@@ -239,9 +240,11 @@ class _HomeTabState extends State<HomeTab> {
   List<dynamic> _surveys = [];
   List<dynamic> _tasks = [];
   List<dynamic> _offers = [];
+  List<OfferwallOffer> _offerwallOffers = [];
   List<dynamic> _activity = [];
   Map<String, dynamic> _leaderboard = {};
   bool _loadingHome = true;
+  bool _offerwallFailed = false;
   int _spinsUsedToday = 0; // server-authoritative; set in _loadHomeData
 
   static const int _dailyGoal = 500;
@@ -261,6 +264,8 @@ class _HomeTabState extends State<HomeTab> {
       repo.fetchOffers(),
       repo.spinsRemainingToday(), // 2 — server-authoritative spin count
     ]);
+    // Fetch Offerwall.GG offers in parallel (best-effort; may fail gracefully)
+    final offerwallResult = await OfferwallService.instance.fetchOffers();
     if (!mounted) return;
     setState(() {
       _surveys = (results[0] as List<dynamic>?) ?? [];
@@ -280,6 +285,14 @@ class _HomeTabState extends State<HomeTab> {
                     .toList(),
               })
           .toList();
+      // Offerwall.GG offers (may be empty if network fails)
+      if (offerwallResult != null) {
+        _offerwallOffers = offerwallResult.take(4).toList();
+        _offerwallFailed = false;
+      } else {
+        _offerwallOffers = [];
+        _offerwallFailed = true;
+      }
       // Spins used today (server truth) — clamped 0..2.
       final remaining = results[2] as int?;
       _spinsUsedToday =
@@ -747,31 +760,85 @@ class _HomeTabState extends State<HomeTab> {
 
   // ───────────────────────── Tasks of the day ──────────────────────────────
   Widget _tasksRow(BuildContext context) {
-    if (_tasks.isEmpty) return _emptyRow('No tasks yet — check back soon');
-    final cards = _tasks.take(6).map((t) {
+    // Combine Direct Tasks + Offerwall.GG offers
+    final combined = <Map<String, dynamic>>[];
+
+    // Direct Tasks (from _offers filtered by INSTALL type)
+    for (final t in _tasks.take(3)) {
       final m = t as Map;
+      combined.add(<String, dynamic>{
+        'title': (m['title'] ?? 'Task').toString(),
+        'sub': (m['sub'] ?? m['provider'] ?? '').toString(),
+        'coins': ((m['coins'] ?? 0) as num).toInt(),
+        'steps': (m['steps'] as List?)?.cast<String>() ?? [],
+        'provider': (m['provider'] ?? '').toString(),
+        'icon': Icons.task_alt_rounded,
+        'color': const Color(0xFF16A34A),
+        'source': 'direct',
+      });
+    }
+
+    // Offerwall.GG offers
+    for (final o in _offerwallOffers.take(3)) {
+      combined.add(<String, dynamic>{
+        'title': o.title,
+        'sub': o.shortRequirement ?? '',
+        'coins': o.coinReward,
+        'steps': o.goals.isNotEmpty ? o.goals : (o.requirements.isNotEmpty ? o.requirements : []),
+        'provider': o.provider.isEmpty ? 'Offerwall.GG' : o.provider,
+        'icon': Icons.local_offer_rounded,
+        'color': ProviderLogos.colorFor(o.provider),
+        'source': 'offerwall',
+        'offerId': o.id,
+      });
+    }
+
+    if (combined.isEmpty) return _emptyRow('No tasks yet — check back soon');
+
+    final cards = combined.take(6).map((t) {
+      final source = t['source'] as String;
+      final isOfferwall = source == 'offerwall';
+      final provider = (t['provider'] ?? 'Offer').toString();
+      final title = (t['title'] ?? 'Task').toString();
+      final sub = (t['sub'] ?? '').toString();
+      final coins = (t['coins'] as int);
+      final steps = (t['steps'] as List).cast<String>();
+      final icon = t['icon'] as IconData;
+      final color = t['color'] as Color;
+
       return _hCard(
         context: context,
-        title: (m['title'] ?? 'Task').toString(),
-        sub: (m['provider'] ?? 'Offer').toString(),
-        coins: ((m['coins'] ?? 0) as num).toInt(),
-        meta: '~10 min',
-        chip: 'Task',
-        icon: Icons.task_alt_rounded,
-        color: const Color(0xFF16A34A),
-        cta: 'Start Task',
-        provider: (m['provider'] ?? '').toString(),
-        onTap: () => _push(
-              context,
-              TaskDetailScreen(
-                provider: (m['provider'] ?? 'CoinVault').toString(),
-                title: (m['title'] ?? 'Task').toString(),
-                desc: (m['sub'] ?? '').toString(),
-                coins: ((m['coins'] ?? 0) as num).toInt(),
-                steps: (m['steps'] as List?)?.cast<String>() ??
-                    const ['Tap Start', 'Complete the task', 'Coins credited'],
-              ),
-            ),
+        title: title,
+        sub: sub,
+        coins: coins,
+        meta: '~${(coins ~/ 20).clamp(1, 60)} min',
+        chip: isOfferwall ? 'Offer' : 'Task',
+        icon: icon,
+        color: color,
+        cta: isOfferwall ? 'Start Offer' : 'Start Task',
+        provider: provider,
+        onTap: isOfferwall
+            ? () => _push(
+                  context,
+                  OfferDetailScreen(
+                    offerId: t['offerId'] as String,
+                    provider: provider,
+                    title: title,
+                    coins: coins,
+                  ),
+                )
+            : () => _push(
+                  context,
+                  TaskDetailScreen(
+                    provider: provider,
+                    title: title,
+                    desc: sub,
+                    coins: coins,
+                    steps: steps.isNotEmpty
+                        ? steps
+                        : const ['Tap Start', 'Complete the task', 'Coins credited'],
+                  ),
+                ),
       );
     }).toList();
     return SizedBox(
@@ -859,6 +926,11 @@ class _HomeTabState extends State<HomeTab> {
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
                       color: AppColors.primary)),
+              const SizedBox(width: 4),
+              Text('≈ ₹${(coins / 10).toStringAsFixed(0)}',
+                  style: const TextStyle(
+                      fontSize: 10,
+                      color: AppColors.textSecondary)),
               const SizedBox(width: 8),
               Icon(Icons.access_time_rounded,
                   size: 13, color: AppColors.textSecondary),

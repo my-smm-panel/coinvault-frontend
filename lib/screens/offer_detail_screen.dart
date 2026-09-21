@@ -29,7 +29,7 @@ class OfferDetailScreen extends StatefulWidget {
 }
 
 class _OfferDetailScreenState extends State<OfferDetailScreen> {
-  Map<String, dynamic>? _detail;
+  OfferwallOffer? _detail;
   bool _loading = true;
   bool _failed = false;
   bool _started = false;
@@ -67,15 +67,20 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
       if (uri != null && await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not open offer link')),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Could not open offer link')),
+          );
+          setState(() => _started = false);
+        }
       }
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not start offer. Please try again.')),
-      );
-      setState(() => _started = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not start offer. Please try again.')),
+        );
+        setState(() => _started = false);
+      }
     }
   }
 
@@ -233,13 +238,15 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
   }
 
   Widget _content(Color color, int minutes) {
-    final d = _detail ?? {};
-    final requirements = _parseList(d['requirements'] ?? d['requirement']);
-    final goals = _parseList(d['goals'] ?? d['goal'] ?? d['milestones']);
-    final rules = _parseList(d['rules'] ?? d['rule']);
-    final isVariable = (d['isVariable'] ?? d['variable'] ?? false) == true;
-    final description = (d['description'] ?? d['desc'] ?? '').toString();
-    final reward = ((d['coins'] ?? d['reward'] ?? widget.coins) as num).toInt();
+    final d = _detail!;
+    final requirements = d.requirements;
+    final goals = d.goals;
+    final rules = d.rules;
+    final isVariable = false;
+    final description = d.description ?? '';
+    // Use coinReward from backend detail (may have more accurate value)
+    final reward = d.coinReward > 0 ? d.coinReward : widget.coins;
+    final inr = (reward / 10).toStringAsFixed(0);
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -270,26 +277,27 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                 const Icon(Icons.monetization_on_rounded,
                     color: Color(0xFF5A3825), size: 44),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '+${_fmt(reward)} coins',
-                      style: const TextStyle(
-                        color: Color(0xFF5A3825),
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '+${_fmt(reward)} coins',
+                        style: const TextStyle(
+                          color: Color(0xFF5A3825),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
-                    ),
-                    Text(
-                      isVariable ? 'variable reward' : 'fixed reward',
-                      style: TextStyle(
-                          color: const Color(0xFF5A3825).withOpacity(0.8),
-                          fontSize: 12),
-                    ),
-                  ],
+                      Text(
+                        '≈ ₹$inr',
+                        style: TextStyle(
+                            color: const Color(0xFF5A3825).withOpacity(0.8),
+                            fontSize: 12),
+                      ),
+                    ],
+                  ),
                 ),
-                const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 6),
@@ -578,16 +586,6 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
         ],
       ),
     );
-  }
-
-  List<String> _parseList(dynamic data) {
-    if (data is List) {
-      return data.map((e) => e.toString()).toList();
-    }
-    if (data is String && data.isNotEmpty) {
-      return data.split('\n').where((s) => s.trim().isNotEmpty).toList();
-    }
-    return [];
   }
 
   String _fmt(int n) {

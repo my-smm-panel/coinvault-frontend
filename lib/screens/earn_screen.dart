@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../core/provider_logos.dart';
 import '../widgets/app_logo.dart';
 import '../services/app_repository.dart';
+import '../services/offerwall_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/cv_header.dart';
 import '../widgets/state_views.dart';
@@ -42,6 +43,7 @@ class _EarnScreenState extends State<EarnScreen> {
   // ── data ────────────────────────────────────────────────────────────────
   List<dynamic> _surveys = [];
   List<dynamic> _offers = [];
+  List<OfferwallOffer> _offerwallOffers = [];
   bool _loading = true;
   bool _failed = false;
   int _today = 0;
@@ -70,6 +72,8 @@ class _EarnScreenState extends State<EarnScreen> {
       repo.fetchOffers(),
       repo.fetchActivity(),
     ]);
+    // Offerwall.GG — best-effort, may fail gracefully
+    final offerwallResult = await OfferwallService.instance.fetchOffers();
     if (!mounted) return;
 
     final surveys = results[0];
@@ -99,6 +103,7 @@ class _EarnScreenState extends State<EarnScreen> {
     setState(() {
       _surveys = surveys ?? <dynamic>[];
       _offers = offers ?? <dynamic>[];
+      _offerwallOffers = offerwallResult ?? <OfferwallOffer>[];
       _failed = failed;
       _today = today;
       _pending = offers
@@ -557,23 +562,13 @@ class _EarnScreenState extends State<EarnScreen> {
   // ───────────────────────── offerwall ────────────────────────────────────
   Widget _offerwallSection() {
     final offerwallOffers = <Map<String, dynamic>>[
-      ..._offers
-          .where((o) {
-            final provider = ((o as Map)['provider'] ?? '').toString().toLowerCase();
-            return provider == 'offerwall_gg' ||
-                provider == 'offerwall.gg' ||
-                provider == 'offerwallgg' ||
-                provider == 'getgems' ||
-                provider == 'gg';
-          })
-          .take(2)
-          .map((o) => <String, dynamic>{
-                'title': (o['title'] ?? 'Offer').toString(),
-                'provider': (o['provider'] ?? 'Offerwall.GG').toString(),
-                'coins': ((o['coins'] ?? 0) as num).toInt(),
-                'min': (((o['coins'] ?? 0) as num).toInt() ~/ 20).clamp(3, 30),
-                'req': (o['shortRequirement'] ?? o['shortDesc'] ?? o['description'] ?? '').toString(),
-              }),
+      ..._offerwallOffers.map((o) => <String, dynamic>{
+            'title': o.title,
+            'provider': o.provider.isEmpty ? 'Offerwall.GG' : o.provider,
+            'coins': o.coinReward,
+            'offerId': o.id,
+            'color': ProviderLogos.colorFor(o.provider),
+          }),
     ];
     if (offerwallOffers.isEmpty) {
       // Show a placeholder card for Offerwall.GG when no offers loaded yet
@@ -641,88 +636,85 @@ class _EarnScreenState extends State<EarnScreen> {
       separatorBuilder: (_, __) => const SizedBox(height: 12),
       itemBuilder: (_, i) {
         final o = offerwallOffers[i];
-        final color = ProviderLogos.colorFor((o['provider'] as String).trim());
-        return Container(
-          padding: const EdgeInsets.all(13),
-          decoration: _cardDec(),
-          child: Row(
-            children: [
-              AppLogo(
-                provider: (o['provider'] as String).trim(),
-                title: o['title'] as String,
-                size: 44,
-                radius: 12,
-                fallbackIcon: Icons.local_offer_rounded,
-                fallbackColor: color,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(o['provider'] as String,
-                        style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w800,
-                            color: color),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 2),
-                    Text(o['title'] as String,
-                        style: const TextStyle(
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700,
-                            color: _text),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(Icons.schedule_rounded, size: 11, color: _sub),
-                        const SizedBox(width: 3),
-                        Text('~${o['min']} min',
-                            style: const TextStyle(fontSize: 10.5, color: _sub)),
-                      ],
-                    ),
-                  ],
+        final coins = o['coins'] as int;
+        final color = o['color'] as Color;
+        return GestureDetector(
+          onTap: () => _push(OfferDetailScreen(
+            offerId: o['offerId'] as String,
+            provider: o['provider'] as String,
+            title: o['title'] as String,
+            coins: coins,
+          )),
+          child: Container(
+            padding: const EdgeInsets.all(13),
+            decoration: _cardDec(),
+            child: Row(
+              children: [
+                AppLogo(
+                  provider: (o['provider'] as String).trim(),
+                  title: o['title'] as String,
+                  size: 44,
+                  radius: 12,
+                  fallbackIcon: Icons.local_offer_rounded,
+                  fallbackColor: color,
                 ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('+${o['coins']}',
-                      style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: _primary)),
-                  const Text('Coins',
-                      style: TextStyle(fontSize: 9, color: _sub, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 5),
-                  GestureDetector(
-                    onTap: () => _push(const OfferwallScreen()),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _primary,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(o['title'] as String,
+                          style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: _text),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      Row(
                         children: [
-                          Text('Start',
-                              style: TextStyle(
-                                  fontSize: 11,
+                          Text('+${_fmt(coins)} Coins',
+                              style: const TextStyle(
+                                  fontSize: 13,
                                   fontWeight: FontWeight.w800,
-                                  color: Colors.white)),
-                          Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white),
+                                  color: _primary)),
+                          const SizedBox(width: 4),
+                          Text('≈ ₹${(coins / 10).toStringAsFixed(0)}',
+                              style: const TextStyle(fontSize: 10.5, color: _sub)),
                         ],
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: () => _push(OfferDetailScreen(
+                    offerId: o['offerId'] as String,
+                    provider: o['provider'] as String,
+                    title: o['title'] as String,
+                    coins: coins,
+                  )),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _primary,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Start',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
+                        Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white),
+                      ],
                     ),
                   ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         );
       },
