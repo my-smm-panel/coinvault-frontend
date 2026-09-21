@@ -30,7 +30,7 @@ class OfferwallOffer {
 
   factory OfferwallOffer.fromApi(Map<String, dynamic> m) {
     return OfferwallOffer(
-      id: (m['id'] ?? '').toString(),
+      id: (m['id'] ?? m['providerOfferId'] ?? '').toString(),
       title: (m['title'] ?? m['name'] ?? 'Offer').toString(),
       provider: (m['provider'] ?? m['providerName'] ?? 'Offerwall.GG').toString(),
       coinReward: ((m['coinReward'] ?? m['coins'] ?? m['reward'] ?? 0) as num).toInt(),
