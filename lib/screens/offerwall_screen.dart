@@ -12,7 +12,7 @@ import 'offer_detail_screen.dart';
 /// Header (title + subtitle + bell + avatar) → filter chips →
 /// "Available Offers" section → vertical offer cards
 /// (provider logo, title, provider name, short requirement, reward, time, Start button).
-/// Data from GET /api/offers/offerwall-gg (authenticated); start via startOffer().
+/// Data from GET /api/offerwall-gg (authenticated); start via startOffer().
 class OfferwallScreen extends StatefulWidget {
   const OfferwallScreen({super.key});
 
