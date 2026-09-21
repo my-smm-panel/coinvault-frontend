@@ -216,19 +216,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       horizontal: 14, vertical: 7),
                   decoration: BoxDecoration(
                     color: active
-                        ? AppColors.primary.withOpacity(0.18)
+                        ? AppColors.primary
                         : _card,
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
                         color: active
                             ? AppColors.primary
-                            : Colors.white10),
+                            : _border),
                   ),
                   child: Text(f,
                       style: TextStyle(
                           color: active
-                              ? AppColors.primaryLight
-                              : Colors.white60,
+                              ? Colors.white
+                              : AppColors.textPrimary,
                           fontSize: 12,
                           fontWeight: FontWeight.w700)),
                 ),
@@ -386,7 +386,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
               ),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: AppColors.textPrimary, size: 24),
+            child: Icon(icon, color: Colors.white, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(

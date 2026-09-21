@@ -168,11 +168,6 @@ class _EarnScreenState extends State<EarnScreen> {
                 SliverToBoxAdapter(child: _summaryCard(coins)),
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-                // featured
-                _section('Featured for You'),
-                SliverToBoxAdapter(child: _featuredCarousel()),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
                 // surveys
                 _section('Surveys',
                     action: 'View All',
@@ -190,16 +185,6 @@ class _EarnScreenState extends State<EarnScreen> {
                 SliverToBoxAdapter(child: _offersSection()),
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
-                // quizzes
-                _section('Quick Quizzes'),
-                SliverToBoxAdapter(child: _quizzesCarousel()),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // quick earn
-                _section('Quick Earn'),
-                SliverToBoxAdapter(child: _quickEarnGrid()),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
                 // high reward
                 _section('High Reward Opportunities'),
                 SliverToBoxAdapter(child: _highRewardSection()),
@@ -213,11 +198,6 @@ class _EarnScreenState extends State<EarnScreen> {
                 // recommended
                 _section('Recommended for You'),
                 SliverToBoxAdapter(child: _recommendedSection()),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // tips
-                _section('Earn Smarter'),
-                SliverToBoxAdapter(child: _tipsSection()),
                 const SliverToBoxAdapter(child: SizedBox(height: 28)),
               ],
             ],

@@ -62,6 +62,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   }
 
   Future<void> _loadUser() async {
+    setState(() => _loading = true);
     final auth = AuthService();
     if (auth.isLoggedIn) {
       setState(() {
@@ -69,7 +70,6 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         _upiController.text = _user?.upiId ?? '';
         _bankController.text = _user?.bankDetails ?? '';
       });
-      // Dynamic default amount — not hardcoded 100
       if (mounted) {
         final coins = _user?.coins ?? 0;
         _amountController.text = coins >= 100 ? '100' : (coins > 0 ? coins.toString() : '100');
@@ -77,6 +77,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     } else {
       _amountController.text = '100';
     }
+    if (mounted) setState(() => _loading = false);
   }
 
   Future<void> _loadRecent() async {
@@ -343,7 +344,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   // ───────────────────────────── UI ──────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    if (_user == null) {
+    if (_loading) {
       return Scaffold(
         backgroundColor: _bg,
         body: SafeArea(
@@ -1061,7 +1062,11 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
 
     final methodName = method == 'bank'
         ? 'Bank Transfer'
-        : (method == 'voucher' ? 'Gift Cards' : method[0].toUpperCase() + method.substring(1));
+        : method == 'voucher'
+            ? 'Gift Cards'
+            : method == 'phonepe'
+                ? 'PhonePe'
+                : 'UPI';
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
