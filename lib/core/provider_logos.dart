@@ -21,6 +21,8 @@ class ProviderLogos {
     'cpi droid': 'assets/logos/cpidroid.png',
     'lootably': 'assets/logos/lootably.png',
     'adscend': 'assets/logos/adscend.png',
+    'getgems': 'assets/logos/getgems.png',
+    'gg': 'assets/logos/getgems.png',
   };
 
   static const Map<String, Color> colors = {
@@ -36,6 +38,8 @@ class ProviderLogos {
     'cpi droid': Color(0xFF10B981),
     'lootably': Color(0xFF3B82F6),
     'adscend': Color(0xFF14B8A6),
+    'getgems': Color(0xFFE50914),
+    'gg': Color(0xFFE50914),
   };
 
   static String? assetFor(String name) =>

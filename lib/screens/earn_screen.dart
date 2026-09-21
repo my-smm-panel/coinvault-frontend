@@ -10,6 +10,7 @@ import '../widgets/state_views.dart';
 import 'quiz_screen.dart';
 import 'surveys_screen.dart';
 import 'task_detail_screen.dart';
+import 'offerwall_screen.dart';
 import 'tracking_screen.dart';
 
 /// CoinVault — Earn tab (light design sheet).
@@ -183,6 +184,13 @@ class _EarnScreenState extends State<EarnScreen> {
                 // offers
                 _section('Offers'),
                 SliverToBoxAdapter(child: _offersSection()),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // offerwall
+                _section('Offerwall',
+                    action: 'View All',
+                    onAction: () => _push(const OfferwallScreen())),
+                SliverToBoxAdapter(child: _offerwallSection()),
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
                 // high reward
@@ -543,6 +551,181 @@ class _EarnScreenState extends State<EarnScreen> {
           );
         },
       ),
+    );
+  }
+
+  // ───────────────────────── offerwall ────────────────────────────────────
+  Widget _offerwallSection() {
+    final offerwallOffers = <Map<String, dynamic>>[
+      ..._offers
+          .where((o) {
+            final provider = ((o as Map)['provider'] ?? '').toString().toLowerCase();
+            return provider == 'offerwall_gg' ||
+                provider == 'offerwall.gg' ||
+                provider == 'offerwallgg' ||
+                provider == 'getgems' ||
+                provider == 'gg';
+          })
+          .take(2)
+          .map((o) => <String, dynamic>{
+                'title': (o['title'] ?? 'Offer').toString(),
+                'provider': (o['provider'] ?? 'Offerwall.GG').toString(),
+                'coins': ((o['coins'] ?? 0) as num).toInt(),
+                'min': (((o['coins'] ?? 0) as num).toInt() ~/ 20).clamp(3, 30),
+                'req': (o['shortRequirement'] ?? o['shortDesc'] ?? o['description'] ?? '').toString(),
+              }),
+    ];
+    if (offerwallOffers.isEmpty) {
+      // Show a placeholder card for Offerwall.GG when no offers loaded yet
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: GestureDetector(
+          onTap: () => _push(const OfferwallScreen()),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: _cardDec(),
+            child: Row(
+              children: [
+                AppLogo(
+                  provider: 'gg',
+                  title: 'Offerwall',
+                  size: 46,
+                  radius: 12,
+                  fallbackIcon: Icons.local_offer_rounded,
+                  fallbackColor: ProviderLogos.colorFor('gg'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text('Offerwall.GG',
+                          style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w800, color: _text)),
+                      SizedBox(height: 3),
+                      Text('Complete tasks, surveys & installs to earn coins',
+                          style: TextStyle(fontSize: 11.5, color: _sub)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: _primary,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Open',
+                          style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white)),
+                      Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.white),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: offerwallOffers.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (_, i) {
+        final o = offerwallOffers[i];
+        final color = ProviderLogos.colorFor((o['provider'] as String).trim());
+        return Container(
+          padding: const EdgeInsets.all(13),
+          decoration: _cardDec(),
+          child: Row(
+            children: [
+              AppLogo(
+                provider: (o['provider'] as String).trim(),
+                title: o['title'] as String,
+                size: 44,
+                radius: 12,
+                fallbackIcon: Icons.local_offer_rounded,
+                fallbackColor: color,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(o['provider'] as String,
+                        style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: color),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 2),
+                    Text(o['title'] as String,
+                        style: const TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
+                            color: _text),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(Icons.schedule_rounded, size: 11, color: _sub),
+                        const SizedBox(width: 3),
+                        Text('~${o['min']} min',
+                            style: const TextStyle(fontSize: 10.5, color: _sub)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('+${o['coins']}',
+                      style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          color: _primary)),
+                  const Text('Coins',
+                      style: TextStyle(fontSize: 9, color: _sub, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 5),
+                  GestureDetector(
+                    onTap: () => _push(const OfferwallScreen()),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _primary,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('Start',
+                              style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white)),
+                          Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
