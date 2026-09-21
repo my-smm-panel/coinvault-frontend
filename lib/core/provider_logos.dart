@@ -23,6 +23,7 @@ class ProviderLogos {
     'adscend': 'assets/logos/adscend.png',
     'getgems': 'assets/logos/getgems.png',
     'gg': 'assets/logos/getgems.png',
+    'paymentwall': 'assets/logos/paymentwall.png',
   };
 
   static const Map<String, Color> colors = {
@@ -40,6 +41,7 @@ class ProviderLogos {
     'adscend': Color(0xFF14B8A6),
     'getgems': Color(0xFFE50914),
     'gg': Color(0xFFE50914),
+    'paymentwall': Color(0xFF0072CE),
   };
 
   static String? assetFor(String name) =>

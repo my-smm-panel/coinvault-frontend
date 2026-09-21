@@ -5,6 +5,7 @@ import '../core/provider_logos.dart';
 import '../widgets/app_logo.dart';
 import '../services/app_repository.dart';
 import '../services/offerwall_service.dart';
+import '../services/paymentwall_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/cv_header.dart';
 import '../widgets/state_views.dart';
@@ -13,6 +14,8 @@ import 'surveys_screen.dart';
 import 'task_detail_screen.dart';
 import 'offerwall_screen.dart';
 import 'offer_detail_screen.dart';
+import 'paymentwall_screen.dart';
+import 'paymentwall_detail_screen.dart';
 import 'tracking_screen.dart';
 
 /// CoinVault — Earn tab (light design sheet).
@@ -45,6 +48,7 @@ class _EarnScreenState extends State<EarnScreen> {
   List<dynamic> _surveys = [];
   List<dynamic> _offers = [];
   List<OfferwallOffer> _offerwallOffers = [];
+  List<PaymentwallOffer> _paymentwallOffers = [];
   bool _loading = true;
   bool _failed = false;
   int _today = 0;
@@ -75,6 +79,8 @@ class _EarnScreenState extends State<EarnScreen> {
     ]);
     // Offerwall.GG — best-effort, may fail gracefully
     final offerwallResult = await OfferwallService.instance.fetchOffers();
+    // Paymentwall — best-effort, may fail gracefully
+    final paymentwallResult = await PaymentwallService.instance.fetchOffers();
     if (!mounted) return;
 
     final surveys = results[0];
@@ -105,6 +111,7 @@ class _EarnScreenState extends State<EarnScreen> {
       _surveys = surveys ?? <dynamic>[];
       _offers = offers ?? <dynamic>[];
       _offerwallOffers = offerwallResult ?? <OfferwallOffer>[];
+      _paymentwallOffers = paymentwallResult ?? <PaymentwallOffer>[];
       _failed = failed;
       _today = today;
       _pending = offers
@@ -197,6 +204,13 @@ class _EarnScreenState extends State<EarnScreen> {
                     action: 'View All',
                     onAction: () => _push(const OfferwallScreen())),
                 SliverToBoxAdapter(child: _offerwallSection()),
+                const SliverToBoxAdapter(child: SizedBox(height: 20)),
+
+                // paymentwall
+                _section('Paymentwall',
+                    action: 'View All',
+                    onAction: () => _push(const PaymentwallScreen())),
+                SliverToBoxAdapter(child: _paymentwallSection()),
                 const SliverToBoxAdapter(child: SizedBox(height: 20)),
 
                 // high reward
@@ -690,6 +704,168 @@ class _EarnScreenState extends State<EarnScreen> {
                 const SizedBox(width: 10),
                 GestureDetector(
                   onTap: () => _push(OfferDetailScreen(
+                    offerId: o['offerId'] as String,
+                    provider: o['provider'] as String,
+                    title: o['title'] as String,
+                    coins: coins,
+                  )),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _primary,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('Start',
+                            style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white)),
+                        Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  // ───────────────────────── paymentwall ────────────────────────────────────
+  Widget _paymentwallSection() {
+    final paymentwallOffers = <Map<String, dynamic>>[
+      ..._paymentwallOffers.map((o) => <String, dynamic>{
+            'title': o.title,
+            'provider': o.provider.isEmpty ? 'Paymentwall' : o.provider,
+            'coins': o.coinReward,
+            'offerId': o.id,
+            'color': ProviderLogos.colorFor(o.provider),
+          }),
+    ];
+    if (paymentwallOffers.isEmpty) {
+      // Show a placeholder card for Paymentwall when no offers loaded yet
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: GestureDetector(
+          onTap: () => _push(const PaymentwallScreen()),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: _cardDec(),
+            child: Row(
+              children: [
+                AppLogo(
+                  provider: 'paymentwall',
+                  title: 'Paymentwall',
+                  size: 46,
+                  radius: 12,
+                  fallbackIcon: Icons.local_offer_rounded,
+                  fallbackColor: ProviderLogos.colorFor('paymentwall'),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text('Paymentwall',
+                          style: TextStyle(
+                              fontSize: 14, fontWeight: FontWeight.w800, color: _text)),
+                      SizedBox(height: 3),
+                      Text('Complete tasks, surveys & installs to earn coins',
+                          style: TextStyle(fontSize: 11.5, color: _sub)),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: _primary,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Open',
+                          style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white)),
+                      Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.white),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      itemCount: paymentwallOffers.length,
+      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemBuilder: (_, i) {
+        final o = paymentwallOffers[i];
+        final coins = o['coins'] as int;
+        final color = o['color'] as Color;
+        return GestureDetector(
+          onTap: () => _push(PaymentwallDetailScreen(
+            offerId: o['offerId'] as String,
+            provider: o['provider'] as String,
+            title: o['title'] as String,
+            coins: coins,
+          )),
+          child: Container(
+            padding: const EdgeInsets.all(13),
+            decoration: _cardDec(),
+            child: Row(
+              children: [
+                AppLogo(
+                  provider: (o['provider'] as String).trim(),
+                  title: o['title'] as String,
+                  size: 44,
+                  radius: 12,
+                  fallbackIcon: Icons.local_offer_rounded,
+                  fallbackColor: color,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(o['title'] as String,
+                          style: const TextStyle(
+                              fontSize: 13.5,
+                              fontWeight: FontWeight.w700,
+                              color: _text),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Text('+${_fmt(coins)} Coins',
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: _primary)),
+                          const SizedBox(width: 4),
+                          Text('≈ ₹${(coins / 10).toStringAsFixed(0)}',
+                              style: const TextStyle(fontSize: 10.5, color: _sub)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                GestureDetector(
+                  onTap: () => _push(PaymentwallDetailScreen(
                     offerId: o['offerId'] as String,
                     provider: o['provider'] as String,
                     title: o['title'] as String,
