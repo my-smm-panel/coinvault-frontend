@@ -54,6 +54,29 @@ jobs:
             -F "caption=📱 CoinVault User Panel APK (universal)" \
             -F "document=@$APK"
 
+      - name: Prepare User APK release asset
+        if: success()
+        run: |
+          cp build/app/outputs/flutter-apk/app-release.apk coinvault-user-arm64.apk
+          ls -la coinvault-user-arm64.apk
+
+      - name: Replace old user-apk-latest release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method DELETE "repos/${{ github.repository }}/releases/tags/user-apk-latest" --silent || true
+          gh api --method DELETE "repos/${{ github.repository }}/git/refs/tags/user-apk-latest" --silent || true
+
+      - name: Publish User APK release (user-apk-latest)
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: user-apk-latest
+          name: "CoinVault User Panel APK"
+          body: "Latest CoinVault User Panel APK (universal). Stable download link used by the in-app help center."
+          files: coinvault-user-arm64.apk
+
   build-admin-apk:
     runs-on: ubuntu-latest
     permissions:
@@ -103,3 +126,26 @@ jobs:
             -F "chat_id=6769498003" \
             -F "caption=🛡️ CoinVault Admin Panel APK (arm64)" \
             -F "document=@$APK"
+
+      - name: Prepare Admin APK release asset
+        if: success()
+        run: |
+          cp "$(find coinvault-admin/build/app/outputs/flutter-apk -name '*arm64*v8a*release.apk' | head -1)" coinvault-admin-arm64.apk
+          ls -la coinvault-admin-arm64.apk
+
+      - name: Replace old admin-apk-latest release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method DELETE "repos/${{ github.repository }}/releases/tags/admin-apk-latest" --silent || true
+          gh api --method DELETE "repos/${{ github.repository }}/git/refs/tags/admin-apk-latest" --silent || true
+
+      - name: Publish Admin APK release (admin-apk-latest)
+        if: success()
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: admin-apk-latest
+          name: "CoinVault Admin Panel APK"
+          body: "Latest CoinVault Admin Panel APK (arm64). Stable download link used by the in-app help center."
+          files: coinvault-admin-arm64.apk
