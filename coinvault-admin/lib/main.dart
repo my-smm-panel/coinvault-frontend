@@ -46,7 +46,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkAuth() async {
-    final token = ApiService.getToken();
+    final token = await ApiService.getToken();
     if (token != null && token.isNotEmpty) {
       try {
         // Verify token is still valid

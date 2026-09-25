@@ -26,19 +26,17 @@ jobs:
           flutter-version: 3.29.x
           channel: stable
 
-      - name: Flutter pub get
-        working-directory: coinvault-flutter
-        run: flutter pub get
-
       - name: Decode keystore
-        working-directory: coinvault-flutter/android/app
+        working-directory: android/app
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > coinvault-release.keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
 
+      - name: Flutter pub get
+        run: flutter pub get
+
       - name: Build User Panel APK
-        working-directory: coinvault-flutter
         run: flutter build apk --release --split-per-abi
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -48,7 +46,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coinvault-user-apk
-          path: coinvault-flutter/build/app/outputs/flutter-apk/*arm64*release.apk
+          path: build/app/outputs/flutter-apk/*arm64*release.apk
 
       - name: Release and notify User APK
         if: success()
@@ -60,16 +58,16 @@ jobs:
             "https://api.github.com/repos/${{ github.repository }}/releases" \
             -d "{\"tag_name\":\"$TAG\",\"name\":\"User Panel APK $TAG\",\"body\":\"CoinVault User Panel APK\"}" \
             | jq -r '.upload_url | split("?")[0]')
-          
-          APK=$(find coinvault-flutter/build/app/outputs/flutter-apk -name "*arm64*release.apk" | head -1)
-          
+
+          APK=$(find build/app/outputs/flutter-apk -name "*arm64*release.apk" | head -1)
+
           UPLOAD=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/vnd.android.package-archive" \
             --data-binary "@$APK" \
             "${RELEASE_URL}?name=coinvault-user-arm64.apk" \
             | jq -r '.browser_download_url')
-          
+
           MSG="📱 User Panel APK Released!\n\n$UPLOAD"
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=6769498003" \
@@ -95,16 +93,16 @@ jobs:
           flutter-version: 3.29.x
           channel: stable
 
-      - name: Flutter pub get
-        working-directory: coinvault-admin
-        run: flutter pub get
-
       - name: Decode keystore
         working-directory: coinvault-admin/android/app
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > coinvault-release.keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+
+      - name: Flutter pub get
+        working-directory: coinvault-admin
+        run: flutter pub get
 
       - name: Build Admin Panel APK
         working-directory: coinvault-admin
@@ -129,16 +127,16 @@ jobs:
             "https://api.github.com/repos/${{ github.repository }}/releases" \
             -d "{\"tag_name\":\"$TAG\",\"name\":\"Admin Panel APK $TAG\",\"body\":\"CoinVault Admin Panel APK\"}" \
             | jq -r '.upload_url | split("?")[0]')
-          
+
           APK=$(find coinvault-admin/build/app/outputs/flutter-apk -name "*arm64*release.apk" | head -1)
-          
+
           UPLOAD=$(curl -s -X POST \
             -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             -H "Content-Type: application/vnd.android.package-archive" \
             --data-binary "@$APK" \
             "${RELEASE_URL}?name=coinvault-admin-arm64.apk" \
             | jq -r '.browser_download_url')
-          
+
           MSG="🛡️ Admin Panel APK Released!\n\n$UPLOAD"
           curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_BOT_TOKEN }}/sendMessage" \
             -d "chat_id=6769498003" \
