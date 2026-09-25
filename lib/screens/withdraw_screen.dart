@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../core/app_theme.dart';
 import '../models/app_models.dart';
 import '../services/api_client.dart';
+import '../services/balance_stream.dart';
 import '../services/app_repository.dart';
 import '../services/auth_service.dart';
 import '../widgets/cv_header.dart';
@@ -105,7 +106,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     }
   }
 
-  int get _coins => _user?.coins ?? 0;
+  int get _coins => BalanceStream.instance.value ?? _user?.coins ?? 0;
   double get _rupees => _coins / 10;
 
   int? get _enteredCoins {
