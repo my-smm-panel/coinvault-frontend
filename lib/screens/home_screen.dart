@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
 import '../services/app_repository.dart';
+import '../services/balance_stream.dart';
 import '../services/offerwall_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/cv_header.dart';
@@ -383,11 +384,13 @@ class _HomeTabState extends State<HomeTab> {
   @override
   Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: AuthService(),
+      listenable: Listenable.merge([AuthService(), BalanceStream.instance]),
       builder: (context, _) {
         final auth = AuthService();
         final user = auth.userModel;
-        final coins = user?.coins ?? 0;
+        // Fresh global balance wins; fall back to login-cached coins only before
+        // the first server refresh arrives (spec R1 — never a hardcoded 0).
+        final coins = BalanceStream.instance.value ?? user?.coins ?? 0;
 
         return Scaffold(
           backgroundColor: AppColors.surface,

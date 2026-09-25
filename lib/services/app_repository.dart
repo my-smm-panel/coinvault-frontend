@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import '../core/api_config.dart';
 import 'api_client.dart';
+import 'balance_stream.dart';
 
 /// Repository that loads real data from the CoinVault backend.
 /// Falls back to safe defaults when the API is unreachable so the
@@ -14,12 +15,24 @@ class AppRepository {
 
   final ApiClient _api = ApiClient.instance;
 
+  /// Feed the global BalanceStream from a fresh server payload (spec R1).
+  /// Handles {balance}, {coins}, {user:{coins}}, and {data:{...}} shapes.
+  void _syncBalanceFrom(Map<String, dynamic> src) {
+    final m = src['data'] is Map ? (src['data'] as Map) : src;
+    final user = m['user'] is Map ? (m['user'] as Map) : null;
+    num? c = user?['coins'];
+    if (c == null) c = m['balance'] ?? m['coins'];
+    BalanceStream.instance.setFromServer(c?.toInt());
+  }
+
   /// Single bootstrap call — returns all home-screen data.
   Future<Map<String, dynamic>> fetchHomeData() async {
     try {
       final res = await _api.get('/api/bootstrap', auth: false);
       if (res is Map && res['success'] == true && res['data'] is Map) {
-        return res['data'] as Map<String, dynamic>;
+        final data = res['data'] as Map<String, dynamic>;
+        _syncBalanceFrom(data);
+        return data;
       }
       return {};
     } catch (_) {
@@ -42,7 +55,9 @@ class AppRepository {
     try {
       final res = await _api.get('/api/users/profile');
       if (res is Map && res['success'] == true && res['data'] is Map) {
-        return Map<String, dynamic>.from(res['data'] as Map);
+        final data = Map<String, dynamic>.from(res['data'] as Map);
+        _syncBalanceFrom(data);
+        return data;
       }
       return null;
     } catch (_) {
@@ -228,7 +243,9 @@ class AppRepository {
   Future<Map<String, dynamic>> spinNow() async {
     final res = await _api.post('/api/spin/spin', {});
     if (res is Map && res['success'] == true && res['data'] is Map) {
-      return Map<String, dynamic>.from(res['data'] as Map);
+      final data = Map<String, dynamic>.from(res['data'] as Map);
+      _syncBalanceFrom(data);
+      return data;
     }
     throw ApiException(-1, 'Spin failed');
   }
@@ -279,7 +296,9 @@ class AppRepository {
     }
     final res = await _api.post('/api/withdrawals/request', body);
     if (res is Map && res['success'] == true && res['data'] is Map) {
-      return Map<String, dynamic>.from(res['data'] as Map);
+      final data = Map<String, dynamic>.from(res['data'] as Map);
+      _syncBalanceFrom(data);
+      return data;
     }
     final msg = (res is Map && res['error'] is String)
         ? res['error'] as String
@@ -389,7 +408,9 @@ class AppRepository {
     try {
       final res = await _api.post('/api/quiz/submit', {'answers': answers});
       if (res is Map && res['success'] == true && res['data'] is Map) {
-        return Map<String, dynamic>.from(res['data'] as Map);
+        final data = Map<String, dynamic>.from(res['data'] as Map);
+        _syncBalanceFrom(data);
+        return data;
       }
       return null;
     } catch (_) {
@@ -402,7 +423,9 @@ class AppRepository {
     try {
       final res = await _api.post('/api/scratch', {});
       if (res is Map && res['success'] == true && res['data'] is Map) {
-        return Map<String, dynamic>.from(res['data'] as Map);
+        final data = Map<String, dynamic>.from(res['data'] as Map);
+        _syncBalanceFrom(data);
+        return data;
       }
       return null;
     } catch (e) {
