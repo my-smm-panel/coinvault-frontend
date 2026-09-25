@@ -1,0 +1,79 @@
+name: Build User Panel APK
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'assets/**'
+      - 'pubspec.yaml'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  build-user-apk:
+    name: Build and deliver user APK only
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.29.x
+          channel: stable
+
+      - name: Decode release keystore
+        working-directory: android/app
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "KEYSTORE_BASE64 secret is missing" >&2
+            exit 1
+          fi
+          printf '%s' "$KEYSTORE_BASE64" | base64 -d > coinvault-release.keystore
+
+      - name: Get Flutter dependencies
+        run: flutter pub get
+
+      - name: Build universal User Panel APK
+        run: flutter build apk --release
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+
+      - name: Stage APK
+        run: cp build/app/outputs/flutter-apk/app-release.apk coinvault-user-panel.apk
+
+      - name: Upload User Panel APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: coinvault-user-panel-apk
+          path: coinvault-user-panel.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Send User Panel APK to Telegram
+        env:
+          TG_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
+        run: |
+          if [ -z "$TG_TOKEN" ]; then
+            echo "Telegram bot secret is not configured; APK remains available as a workflow artifact."
+            exit 0
+          fi
+          curl --fail --silent --show-error \
+            -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendDocument" \
+            -F "chat_id=6769498003" \
+            -F "caption=📱 CoinVault User Panel APK (universal)" \
+            -F "document=@coinvault-user-panel.apk"

@@ -3,26 +3,26 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// App color palette - CoinVault light theme (per design sheet)
 class AppColors {
-  // Primary brand colors (CoinVault orange)
-  static const Color primary = Color(0xFFFF8C42); // sheet orange
-  static const Color primaryLight = Color(0xFFFFAB6E);
-  static const Color primaryDark = Color(0xFFE0711F);
-  static const Color primaryContainer = Color(0xFFFFF0E5);
+  // Unified CoinVault orange/gold palette from the supplied UI reference.
+  static const Color primary = Color(0xFFF59E0B);
+  static const Color primaryLight = Color(0xFFFBBF24);
+  static const Color primaryDark = Color(0xFFD97706);
+  static const Color primaryContainer = Color(0xFFFFF4E5);
 
-  // Accent - Gold for coins
+  // Accent - the same warm gold used for coin rewards.
   static const Color gold = Color(0xFFF59E0B);
   static const Color goldLight = Color(0xFFFBBF24);
   static const Color goldContainer = Color(0xFFFFF7E6);
 
-  // Surface colors (CoinVault LIGHT)
+  // Soft neutral surfaces keep the reward cards clear and readable.
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceVariant = Color(0xFFF5F6F8);
-  static const Color background = Color(0xFFF7F8FA);
+  static const Color background = Color(0xFFFAFAF8);
   static const Color cardBackground = Color(0xFFFFFFFF);
 
   // Text colors (light theme)
-  static const Color textPrimary = Color(0xFF1A1A1A);
-  static const Color textSecondary = Color(0xFF6B6B78);
+  static const Color textPrimary = Color(0xFF171717);
+  static const Color textSecondary = Color(0xFF6B7280);
   static const Color textTertiary = Color(0xFF9B9BAB);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
 
@@ -53,14 +53,14 @@ class AppColors {
   );
 
   static const LinearGradient cardGradient = LinearGradient(
-    colors: [Color(0xFFFFFFFF), Color(0xFFF5F6F8)],
+    colors: [Color(0xFFFFFFFF), Color(0xFFFFFCF7)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
 
-  /// Own brand header (orange) - replaces all purple/ProRewards headers.
+  /// Warm CoinVault brand gradient used across headers and reward highlights.
   static const LinearGradient brandHeader = LinearGradient(
-    colors: [Color(0xFFFF8C42), Color(0xFFE0711F)],
+    colors: [primary, primaryDark],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

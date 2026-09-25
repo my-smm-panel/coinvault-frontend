@@ -13,6 +13,7 @@ class BannerSlide {
   final Color accent;
   final Color accentSoft;
   final bool showBear;
+  final String? imageAsset;
   final VoidCallback onTap;
 
   const BannerSlide({
@@ -24,6 +25,7 @@ class BannerSlide {
     required this.accent,
     required this.accentSoft,
     this.showBear = false,
+    this.imageAsset,
     required this.onTap,
   });
 }
@@ -152,10 +154,23 @@ class _BannerCard extends StatelessWidget {
               shape: BoxShape.circle,
             ),
             alignment: Alignment.center,
-            child: slide.showBear
-                ? Image.asset('assets/bear_avatar.png',
-                    width: 54, height: 54, fit: BoxFit.contain)
-                : Icon(slide.icon, color: slide.accent, size: 36),
+            child: slide.imageAsset != null
+                ? Image.asset(
+                    slide.imageAsset!,
+                    width: 64,
+                    height: 64,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) =>
+                        Icon(slide.icon, color: slide.accent, size: 36),
+                  )
+                : slide.showBear
+                    ? Image.asset(
+                        'assets/bear_avatar.png',
+                        width: 54,
+                        height: 54,
+                        fit: BoxFit.contain,
+                      )
+                    : Icon(slide.icon, color: slide.accent, size: 36),
           ),
           const SizedBox(width: 14),
           // Text + CTA

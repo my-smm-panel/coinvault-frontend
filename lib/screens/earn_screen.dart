@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-
+import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
 import '../widgets/app_logo.dart';
 import '../services/app_repository.dart';
@@ -32,17 +32,15 @@ class EarnScreen extends StatefulWidget {
 }
 
 class _EarnScreenState extends State<EarnScreen> {
-  // ── palette (exact design tokens) ──────────────────────────────────────
-  static const Color _bg = Color(0xFFFAFAF8);
-  static const Color _card = Color(0xFFFFFFFF);
-  static const Color _border = Color(0xFFE7E7E7);
-  static const Color _primary = Color(0xFFF59E0B);
-
-
-  static const Color _text = Color(0xFF171717);
-  static const Color _sub = Color(0xFF6B7280);
-  static const Color _success = Color(0xFF16A34A);
-  static const Color _warn = Color(0xFFD97706);
+  // Shared CoinVault design tokens keep the Earn tab aligned with other screens.
+  static const Color _bg = AppColors.background;
+  static const Color _card = AppColors.surface;
+  static const Color _border = AppColors.border;
+  static const Color _primary = AppColors.primary;
+  static const Color _text = AppColors.textPrimary;
+  static const Color _sub = AppColors.textSecondary;
+  static const Color _success = AppColors.success;
+  static const Color _warn = AppColors.warning;
 
   // ── data ────────────────────────────────────────────────────────────────
   List<dynamic> _surveys = [];
@@ -922,8 +920,8 @@ class _EarnScreenState extends State<EarnScreen> {
       itemBuilder: (_, i) {
         final o = offers[i];
         final steps = ['Install', 'Register', 'Complete Activity', 'Final Reward'];
-        final done = (o['done'] as int).clamp(0, 4);
-        final total = (o['milestones'] as int).clamp(1, 4);
+        final done = (o['done'] as int).clamp(0, 4).toInt();
+        final total = (o['milestones'] as int).clamp(1, 4).toInt();
         return Container(
           padding: const EdgeInsets.all(14),
           decoration: _cardDec(),

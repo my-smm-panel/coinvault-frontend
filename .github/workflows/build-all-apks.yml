@@ -3,6 +3,13 @@ name: Build All APKs (User + Admin)
 on:
   push:
     branches: [main]
+    # User-app UI changes use the dedicated user-only APK workflow instead.
+    paths-ignore:
+      - 'lib/**'
+      - 'assets/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/build-all-apks.yml'
+      - '.github/workflows/build-user-apk.yml'
   workflow_dispatch:
 
 jobs:
