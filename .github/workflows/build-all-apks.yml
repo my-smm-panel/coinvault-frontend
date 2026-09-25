@@ -47,11 +47,11 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
         run: |
-          APK=$(find build/app/outputs/flutter-apk -name "*release.apk" | head -1)
+          APK=$(find build/app/outputs/flutter-apk -name "*arm64*v8a*release.apk" | head -1)
           echo "Sending: $APK"
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendDocument" \
             -F "chat_id=6769498003" \
-            -F "caption=📱 CoinVault User Panel APK" \
+            -F "caption=📱 CoinVault User Panel APK (arm64)" \
             -F "document=@$APK"
 
   build-admin-apk:
@@ -97,9 +97,9 @@ jobs:
         env:
           TG_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
         run: |
-          APK=$(find coinvault-admin/build/app/outputs/flutter-apk -name "*release.apk" | head -1)
+          APK=$(find coinvault-admin/build/app/outputs/flutter-apk -name "*arm64*v8a*release.apk" | head -1)
           echo "Sending: $APK"
           curl -s -X POST "https://api.telegram.org/bot${TG_TOKEN}/sendDocument" \
             -F "chat_id=6769498003" \
-            -F "caption=🛡️ CoinVault Admin Panel APK" \
+            -F "caption=🛡️ CoinVault Admin Panel APK (arm64)" \
             -F "document=@$APK"
