@@ -95,26 +95,36 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 52,
-                          height: 52,
+                          width: 46,
+                          height: 46,
                           margin: const EdgeInsets.only(top: 2),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppColors.goldContainer,
+                            color: _currentIndex == 2
+                                ? AppColors.primaryContainer
+                                : AppColors.goldContainer,
                             border: Border.all(
-                                color: _currentIndex == 2 ? AppColors.gold : AppColors.border,
-                                width: 2.5),
+                              color: _currentIndex == 2
+                                  ? AppColors.primary
+                                  : AppColors.border,
+                              width: 1.5,
+                            ),
                             boxShadow: _currentIndex == 2
-                                ? [BoxShadow(color: AppColors.gold.withOpacity(0.28), blurRadius: 12)]
+                                ? [
+                                    BoxShadow(
+                                      color: AppColors.primary.withOpacity(0.18),
+                                      blurRadius: 10,
+                                      offset: const Offset(0, 3),
+                                    ),
+                                  ]
                                 : null,
                           ),
-                          child: ClipOval(
-                            child: Image.asset(
-                              'assets/app_icon.jpg',
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.emoji_events_rounded, color: AppColors.gold, size: 26),
-                            ),
+                          child: Icon(
+                            Icons.emoji_events_rounded,
+                            color: _currentIndex == 2
+                                ? AppColors.primaryDark
+                                : AppColors.gold,
+                            size: 25,
                           ),
                         ),
                         Text(
@@ -122,7 +132,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: _currentIndex == 2 ? AppColors.gold : AppColors.textTertiary,
+                            color: _currentIndex == 2
+                                ? AppColors.primaryDark
+                                : AppColors.textTertiary,
                           ),
                         ),
                       ],
@@ -299,7 +311,7 @@ class _HomeTabState extends State<HomeTab> {
       // Spins used today (server truth) — clamped 0..2.
       final remaining = results[2] as int?;
       _spinsUsedToday =
-          remaining == null ? 0 : (2 - remaining).clamp(0, 2);
+          remaining == null ? 0 : (2 - remaining).clamp(0, 2).toInt();
       _loadingHome = false;
     });
   }
@@ -414,6 +426,12 @@ class _HomeTabState extends State<HomeTab> {
                   const SizedBox(height: 18),
                   _todayEarningsCard(context),
                   const SizedBox(height: 20),
+                  _sectionTitle('Quick Earn'),
+                  const SizedBox(height: 10),
+                  _quickEarn(context),
+                  const SizedBox(height: 18),
+                  _dailySpinCard(context),
+                  const SizedBox(height: 20),
                   _sectionTitle('Tasks of the Day',
                       action: 'View All',
                       onAction: () => _push(context, const EarnScreen())),
@@ -426,40 +444,12 @@ class _HomeTabState extends State<HomeTab> {
                   const SizedBox(height: 10),
                   _loadingHome ? _skeletonH() : _surveyRow(context),
                   const SizedBox(height: 20),
-                  _sectionTitle('Quick Earn'),
-                  const SizedBox(height: 10),
-                  _quickEarn(context),
-                  const SizedBox(height: 20),
-                  _sectionTitle('High-Paying Tasks',
+                  _sectionTitle('Offer of the Day',
                       action: 'View All',
                       onAction: () => _push(context, const EarnScreen())),
-                  const SizedBox(height: 10),
-                  _highPayingList(context),
-                  const SizedBox(height: 20),
-                  _sectionTitle('Limited-Time Offers'),
-                  const SizedBox(height: 10),
-                  _limitedOffers(context),
-                  const SizedBox(height: 20),
-                  _sectionTitle('Offer of the Day'),
                   const SizedBox(height: 10),
                   _offerOfDay(context),
                   const SizedBox(height: 20),
-                  _sectionTitle('Quick Earn'),
-                  const SizedBox(height: 10),
-                  _quickEarn(context),
-                  const SizedBox(height: 20),
-                  _sectionTitle('Recommended for You'),
-                  const SizedBox(height: 10),
-                  _recommendedRow(context),
-                  const SizedBox(height: 20),
-                  _sectionTitle('High-Paying Tasks',
-                      action: 'View All',
-                      onAction: () => _push(context, const EarnScreen())),
-                  const SizedBox(height: 10),
-                  _highPayingList(context),
-                  const SizedBox(height: 20),
-                  _dailySpinCard(context),
-                  const SizedBox(height: 18),
                   _sectionTitle('Daily Missions',
                       action: 'View All',
                       onAction: () => _push(context, const MissionsScreen())),
@@ -467,17 +457,6 @@ class _HomeTabState extends State<HomeTab> {
                   _missionsRow(context),
                   const SizedBox(height: 20),
                   _inviteCard(context),
-                  const SizedBox(height: 20),
-                  _sectionTitle('Top Earners',
-                      action: 'View Full Rankings',
-                      onAction: () =>
-                          _push(context, const LeaderboardScreen())),
-                  const SizedBox(height: 10),
-                  _topEarners(context),
-                  const SizedBox(height: 20),
-                  _sectionTitle('How to Earn'),
-                  const SizedBox(height: 10),
-                  _howToEarn(context),
                   const SizedBox(height: 18),
                   Center(
                     child: Text(
@@ -520,6 +499,7 @@ class _HomeTabState extends State<HomeTab> {
             icon: Icons.local_offer_rounded,
             accent: accents[i % accents.length],
             accentSoft: accentSofts[i % accentSofts.length],
+            imageAsset: i == 0 ? 'assets/bear_earn.png' : null,
             reward: '+${((offers[i]['coins'] ?? 0) as num).toInt()} Coins',
             onTap: () => _push(context, const EarnScreen()),
           ),
@@ -657,7 +637,7 @@ class _HomeTabState extends State<HomeTab> {
   // ───────────────────────── Today's earnings ──────────────────────────────
   Widget _todayEarningsCard(BuildContext context) {
     final earned = _todayEarned();
-    final progress = (earned / _dailyGoal).clamp(0.0, 1.0);
+    final progress = (earned / _dailyGoal).clamp(0.0, 1.0).toDouble();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -1375,6 +1355,7 @@ class _HomeTabState extends State<HomeTab> {
 
   // ───────────────────────── Daily spin ────────────────────────────────────
   Widget _dailySpinCard(BuildContext context) {
+    final spinsLeft = (2 - _spinsUsedToday).clamp(0, 2).toInt();
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(15),
@@ -1401,14 +1382,21 @@ class _HomeTabState extends State<HomeTab> {
                   ],
                 ),
                 const SizedBox(height: 6),
-                const Text('Your free spin is ready!',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700)),
+                Text(
+                  spinsLeft > 0
+                      ? '$spinsLeft free spin${spinsLeft == 1 ? '' : 's'} ready'
+                      : 'Your free spins are used for today',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 3),
-                const Text('Win bonus coins every day',
-                    style: TextStyle(color: Colors.white70, fontSize: 11.5)),
+                const Text(
+                  'Come back tomorrow for more rewards',
+                  style: TextStyle(color: Colors.white70, fontSize: 11.5),
+                ),
                 const SizedBox(height: 11),
                 GestureDetector(
                   onTap: () => _push(context, const SpinScreen()),
@@ -1419,28 +1407,40 @@ class _HomeTabState extends State<HomeTab> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(AppRadius.full),
                     ),
-                    child: const Text('Spin Now',
-                        style: TextStyle(
-                            color: AppColors.primaryDark,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800)),
+                    child: Text(
+                      spinsLeft > 0 ? 'Spin Now' : 'View Rewards',
+                      style: const TextStyle(
+                        color: AppColors.primaryDark,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 10),
-          // simple wheel visual (no casino look)
+          // Use the existing CoinVault wheel art instead of a generic icon.
           Container(
-            width: 72,
-            height: 72,
+            width: 78,
+            height: 78,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Colors.white.withOpacity(0.18),
-              border: Border.all(color: Colors.white.withOpacity(0.5), width: 3),
+              border: Border.all(color: Colors.white.withOpacity(0.55), width: 2),
             ),
-            child: const Icon(Icons.donut_large_rounded,
-                color: Colors.white, size: 38),
+            child: ClipOval(
+              child: Image.asset(
+                'assets/wheel.png',
+                fit: BoxFit.cover,
+                errorBuilder: (_, __, ___) => const Icon(
+                  Icons.donut_large_rounded,
+                  color: Colors.white,
+                  size: 38,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -1469,7 +1469,7 @@ class _HomeTabState extends State<HomeTab> {
       children: missions.map((m) {
         final cur = (m['cur'] as num).toInt();
         final target = (m['target'] as num).toInt();
-        final progress = (cur / target).clamp(0.0, 1.0);
+        final progress = (cur / target).clamp(0.0, 1.0).toDouble();
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: Container(
