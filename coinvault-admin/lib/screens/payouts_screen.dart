@@ -169,7 +169,14 @@ class _PayoutTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final status = payout['status'] ?? 'UNKNOWN';
-    final badgeColor = _getStatusBadge(status);
+    final up = status.toString().toUpperCase();
+    final badgeColor = /COMPLETE|ACTIVE|APPROVED|PROCESSING|SETTLED|PAID/.hasMatch(up)
+        ? 'Green'
+        : /REJECT|FAILED|CANCELLED|DECLINED/.hasMatch(up)
+            ? 'Red'
+            : /PENDING|UNDER_REVIEW|REVIEW|PROCESS/.hasMatch(up)
+                ? 'Amber'
+                : 'Gray';
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

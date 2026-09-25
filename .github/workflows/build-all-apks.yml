@@ -42,12 +42,6 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Upload User APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: coinvault-user-apk
-          path: build/app/outputs/flutter-apk/*arm64*release.apk
-
       - name: Release and notify User APK
         if: success()
         run: |
@@ -110,12 +104,6 @@ jobs:
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-
-      - name: Upload Admin APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: coinvault-admin-apk
-          path: coinvault-admin/build/app/outputs/flutter-apk/*arm64*release.apk
 
       - name: Release and notify Admin APK
         if: success()

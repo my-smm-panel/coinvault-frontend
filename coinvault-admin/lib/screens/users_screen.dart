@@ -13,7 +13,7 @@ class _UsersScreenState extends State<UsersScreen> {
   int _totalUsers = 0;
   bool _isLoading = true;
   int _offset = 0;
-  const int _limit = 30;
+  final int _limit = 30;
   String _searchQuery = '';
 
   @override
@@ -196,7 +196,7 @@ class _UserTile extends StatelessWidget {
                           ),
                           if (isBanned)
                             Container(
-                              margin: const EdgeInsets.left(8),
+                              margin: const EdgeInsets.only(left: 8),
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.red[100],

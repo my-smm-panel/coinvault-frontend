@@ -15,18 +15,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _stats;
   bool _isLoading = true;
   int _selectedIndex = 0;
-
-  final List<_ScreenConfig> _screens = [
-    _ScreenConfig('Dashboard', Icons.dashboard, _buildDashboard),
-    _ScreenConfig('Users', Icons.people, _buildUsers),
-    _ScreenConfig('Offers', Icons.card_giftcard, _buildOffers),
-    _ScreenConfig('Payouts', Icons.account_balance_wallet, _buildPayouts),
-    _ScreenConfig('Settings', Icons.settings, _buildSettings),
-  ];
+  late final List<_ScreenConfig> _screens;
 
   @override
   void initState() {
     super.initState();
+    _screens = [
+      _ScreenConfig('Dashboard', Icons.dashboard, _buildDashboard),
+      _ScreenConfig('Users', Icons.people, _buildUsers),
+      _ScreenConfig('Offers', Icons.card_giftcard, _buildOffers),
+      _ScreenConfig('Payouts', Icons.account_balance_wallet, _buildPayouts),
+      _ScreenConfig('Settings', Icons.settings, _buildSettings),
+    ];
     _loadStats();
   }
 
