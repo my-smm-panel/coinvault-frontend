@@ -25,6 +25,7 @@ class _QuizScreenState extends State<QuizScreen> {
   bool _loading = true;
   bool _submitting = false;
   bool _done = false;
+  bool _alreadyPlayed = false;
   int _coinsPerCorrect = 2;
   int _passThreshold = 3;
   final List<int?> _answers = List.filled(5, null);
@@ -35,9 +36,8 @@ class _QuizScreenState extends State<QuizScreen> {
       _selected = i;
       _answered = true;
       _answers[_index] = i;
-      if (i == (_questions?[_index]['answer'] as int? ?? -1)) {
-        _score++;
-      }
+      // Correct answers never reach the client (backend validates score).
+      // Server returns correctCount on submit — no local scoring.
     });
   }
 
@@ -62,6 +62,7 @@ class _QuizScreenState extends State<QuizScreen> {
         _questions = List<Map<String, dynamic>>.from(data['questions'] as List);
         _coinsPerCorrect = data['coinsPerCorrect'] as int? ?? 2;
         _passThreshold = data['passThreshold'] as int? ?? 3;
+        _alreadyPlayed = data['alreadyPlayed'] == true;
         _loading = false;
         _answers.fillRange(0, _questions!.length, null);
       });
@@ -137,7 +138,7 @@ class _QuizScreenState extends State<QuizScreen> {
               ),
               const SizedBox(height: 12),
               Text(
-                '$_score / ${_questions?.length ?? 0} correct',
+                '$_correctCount / ${_questions?.length ?? 0} correct',
                 style: GoogleFonts.inter(
                   color: AppColors.textPrimary,
                   fontSize: 22,
@@ -211,6 +212,57 @@ class _QuizScreenState extends State<QuizScreen> {
                   style: GoogleFonts.inter(color: AppColors.textSecondary),
                 ),
               ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_alreadyPlayed && !_done) {
+      return Scaffold(
+        backgroundColor: const Color(0xFFF7F8FA),
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle_rounded, color: AppColors.gold, size: 64),
+                  const SizedBox(height: 14),
+                  Text(
+                    'You already played today',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(
+                      color: AppColors.textPrimary,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Come back tomorrow for your daily quiz!',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                      ),
+                      child: Text('Done',
+                          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
