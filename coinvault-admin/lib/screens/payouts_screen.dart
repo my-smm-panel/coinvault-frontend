@@ -170,11 +170,11 @@ class _PayoutTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = payout['status'] ?? 'UNKNOWN';
     final up = status.toString().toUpperCase();
-    final badgeColor = /COMPLETE|ACTIVE|APPROVED|PROCESSING|SETTLED|PAID/.hasMatch(up)
+    final badgeColor = RegExp(r'COMPLETE|ACTIVE|APPROVED|PROCESSING|SETTLED|PAID').hasMatch(up)
         ? 'Green'
-        : /REJECT|FAILED|CANCELLED|DECLINED/.hasMatch(up)
+        : RegExp(r'REJECT|FAILED|CANCELLED|DECLINED').hasMatch(up)
             ? 'Red'
-            : /PENDING|UNDER_REVIEW|REVIEW|PROCESS/.hasMatch(up)
+            : RegExp(r'PENDING|UNDER_REVIEW|REVIEW|PROCESS').hasMatch(up)
                 ? 'Amber'
                 : 'Gray';
 
