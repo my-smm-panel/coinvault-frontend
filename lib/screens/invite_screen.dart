@@ -17,6 +17,7 @@ class _InviteScreenState extends State<InviteScreen> {
   static const _bg = Color(0xFFF7F8FA);
 
   bool _loading = true;
+  bool _failed = false;
   String _code = '';
   String _link = '';
   int? _active;
@@ -31,8 +32,19 @@ class _InviteScreenState extends State<InviteScreen> {
   }
 
   Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
     final info = await AppRepository.instance.referralInfo();
     if (!mounted) return;
+    if (info == null) {
+      setState(() {
+        _loading = false;
+        _failed = true;
+      });
+      return;
+    }
     setState(() {
       _code = info['referralCode']?.toString() ?? '';
       _link = info['referralLink']?.toString() ?? '';
@@ -103,7 +115,12 @@ class _InviteScreenState extends State<InviteScreen> {
       ),
       body: _loading
           ? const ShimmerCardList(rows: 4)
-          : RefreshIndicator(
+          : _failed
+              ? ErrorState(
+                  message: 'Referral details could not be fetched. Try again.',
+                  onRetry: _load,
+                )
+              : RefreshIndicator(
               color: AppColors.primary,
               backgroundColor: AppColors.cardBackground,
               onRefresh: _load,

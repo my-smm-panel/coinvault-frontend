@@ -54,8 +54,18 @@ class AuthService extends ChangeNotifier {
   }
 
   void _onAuthStateChanged(firebase_auth.User? user) {
+    final previousUid = _currentUser?.uid;
     _currentUser = user;
     if (user != null) {
+      if (previousUid != user.uid) {
+        _sessionGeneration++;
+        _backendReady = false;
+        _loadingBackendSession = false;
+        _loadingUid = null;
+        _userModel = null;
+        ApiClient.instance.token = null;
+        BalanceStream.instance.clear();
+      }
       unawaited(_loadUserModel(user));
     } else {
       _sessionGeneration++;
@@ -83,6 +93,7 @@ class AuthService extends ChangeNotifier {
       // Cached fields are only for non-financial profile text. The wallet
       // balance and spin/reward state are never restored from device storage.
       final prefs = await SharedPreferences.getInstance();
+      if (!_isCurrentSession(firebaseUser, generation)) return;
       final cached = prefs.getString('user_${firebaseUser.uid}');
       if (cached != null) {
         try {
@@ -98,23 +109,25 @@ class AuthService extends ChangeNotifier {
         email: firebaseUser.email,
         photoUrl: firebaseUser.photoURL,
       );
-      await _cacheUserModel();
+      final cachedModel = _userModel;
+      await _cacheUserModel(cachedModel);
+      if (!_isCurrentSession(firebaseUser, generation)) return;
       notifyListeners();
 
       // Exchange the Firebase identity token first. Protected profile/wallet
       // reads must never race ahead of backend authentication.
-      final authenticated = await _loginToBackend(firebaseUser);
-      if (generation != _sessionGeneration || _currentUser?.uid != firebaseUser.uid) return;
+      final authenticated = await _loginToBackend(firebaseUser, generation);
+      if (!_isCurrentSession(firebaseUser, generation)) return;
       if (!authenticated) return;
 
       // A valid backend JWT makes the session ready. Wallet data is fetched
       // separately; a wallet endpoint failure must not strand the user at login.
       _backendReady = true;
       notifyListeners();
-      await _refreshProfileFromBackend(firebaseUser);
-      if (generation != _sessionGeneration || _currentUser?.uid != firebaseUser.uid) return;
+      await _refreshProfileFromBackend(firebaseUser, generation);
+      if (!_isCurrentSession(firebaseUser, generation)) return;
       await AppRepository.instance.fetchWalletBalance();
-      if (generation != _sessionGeneration || _currentUser?.uid != firebaseUser.uid) return;
+      if (!_isCurrentSession(firebaseUser, generation)) return;
     } catch (e) {
       debugPrint('Backend session initialization failed: $e');
       _backendReady = false;
@@ -127,51 +140,81 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+  bool _isCurrentSession(firebase_auth.User firebaseUser, int generation) =>
+      generation == _sessionGeneration &&
+      _currentUser?.uid == firebaseUser.uid;
+
   /// Fetch backend profile and merge (keeps Firebase name/photo).
   Future<void> _refreshProfileFromBackend(
-      firebase_auth.User firebaseUser) async {
+      firebase_auth.User firebaseUser, int generation) async {
     try {
       final repo = AppRepository.instance;
       final userData = await repo.fetchUserProfile(firebaseUser.uid);
-      if (userData == null) return;
+      if (userData == null || !_isCurrentSession(firebaseUser, generation)) return;
       final norm = Map<String, dynamic>.from(userData);
       norm['displayName'] ??= norm['name'];
       norm['photoUrl'] ??= norm['avatar'];
       final fresh = UserModel.fromFirebase(norm, firebaseUser.uid);
-      _userModel = fresh.copyWith(
+      final merged = fresh.copyWith(
         displayName: firebaseUser.displayName?.isNotEmpty == true
             ? firebaseUser.displayName!
             : fresh.displayName,
         photoUrl: firebaseUser.photoURL ?? fresh.photoUrl,
         email: firebaseUser.email ?? fresh.email,
       );
-      await _cacheUserModel();
+      if (!_isCurrentSession(firebaseUser, generation)) return;
+      _userModel = merged;
+      await _cacheUserModel(merged);
+      if (!_isCurrentSession(firebaseUser, generation)) return;
       notifyListeners();
     } catch (_) {
       // Offline: cached/Firebase profile stays.
     }
   }
 
-  /// Exchange Firebase idToken for backend JWT (fire-and-forget).
-  Future<bool> _loginToBackend(firebase_auth.User firebaseUser) async {
+  /// Exchange Firebase idToken for backend JWT without allowing a late
+  /// response from a previous account to replace the active session token.
+  Future<bool> _loginToBackend(
+    firebase_auth.User firebaseUser,
+    int generation,
+  ) async {
     try {
       final idToken = await firebaseUser.getIdToken();
-      if (idToken == null || idToken.isEmpty) return false;
+      if (idToken == null ||
+          idToken.isEmpty ||
+          !_isCurrentSession(firebaseUser, generation)) {
+        return false;
+      }
       final res = await ApiClient.instance.post(
         '/api/auth/google',
         {'idToken': idToken},
         auth: false,
       );
+      if (!_isCurrentSession(firebaseUser, generation)) return false;
       if (res is Map && res['success'] == true && res['data'] is Map) {
         final data = res['data'] as Map;
         final access = data['accessToken'] ?? data['access_token'] ?? data['token'];
         final refresh = data['refreshToken'] ?? data['refresh_token'];
         if (access is String && access.isNotEmpty) {
-          ApiClient.instance.token = access;
           final prefs = await SharedPreferences.getInstance();
+          if (!_isCurrentSession(firebaseUser, generation)) return false;
+          ApiClient.instance.token = access;
           await prefs.setString('backend_token', access);
           if (refresh is String && refresh.isNotEmpty) {
             await prefs.setString('backend_refresh_token', refresh);
+          }
+          if (!_isCurrentSession(firebaseUser, generation)) {
+            if (ApiClient.instance.token == access) {
+              ApiClient.instance.token = null;
+            }
+            if (prefs.getString('backend_token') == access) {
+              await prefs.remove('backend_token');
+            }
+            if (refresh is String &&
+                prefs.getString('backend_refresh_token') == refresh) {
+              await prefs.remove('backend_refresh_token');
+            }
+            return false;
           }
           debugPrint('Backend login ok');
           return true;
@@ -184,13 +227,13 @@ class AuthService extends ChangeNotifier {
     }
   }
 
-  Future<void> _cacheUserModel() async {
-    if (_userModel == null) return;
+  Future<void> _cacheUserModel([UserModel? model]) async {
+    final snapshot = model ?? _userModel;
+    if (snapshot == null) return;
+    final key = 'user_${snapshot.uid}';
+    final encoded = json.encode(snapshot.toFirestore());
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      'user_${_userModel!.uid}',
-      json.encode(_userModel!.toFirestore()),
-    );
+    await prefs.setString(key, encoded);
   }
 
   /// Sign in with Google - PRODUCTION (no demo fallback)

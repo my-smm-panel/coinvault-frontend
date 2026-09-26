@@ -27,6 +27,8 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   List<Map<String, dynamic>> _recent = [];
   String? _selectedMethod;
   bool _loading = true;
+  bool _methodsFailed = false;
+  bool _historyFailed = false;
   bool _submitting = false;
   String? _error;
 
@@ -67,10 +69,14 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     setState(() {
       _balance = results[0] as int?;
       _methods = methods;
+      _methodsFailed = results[1] == null;
+      _historyFailed = results[2] == null;
       _recent = rawRecent.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).take(5).toList();
       _selectedMethod = methods.isEmpty ? null : _methodId(methods.first);
       _loading = false;
-      if (results[0] == null && methods.isEmpty) {
+      if (results[1] == null) {
+        _error = 'Withdrawal methods could not be fetched. Pull to retry.';
+      } else if (results[0] == null && methods.isEmpty) {
         _error = 'Withdrawal details are not available right now.';
       }
     });
@@ -148,7 +154,13 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     final list = await AppRepository.instance.fetchWithdrawalHistory('');
     if (!mounted) return;
     setState(() {
-      _recent = list.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).take(5).toList();
+      _historyFailed = list == null;
+      _recent = list
+              ?.whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .take(5)
+              .toList() ??
+          [];
     });
   }
 
@@ -197,8 +209,8 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
               const SizedBox(height: 20),
               if (_loading)
                 const Center(child: Padding(padding: EdgeInsets.all(28), child: CircularProgressIndicator(color: AppColors.primary)))
-              else if (_error != null && _methods.isEmpty)
-                _empty(_error!)
+              else if (_methodsFailed || (_error != null && _methods.isEmpty))
+                _empty(_error ?? 'Withdrawal methods are unavailable.')
               else if (_methods.isEmpty)
                 _empty('No supported withdrawal methods are available.')
               else ...[
@@ -315,6 +327,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   }
 
   Widget _recentList() {
+    if (_historyFailed) return _empty('Withdrawal history could not be fetched.');
     if (_recent.isEmpty) return _empty('No withdrawal history');
     return Container(
       decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: AppColors.border)),

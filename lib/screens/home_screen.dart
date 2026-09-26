@@ -688,8 +688,12 @@ class _HomeTabState extends State<HomeTab> {
   Widget _tasksRow(BuildContext context) {
     final tasks = _offers.whereType<Map>().where((m) {
       final type = (m['type'] ?? '').toString().toUpperCase();
+      final id = (m['id'] ?? m['_id'] ?? m['offerId'] ?? m['providerOfferId'] ?? '')
+          .toString()
+          .trim();
       return (type.startsWith('INSTALL') || type.contains('TASK')) &&
-          (m['title'] ?? '').toString().trim().isNotEmpty;
+          (m['title'] ?? '').toString().trim().isNotEmpty &&
+          id.isNotEmpty;
     }).take(6).toList();
     if (tasks.isEmpty) return _emptyRow('Task data is unavailable.');
     final cards = tasks.map((m) {
@@ -707,7 +711,9 @@ class _HomeTabState extends State<HomeTab> {
         cta: 'View Task',
         provider: (m['provider'] ?? '').toString(),
         onTap: () {
-          final id = (m['id'] ?? m['_id'] ?? '').toString();
+          final id = (m['id'] ?? m['_id'] ?? m['offerId'] ?? m['providerOfferId'] ?? '')
+              .toString()
+              .trim();
           final instructions = (m['instructions'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
           _push(context, TaskDetailScreen(
             provider: (m['provider'] ?? '').toString(),

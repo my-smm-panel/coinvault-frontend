@@ -56,6 +56,9 @@ class _TrackingScreenState extends State<TrackingScreen>
         repo.fetchWalletBalance(), // 3 — fresh server wallet
         repo.spinStatus(), // 4 — server-authoritative spin status
       ]);
+      if (results[0] == null || results[1] == null || results[2] == null) {
+        _error = 'Tracking data could not be fetched. Pull to retry.';
+      }
 
       // activity
       final act = results[0];

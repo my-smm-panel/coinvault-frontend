@@ -18,24 +18,34 @@ class AppRepository {
   /// Only server wallet/action responses can update the displayed balance.
   /// `availableBalance` is the spendable balance from /api/wallet/balances;
   /// action responses use `balance`.
-  int? _syncBalanceFrom(Map<String, dynamic> src) {
+  int? _syncBalanceFrom(
+    Map<String, dynamic> src, {
+    int? expectedBalanceRevision,
+  }) {
     final m = src['data'] is Map ? Map<String, dynamic>.from(src['data'] as Map) : src;
     final wallet = m['wallet'] is Map ? Map<String, dynamic>.from(m['wallet'] as Map) : m;
     final raw = wallet['availableBalance'] ?? wallet['balance'] ?? wallet['coins'];
     if (raw is! num || raw < 0) return null;
     final coins = raw.toInt();
-    BalanceStream.instance.setFromServer(coins);
+    BalanceStream.instance.setFromServer(
+      coins,
+      expectedRevision: expectedBalanceRevision,
+    );
     return coins;
   }
 
   /// Fetch the authenticated, server-authoritative spendable wallet balance.
   /// Returns null when no valid balance was received; never substitutes a local default.
   Future<int?> fetchWalletBalance() async {
+    final balanceRevision = BalanceStream.instance.sessionRevision;
     try {
       final res = await _api.get('/api/wallet/balances');
       if (res is Map && res['success'] == true && res['data'] is Map) {
         final data = Map<String, dynamic>.from(res['data'] as Map);
-        return _syncBalanceFrom(data);
+        return _syncBalanceFrom(
+          data,
+          expectedBalanceRevision: balanceRevision,
+        );
       }
       return null;
     } catch (_) {
@@ -156,15 +166,15 @@ class AppRepository {
   }
 
   /// Referral info: code, link, stats, referral list.
-  Future<Map<String, dynamic>> referralInfo() async {
+  Future<Map<String, dynamic>?> referralInfo() async {
     try {
       final res = await _api.get('/api/referrals/info');
       if (res is Map && res['success'] == true && res['data'] is Map) {
         return Map<String, dynamic>.from(res['data'] as Map);
       }
-      return {};
+      return null;
     } catch (_) {
-      return {};
+      return null;
     }
   }
 
@@ -232,16 +242,16 @@ class AppRepository {
   }
 
   /// Fetch withdrawal methods.
-  Future<List<dynamic>> fetchWithdrawalMethods() async {
+  Future<List<dynamic>?> fetchWithdrawalMethods() async {
     try {
       final res = await _api.get('/api/withdrawals/methods');
-      if (res is Map && res['data'] is Map) {
+      if (res is Map && res['success'] == true && res['data'] is Map) {
         final methods = res['data']['methods'];
-        return methods is List ? methods : [];
+        return methods is List ? methods : null;
       }
-      return [];
+      return null;
     } catch (_) {
-      return [];
+      return null;
     }
   }
 
@@ -274,10 +284,11 @@ class AppRepository {
   /// wallet ledger. Returns data {rewardType, coins, spinId, dailyLimit}.
   /// Throws ApiException when limit is over, session expired, or offline.
   Future<Map<String, dynamic>> spinNow() async {
+    final balanceRevision = BalanceStream.instance.sessionRevision;
     final res = await _api.post('/api/spin/spin', {});
     if (res is Map && res['success'] == true && res['data'] is Map) {
       final data = Map<String, dynamic>.from(res['data'] as Map);
-      _syncBalanceFrom(data);
+      _syncBalanceFrom(data, expectedBalanceRevision: balanceRevision);
       return data;
     }
     throw ApiException(-1, 'Spin failed');
@@ -302,10 +313,11 @@ class AppRepository {
     } else {
       throw ApiException(-1, 'This withdrawal method is not supported by the server');
     }
+    final balanceRevision = BalanceStream.instance.sessionRevision;
     final res = await _api.post('/api/withdrawals/request', body);
     if (res is Map && res['success'] == true && res['data'] is Map) {
       final data = Map<String, dynamic>.from(res['data'] as Map);
-      _syncBalanceFrom(data);
+      _syncBalanceFrom(data, expectedBalanceRevision: balanceRevision);
       return data;
     }
     final msg = (res is Map && res['error'] is String)
@@ -317,11 +329,15 @@ class AppRepository {
   /// Redeem one backend-listed gift card. The backend validates and debits the
   /// wallet atomically; this client never estimates or deducts the cost.
   Future<Map<String, dynamic>> redeemGiftCard(String giftCardId) async {
-    final res = await _api.post('/api/giftcards/redeem/$giftCardId', {});
+    final id = Uri.encodeComponent(giftCardId);
+    final balanceRevision = BalanceStream.instance.sessionRevision;
+    final res = await _api.post('/api/giftcards/redeem/$id', {});
     if (res is Map && res['success'] == true && res['data'] is Map) {
       final data = Map<String, dynamic>.from(res['data'] as Map);
-      _syncBalanceFrom(data);
-      await fetchWalletBalance();
+      _syncBalanceFrom(data, expectedBalanceRevision: balanceRevision);
+      if (BalanceStream.instance.sessionRevision == balanceRevision) {
+        await fetchWalletBalance();
+      }
       return data;
     }
     final msg = (res is Map && res['error'] is String)
@@ -450,11 +466,12 @@ class AppRepository {
 
   /// Submit quiz answers (auth required). Returns correctCount + coinsEarned.
   Future<Map<String, dynamic>?> submitQuiz(List<int> answers) async {
+    final balanceRevision = BalanceStream.instance.sessionRevision;
     try {
       final res = await _api.post('/api/quiz/submit', {'answers': answers});
       if (res is Map && res['success'] == true && res['data'] is Map) {
         final data = Map<String, dynamic>.from(res['data'] as Map);
-        _syncBalanceFrom(data);
+        _syncBalanceFrom(data, expectedBalanceRevision: balanceRevision);
         return data;
       }
       return null;
@@ -465,11 +482,12 @@ class AppRepository {
 
   /// Scratch card — server picks reward, credits wallet. Auth required.
   Future<Map<String, dynamic>?> scratchCard() async {
+    final balanceRevision = BalanceStream.instance.sessionRevision;
     try {
       final res = await _api.post('/api/scratch', {});
       if (res is Map && res['success'] == true && res['data'] is Map) {
         final data = Map<String, dynamic>.from(res['data'] as Map);
-        _syncBalanceFrom(data);
+        _syncBalanceFrom(data, expectedBalanceRevision: balanceRevision);
         return data;
       }
       return null;
