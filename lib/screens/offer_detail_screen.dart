@@ -161,7 +161,6 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
 
   Widget _content(Color color) {
     final description = widget.description?.trim() ?? '';
-    final duration = widget.duration?.trim() ?? '';
     final requirements = widget.requirements ?? const <String>[];
     final goals = widget.goals ?? const <String>[];
     final rules = widget.rules ?? const <String>[];
@@ -171,10 +170,6 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (widget.coins != null) ...[
-            _rewardBanner(widget.coins!, duration),
-            const SizedBox(height: 20),
-          ],
           Text(widget.title,
               style: const TextStyle(
                   color: Color(0xFF171717),
@@ -204,46 +199,6 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
             _rulesCard(rules),
           ],
           const SizedBox(height: 24),
-        ],
-      ),
-    );
-  }
-
-  Widget _rewardBanner(int coins, String duration) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-            colors: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-              color: const Color(0xFFF59E0B).withOpacity(0.35),
-              blurRadius: 24,
-              offset: const Offset(0, 8))
-        ],
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.monetization_on_rounded,
-              color: Color(0xFF5A3825), size: 44),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text('+${_fmt(coins)} coins',
-                style: const TextStyle(
-                    color: Color(0xFF5A3825),
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900)),
-          ),
-          if (duration.isNotEmpty)
-            Text(duration,
-                style: const TextStyle(
-                    color: Color(0xFF5A3825),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700)),
         ],
       ),
     );
@@ -397,13 +352,4 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
     );
   }
 
-  String _fmt(int n) {
-    final str = n.abs().toString();
-    final sb = StringBuffer();
-    for (var i = 0; i < str.length; i++) {
-      if (i > 0 && (str.length - i) % 3 == 0) sb.write(',');
-      sb.write(str[i]);
-    }
-    return n.isNegative ? '-$sb' : sb.toString();
-  }
 }

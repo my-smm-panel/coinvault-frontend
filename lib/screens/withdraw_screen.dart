@@ -200,11 +200,11 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
             padding: const EdgeInsets.fromLTRB(18, 6, 18, 28),
             children: [
               const CvHeader(),
-              const SizedBox(height: 12),
-              const Text('Withdraw', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+              const SizedBox(height: 10),
+              const Text('Withdraw', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
               const SizedBox(height: 4),
-              const Text('Submit a coin withdrawal request', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-              const SizedBox(height: 18),
+              const Text('Choose a payout method and review your request before submitting.', style: TextStyle(fontSize: 12.5, height: 1.35, color: AppColors.textSecondary)),
+              const SizedBox(height: 14),
               _balanceCard(),
               const SizedBox(height: 20),
               if (_loading)
@@ -256,16 +256,25 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   Widget _balanceCard() {
     final balance = BalanceStream.instance.value ?? _balance;
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: AppColors.border), boxShadow: AppShadows.card),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: AppColors.cardGradient,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
+      ),
       child: Row(children: [
-        const Icon(Icons.monetization_on_rounded, color: AppColors.primary, size: 24),
-        const SizedBox(width: 9),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Available balance', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.textSecondary)),
-          const SizedBox(height: 4),
-          Text(balance == null ? '— coins' : '$balance coins', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-        ])),
+        Container(width: 38, height: 38,
+          decoration: BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(12)),
+          child: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.primary, size: 20)),
+        const SizedBox(width: 11),
+        const Expanded(child: Text('Available balance', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textSecondary))),
+        const SizedBox(width: 8),
+        Flexible(child: Text(balance == null ? '—' : '$balance', maxLines: 1, overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.right,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary))),
+        const SizedBox(width: 5),
+        const Text('coins', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
       ]),
     );
   }
@@ -335,10 +344,31 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         final amount = item['amount'] ?? item['coins'];
         final status = (item['status'] ?? 'UNKNOWN').toString();
         final method = (item['method'] ?? '').toString();
+        final normalizedStatus = status.toUpperCase();
+        final statusColor = normalizedStatus.contains('APPROV') || normalizedStatus.contains('PAID') || normalizedStatus.contains('COMPLETE')
+            ? AppColors.success
+            : normalizedStatus.contains('REJECT') || normalizedStatus.contains('FAIL')
+                ? AppColors.error
+                : AppColors.gold;
+        final created = item['createdAt'] ?? item['created_at'] ?? item['date'];
+        final date = created is String ? DateTime.tryParse(created)?.toLocal() : null;
+        final subtitle = [
+          if (method.isNotEmpty) method,
+          if (date != null) '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}',
+        ].join(' • ');
         return ListTile(
-          leading: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.primary),
-          title: Text(amount is num ? '${amount.toInt()} coins' : 'Amount unavailable', style: const TextStyle(fontWeight: FontWeight.w700)),
-          subtitle: Text(method.isEmpty ? status : '$method • $status', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 13, vertical: 3),
+          leading: Container(width: 38, height: 38,
+            decoration: BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(11)),
+            child: const Icon(Icons.account_balance_wallet_rounded, color: AppColors.primary, size: 19)),
+          title: Text(amount is num ? '${amount.toInt()} coins' : 'Amount unavailable', style: const TextStyle(fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+          subtitle: Text(subtitle.isEmpty ? 'Withdrawal request' : subtitle,
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 11.5)),
+          trailing: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+            decoration: BoxDecoration(color: statusColor.withOpacity(.12), borderRadius: BorderRadius.circular(AppRadius.full)),
+            child: Text(status.replaceAll('_', ' '), style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.w800)),
+          ),
         );
       }).toList()),
     );

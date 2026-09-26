@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
@@ -11,6 +13,123 @@ import 'paymentwall_screen.dart';
 import 'surveys_screen.dart';
 import 'task_detail_screen.dart';
 import 'tracking_screen.dart';
+
+class _SpotlightItem {
+  final String title;
+  final String description;
+  final String kind;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _SpotlightItem({required this.title, required this.description,
+    required this.kind, required this.icon, required this.onTap});
+}
+
+class _RotatingSpotlight extends StatefulWidget {
+  final List<_SpotlightItem> items;
+  const _RotatingSpotlight({required this.items});
+
+  @override
+  State<_RotatingSpotlight> createState() => _RotatingSpotlightState();
+}
+
+class _RotatingSpotlightState extends State<_RotatingSpotlight> {
+  late final PageController _controller;
+  Timer? _timer;
+  int _index = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = PageController(viewportFraction: .92);
+    _startRotation();
+  }
+
+  @override
+  void didUpdateWidget(covariant _RotatingSpotlight oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.items.length != widget.items.length) _startRotation();
+  }
+
+  void _startRotation() {
+    _timer?.cancel();
+    if (widget.items.length < 2) return;
+    _timer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || !_controller.hasClients || widget.items.isEmpty) return;
+      _index = (_index + 1) % widget.items.length;
+      _controller.animateToPage(_index,
+          duration: const Duration(milliseconds: 380), curve: Curves.easeOutCubic);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(children: [
+      SizedBox(
+        height: 132,
+        child: PageView.builder(
+          controller: _controller,
+          itemCount: widget.items.length,
+          onPageChanged: (index) => setState(() => _index = index),
+          itemBuilder: (context, index) {
+            final item = widget.items[index];
+            return Padding(
+              padding: const EdgeInsets.only(right: 9),
+              child: InkWell(
+                onTap: item.onTap,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                child: Container(
+                  padding: const EdgeInsets.all(15),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [Color(0xFFEAF7F1), Color(0xFFF8FCF9)]),
+                    border: Border.all(color: AppColors.primary.withOpacity(.18)),
+                    borderRadius: BorderRadius.circular(AppRadius.lg),
+                  ),
+                  child: Row(children: [
+                    Container(width: 44, height: 44,
+                      decoration: BoxDecoration(color: AppColors.primary.withOpacity(.1), borderRadius: BorderRadius.circular(13)),
+                      child: Icon(item.icon, color: AppColors.primary)),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Text(item.kind.toUpperCase(), style: const TextStyle(fontSize: 9.5, letterSpacing: .7, fontWeight: FontWeight.w900, color: AppColors.primaryDark)),
+                      const SizedBox(height: 4),
+                      Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                      if (item.description.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(item.description, maxLines: 2, overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 11.5, height: 1.3, color: AppColors.textSecondary)),
+                      ],
+                      const SizedBox(height: 5),
+                      const Text('Tap to explore  →', style: TextStyle(fontSize: 10.5, color: AppColors.primary, fontWeight: FontWeight.w800)),
+                    ])),
+                  ]),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+      if (widget.items.length > 1) ...[
+        const SizedBox(height: 7),
+        Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          for (var i = 0; i < widget.items.length; i++)
+            AnimatedContainer(duration: const Duration(milliseconds: 180),
+              margin: const EdgeInsets.symmetric(horizontal: 2), width: i == _index ? 15 : 5, height: 5,
+              decoration: BoxDecoration(color: i == _index ? AppColors.primary : AppColors.border,
+                borderRadius: BorderRadius.circular(4))),
+        ]),
+      ],
+    ]);
+  }
+}
 
 /// Earn tab. Every offer, reward, and status shown here comes from an API
 /// response; no local reward policy or duration estimate is added.
@@ -86,7 +205,37 @@ class _EarnScreenState extends State<EarnScreen> {
   String _id(Map m) => (m['id'] ?? m['offerId'] ?? m['providerOfferId'] ?? '')
       .toString()
       .trim();
-  int? _number(dynamic value) => value is num && value >= 0 ? value.toInt() : null;
+  List<_SpotlightItem> _spotlightItems() {
+    final items = <_SpotlightItem>[];
+    for (final raw in _surveys.whereType<Map>().where((m) => _title(m).isNotEmpty).take(4)) {
+      items.add(_SpotlightItem(
+        title: _title(raw),
+        description: _description(raw),
+        kind: 'Survey',
+        icon: Icons.poll_rounded,
+        onTap: () => _push(const SurveysScreen()),
+      ));
+    }
+    for (final raw in _offers.whereType<Map>().where((m) => _title(m).isNotEmpty && _id(m).isNotEmpty).take(4)) {
+      final instructions = raw['instructions'];
+      final steps = instructions is List ? instructions.map((e) => e.toString()).toList() : null;
+      items.add(_SpotlightItem(
+        title: _title(raw),
+        description: _description(raw),
+        kind: 'Task / Offer',
+        icon: Icons.task_alt_rounded,
+        onTap: () => _push(TaskDetailScreen(
+          provider: (raw['provider'] ?? raw['providerName'] ?? '').toString(),
+          title: _title(raw),
+          desc: _description(raw),
+          coins: null,
+          steps: steps,
+          offerId: _id(raw),
+        )),
+      ));
+    }
+    return items;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -113,6 +262,12 @@ class _EarnScreenState extends State<EarnScreen> {
                     _balance(balance),
                     const SizedBox(height: 14),
                     _summary(),
+                    if (!_loading && _spotlightItems().isNotEmpty) ...[
+                      const SizedBox(height: 14),
+                      const Text('Featured activities', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                      const SizedBox(height: 8),
+                      _RotatingSpotlight(items: _spotlightItems()),
+                    ],
                     Align(
                       alignment: Alignment.centerRight,
                       child: TextButton.icon(
@@ -198,8 +353,7 @@ class _EarnScreenState extends State<EarnScreen> {
     final list = _surveys.whereType<Map>().where((m) => _title(m).isNotEmpty).take(10).toList();
     if (list.isEmpty) return _empty('No surveys available right now');
     return Column(children: list.map((m) {
-      final reward = _number(m['rewardCoins'] ?? m['coins']);
-      return _item(title: _title(m), description: _description(m), reward: reward, icon: Icons.poll_rounded, action: () => _push(const SurveysScreen()));
+      return _item(title: _title(m), description: _description(m), icon: Icons.poll_rounded, action: () => _push(const SurveysScreen()));
     }).toList());
   }
 
@@ -227,13 +381,12 @@ class _EarnScreenState extends State<EarnScreen> {
         return _item(
           title: _title(m),
           description: desc,
-          reward: _number(m['coins'] ?? m['rewardCoins']),
           icon: Icons.local_offer_rounded,
           action: () => _push(TaskDetailScreen(
             provider: (m['provider'] ?? m['providerName'] ?? '').toString(),
             title: _title(m),
             desc: desc,
-            coins: _number(m['coins'] ?? m['rewardCoins']),
+            coins: null,
             steps: steps,
             offerId: _id(m),
           )),
@@ -249,7 +402,6 @@ class _EarnScreenState extends State<EarnScreen> {
       children: _offerwallOffers.take(5).map((offer) => _item(
         title: offer.title,
         description: offer.shortRequirement ?? offer.description ?? '',
-        reward: offer.coinReward,
         icon: Icons.local_offer_rounded,
         action: () => _push(const OfferwallScreen()),
       )).toList(),
@@ -263,14 +415,13 @@ class _EarnScreenState extends State<EarnScreen> {
       children: _paymentwallOffers.take(5).map((offer) => _item(
         title: offer.title,
         description: offer.shortRequirement ?? offer.description ?? '',
-        reward: offer.coinReward,
         icon: Icons.local_offer_rounded,
         action: () => _push(const PaymentwallScreen()),
       )).toList(),
     );
   }
 
-  Widget _item({required String title, required String description, required int? reward, required IconData icon, required VoidCallback action}) => Container(margin: const EdgeInsets.fromLTRB(16, 0, 16, 10), padding: const EdgeInsets.all(14), decoration: _cardDec(), child: Row(children: [Container(width: 42, height: 42, decoration: BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(11)), child: Icon(icon, color: AppColors.primary)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)), if (description.isNotEmpty) ...[const SizedBox(height: 4), Text(description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary))], if (reward != null) ...[const SizedBox(height: 5), Text('+${reward!} coins', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.primary))]])), IconButton(onPressed: action, icon: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.primary))]));
+  Widget _item({required String title, required String description, required IconData icon, required VoidCallback action}) => Container(margin: const EdgeInsets.fromLTRB(16, 0, 16, 10), padding: const EdgeInsets.all(14), decoration: _cardDec(), child: Row(children: [Container(width: 42, height: 42, decoration: BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(11)), child: Icon(icon, color: AppColors.primary)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)), if (description.isNotEmpty) ...[const SizedBox(height: 4), Text(description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary))]])), IconButton(onPressed: action, icon: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.primary))]));
 
   Widget _empty(String text) => Container(margin: const EdgeInsets.symmetric(horizontal: 16), padding: const EdgeInsets.all(20), decoration: _cardDec(), child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)));
   BoxDecoration _cardDec() => BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: AppColors.border), boxShadow: AppShadows.card);

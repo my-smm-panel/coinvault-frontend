@@ -61,16 +61,10 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
               .toList()
           : <String>[];
       final id = (raw['id'] ?? raw['offerId'] ?? '').toString().trim();
-      final coins = raw['coins'] is num
-          ? (raw['coins'] as num).toInt()
-          : raw['rewardCoins'] is num
-              ? (raw['rewardCoins'] as num).toInt()
-              : null;
       return <String, dynamic>{
         'id': id.isEmpty ? null : id,
         'title': (raw['title'] ?? raw['name'] ?? '').toString().trim(),
         'desc': (raw['shortDesc'] ?? raw['description'] ?? '').toString().trim(),
-        'coins': coins,
         'steps': steps,
       };
     }).where((task) => (task['title'] as String).isNotEmpty).toList();
@@ -178,7 +172,6 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
   }
 
   Widget _taskCard(Map<String, dynamic> task, Color color) {
-    final coins = task['coins'] as int?;
     final steps = (task['steps'] as List).cast<String>();
     final offerId = task['id'] as String?;
     final title = task['title'] as String;
@@ -219,22 +212,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
                   ],
                 ),
               ),
-              if (coins != null) ...[
-                const SizedBox(width: 8),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.goldGradient,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Text('+$coins',
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900)),
-                ),
-              ],
+
             ],
           ),
           if (steps.isNotEmpty) ...[
@@ -284,7 +262,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
                     provider: provider,
                     title: title,
                     desc: desc,
-                    coins: coins,
+                    coins: null,
                     steps: steps.isEmpty ? null : steps,
                     offerId: offerId,
                   ),

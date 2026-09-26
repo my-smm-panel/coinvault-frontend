@@ -121,7 +121,7 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
           offerId: offer.id,
           provider: offer.provider,
           title: offer.title,
-          coins: offer.coinReward,
+          coins: null,
         ),
       ),
     );
@@ -252,7 +252,6 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
   // ─────────────────────────── OFFER CARD ───────────────────────────
   Widget _offerCard(OfferwallOffer offer) {
     final title = offer.title;
-    final coins = offer.coinReward;
     final provider = offer.provider.isEmpty ? 'Offerwall.GG' : offer.provider;
     final shortReq = offer.shortRequirement ?? '';
     final estimatedTime = offer.estimatedTime ?? '';
@@ -299,12 +298,6 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
                     ),
                   ),
                   const Spacer(),
-                  if (coins != null)
-                    Text('+${_fmt(coins)} Coins',
-                        style: const TextStyle(
-                            color: Color(0xFF5A3825),
-                            fontSize: 14,
-                            fontWeight: FontWeight.w800)),
                 ],
               ),
               const SizedBox(height: 10),
@@ -365,13 +358,4 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
     );
   }
 
-  String _fmt(int n) {
-    final str = n.abs().toString();
-    final sb = StringBuffer();
-    for (var i = 0; i < str.length; i++) {
-      if (i > 0 && (str.length - i) % 3 == 0) sb.write(',');
-      sb.write(str[i]);
-    }
-    return n.isNegative ? '-$sb' : sb.toString();
-  }
 }

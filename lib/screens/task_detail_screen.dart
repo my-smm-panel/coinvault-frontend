@@ -103,10 +103,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (widget.coins != null) ...[
-                      _rewardBanner(widget.coins!),
-                      const SizedBox(height: 20),
-                    ],
                     if (widget.title.trim().isNotEmpty) ...[
                       Text(
                         widget.title,
@@ -197,45 +193,6 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _rewardBanner(int coins) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        gradient: AppColors.goldGradient,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.gold.withOpacity(0.35),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Image.asset(
-            'assets/coin.png',
-            width: 44,
-            height: 44,
-            errorBuilder: (_, __, ___) => const Icon(
-                Icons.monetization_on_rounded,
-                color: AppColors.textPrimary,
-                size: 44),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            '+$coins coins',
-            style: GoogleFonts.inter(
-                color: AppColors.textPrimary,
-                fontSize: 22,
-                fontWeight: FontWeight.w900),
           ),
         ],
       ),

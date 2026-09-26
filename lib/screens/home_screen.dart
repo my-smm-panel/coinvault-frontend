@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
@@ -324,6 +325,8 @@ class _HomeTabState extends State<HomeTab> {
   bool _offersUnavailable = false;
   bool _surveysUnavailable = false;
   int? _todayEarnings;
+  bool _hideFeaturedPopup = false;
+  String? _featuredPopupKey;
 
   @override
   void initState() {
@@ -360,6 +363,56 @@ class _HomeTabState extends State<HomeTab> {
           : null;
       _loadingHome = false;
     });
+    await _restoreFeaturedPopupDismissal();
+  }
+
+  String _dayKey() {
+    final now = DateTime.now();
+    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
+  }
+
+  Map<String, dynamic>? _dailyFeaturedOffer() {
+    final today = DateTime.now();
+    final eligible = _offers.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).where((offer) {
+      if (offer['isFeatured'] != true || offer['isActive'] == false) return false;
+      if ((offer['title'] ?? '').toString().trim().isEmpty) return false;
+      final startRaw = offer['startDate'];
+      final endRaw = offer['endDate'];
+      final start = startRaw is String ? DateTime.tryParse(startRaw)?.toLocal() : null;
+      final end = endRaw is String ? DateTime.tryParse(endRaw)?.toLocal() : null;
+      final day = DateTime(today.year, today.month, today.day);
+      if (start != null && day.isBefore(DateTime(start.year, start.month, start.day))) return false;
+      if (end != null && day.isAfter(DateTime(end.year, end.month, end.day))) return false;
+      return true;
+    }).toList();
+    if (eligible.isEmpty) return null;
+    final dayNumber = DateTime(today.year, today.month, today.day)
+        .difference(DateTime(2024, 1, 1)).inDays;
+    return eligible[dayNumber.abs() % eligible.length];
+  }
+
+  String _popupDismissalKey(Map<String, dynamic> offer) {
+    final id = (offer['id'] ?? offer['_id'] ?? offer['offerId'] ?? offer['title']).toString();
+    return 'featured_popup_${_dayKey()}_$id';
+  }
+
+  Future<void> _restoreFeaturedPopupDismissal() async {
+    final offer = _dailyFeaturedOffer();
+    if (offer == null) {
+      if (mounted) setState(() { _featuredPopupKey = null; _hideFeaturedPopup = true; });
+      return;
+    }
+    final key = _popupDismissalKey(offer);
+    _featuredPopupKey = key;
+    final prefs = await SharedPreferences.getInstance();
+    final hidden = key != null && (prefs.getBool(key) ?? false);
+    if (mounted) setState(() => _hideFeaturedPopup = hidden);
+  }
+
+  Future<void> _dismissFeaturedPopup() async {
+    final key = _featuredPopupKey;
+    if (mounted) setState(() => _hideFeaturedPopup = true);
+    if (key != null) await (await SharedPreferences.getInstance()).setBool(key, true);
   }
 
   Future<void> _refreshHome() async {
@@ -449,7 +502,8 @@ class _HomeTabState extends State<HomeTab> {
                   '')
               .toString()
               .trim();
-          return (type.contains('TASK') || type.startsWith('INSTALL')) &&
+          return (type.contains('TASK') || type.startsWith('INSTALL') ||
+                  type.contains('GAME') || type.contains('MULTI')) &&
               (task['title'] ?? '').toString().trim().isNotEmpty &&
               id.isNotEmpty;
         })
@@ -485,6 +539,47 @@ class _HomeTabState extends State<HomeTab> {
             !type.startsWith('INSTALL');
       })
       .toList();
+
+  Widget _featuredPopup(BuildContext context) {
+    final offer = _dailyFeaturedOffer();
+    if (offer == null || _hideFeaturedPopup) return const SizedBox.shrink();
+    final description = (offer['shortDesc'] ?? offer['description'] ?? '').toString().trim();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.fromLTRB(15, 13, 8, 14),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Color(0xFF173B34), Color(0xFF236B58)]),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        boxShadow: AppShadows.card,
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Padding(padding: EdgeInsets.only(top: 2), child: Icon(Icons.campaign_rounded, color: Colors.white, size: 22)),
+        const SizedBox(width: 11),
+        Expanded(child: InkWell(
+          onTap: () => _push(context, const EarnScreen()),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            const Text('FEATURED TODAY', style: TextStyle(color: Color(0xFFD8F2E5), fontSize: 9.5, letterSpacing: .8, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text((offer['title'] ?? '').toString(), maxLines: 1, overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+            if (description.isNotEmpty) ...[
+              const SizedBox(height: 3),
+              Text(description, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Color(0xFFE4F2EC), fontSize: 11.5, height: 1.3)),
+            ],
+            const SizedBox(height: 8),
+            const Text('See details  →', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
+          ]),
+        )),
+        IconButton(
+          tooltip: 'Dismiss until tomorrow',
+          visualDensity: VisualDensity.compact,
+          onPressed: _dismissFeaturedPopup,
+          icon: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+        ),
+      ]),
+    );
+  }
 
   Widget _taskOfDay(BuildContext context) {
     if (_loadingHome) {
@@ -553,8 +648,6 @@ class _HomeTabState extends State<HomeTab> {
         .toString()
         .trim();
     final provider = (task['provider'] ?? task['cat'] ?? '').toString();
-    final rewardRaw = task['coins'] ?? task['rewardCoins'] ?? task['reward'];
-    final reward = rewardRaw is num ? rewardRaw.toInt() : null;
     final durationRaw = task['durationMinutes'] ??
         task['duration'] ??
         task['timeEstimate'];
@@ -640,15 +733,12 @@ class _HomeTabState extends State<HomeTab> {
             style: const TextStyle(
                 color: AppColors.textSecondary, fontSize: 12.5, height: 1.4),
           ),
-          if (reward != null || duration.isNotEmpty || instructions.isNotEmpty) ...[
+          if (duration.isNotEmpty || instructions.isNotEmpty) ...[
             const SizedBox(height: 13),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (reward != null)
-                  _taskInfoChip(Icons.monetization_on_rounded,
-                      '+${_fmt(reward)} coins'),
                 if (duration.isNotEmpty)
                   _taskInfoChip(Icons.schedule_rounded, duration),
                 if (instructions.isNotEmpty)
@@ -668,7 +758,7 @@ class _HomeTabState extends State<HomeTab> {
                   provider: provider,
                   title: title,
                   desc: description,
-                  coins: reward,
+                  coins: null,
                   steps: instructions,
                   offerId: id,
                 ),
@@ -736,35 +826,44 @@ class _HomeTabState extends State<HomeTab> {
                     CvHeader(
                       showProfile: true,
                       profileLeft: true,
-                      showMoney: coins != null,
-                      coins: coins,
+                      showMoney: false,
+                      coins: null,
                       showWordmark: false,
                     ),
                     const SizedBox(height: 12),
-                    _taskOfDay(context),
-                    const SizedBox(height: 16),
+                    _featuredPopup(context),
                     _balanceSummary(context, coins),
                     const SizedBox(height: 20),
-                    _sectionTitle('Quick Earn'),
+                    _sectionTitle('Task of the Day'),
                     const SizedBox(height: 10),
-                    _quickEarn(context),
+                    _taskOfDay(context),
+                    const SizedBox(height: 18),
+                    _sectionTitle('All available tasks', action: 'View all',
+                      onAction: () => _push(context, const EarnScreen())),
+                    const SizedBox(height: 10),
+                    _loadingHome ? _skeletonH() : _tasksRow(context),
                     if (_loadingHome || _surveys.isNotEmpty || _surveysUnavailable) ...[
                       const SizedBox(height: 22),
-                      _sectionTitle(
-                        'Surveys',
-                        action: 'View all',
-                        onAction: () => _push(context, const SurveysScreen()),
-                      ),
+                      _sectionTitle('Surveys', action: 'View all',
+                        onAction: () => _push(context, const SurveysScreen())),
                       const SizedBox(height: 10),
                       _loadingHome ? _skeletonH() : _surveyRow(context),
                     ],
+                    if (_loadingHome || _multiStepTasks().isNotEmpty || _offersUnavailable) ...[
+                      const SizedBox(height: 22),
+                      _sectionTitle('Games & multi-step tasks', action: 'View all',
+                        onAction: () => _push(context, const EarnScreen())),
+                      const SizedBox(height: 10),
+                      _loadingHome ? _skeletonH() : _multiTaskRow(context),
+                    ],
+                    const SizedBox(height: 22),
+                    _sectionTitle('Quick Earn'),
+                    const SizedBox(height: 10),
+                    _quickEarn(context),
                     if (_loadingHome || _generalOffers().isNotEmpty || _offersUnavailable) ...[
                       const SizedBox(height: 22),
-                      _sectionTitle(
-                        'More offers',
-                        action: 'View all',
-                        onAction: () => _push(context, const EarnScreen()),
-                      ),
+                      _sectionTitle('More offers', action: 'View all',
+                        onAction: () => _push(context, const EarnScreen())),
                       const SizedBox(height: 10),
                       _loadingHome ? _skeletonH() : _limitedOffers(context),
                     ],
@@ -822,10 +921,9 @@ class _HomeTabState extends State<HomeTab> {
 
   // ───────────────────────── Balance summary ───────────────────────────────
   Widget _balanceSummary(BuildContext context, int? coins) {
-    final earned = _todayEarned();
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
       decoration: BoxDecoration(
         gradient: AppColors.cardGradient,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -858,69 +956,21 @@ class _HomeTabState extends State<HomeTab> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Available balance',
-                        style: TextStyle(
-                            color: AppColors.textSecondary, fontSize: 11.5)),
-                    const SizedBox(height: 3),
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        children: [
-                          Text(coins == null ? '—' : _fmt(coins),
-                              style: GoogleFonts.inter(
-                                  color: AppColors.textPrimary,
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w800)),
-                          const SizedBox(width: 5),
-                          const Text('coins',
-                              style: TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                  width: 1,
-                  height: 43,
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                  color: AppColors.border),
-              Expanded(
-                flex: 2,
-                child: _miniStat(
-                  'Earned today',
-                  earned == null ? '—' : '+${_fmt(earned)}',
-                  Icons.trending_up_rounded,
-                  AppColors.success,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: () => _push(context, const TrackingScreen()),
-              icon: const Icon(Icons.history_rounded, size: 15),
-              label: const Text('View activity'),
-              style: TextButton.styleFrom(
-                foregroundColor: AppColors.primaryDark,
-                visualDensity: VisualDensity.compact,
-              ),
+          const SizedBox(height: 4),
+          Row(children: [
+            const Text('Available balance', style: TextStyle(color: AppColors.textSecondary, fontSize: 11.5)),
+            const Spacer(),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Row(children: [
+                Text(coins == null ? '—' : _fmt(coins), style: GoogleFonts.inter(
+                  color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w800)),
+                const SizedBox(width: 5),
+                const Text('coins', style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600)),
+              ]),
             ),
-          ),
+          ]),
         ],
       ),
     );
@@ -998,13 +1048,12 @@ class _HomeTabState extends State<HomeTab> {
           : 'No surveys are available right now.');
     }
     final cards = surveys.map((m) {
-      final reward = m['rewardCoins'] is num ? (m['rewardCoins'] as num).toInt() : (m['coins'] is num ? (m['coins'] as num).toInt() : null);
       final duration = m['durationMinutes'] ?? m['duration'];
       return _hCard(
         context: context,
         title: m['title'].toString(),
         sub: (m['provider'] ?? m['shortDesc'] ?? m['description'] ?? '').toString(),
-        coins: reward,
+        coins: null,
         meta: duration is num && duration > 0 ? '${duration.toInt()} min' : '',
         chip: 'Survey',
         icon: Icons.poll_rounded,
@@ -1025,19 +1074,19 @@ class _HomeTabState extends State<HomeTab> {
       final id = (m['id'] ?? m['_id'] ?? m['offerId'] ?? m['providerOfferId'] ?? '')
           .toString()
           .trim();
-      return (type.startsWith('INSTALL') || type.contains('TASK')) &&
+      return (type.startsWith('INSTALL') || type.contains('TASK') ||
+              type.contains('GAME') || type.contains('MULTI')) &&
           (m['title'] ?? '').toString().trim().isNotEmpty &&
           id.isNotEmpty;
-    }).take(6).toList();
+    }).toList();
     if (tasks.isEmpty) return _emptyRow('Task data is unavailable.');
     final cards = tasks.map((m) {
-      final reward = m['coins'] is num ? (m['coins'] as num).toInt() : (m['rewardCoins'] is num ? (m['rewardCoins'] as num).toInt() : null);
       final duration = m['durationMinutes'] ?? m['duration'];
       return _hCard(
         context: context,
         title: (m['title'] ?? '').toString(),
         sub: (m['shortDesc'] ?? m['description'] ?? m['provider'] ?? '').toString(),
-        coins: reward,
+        coins: null,
         meta: duration is num && duration > 0 ? '${duration.toInt()} min' : '',
         chip: 'Task',
         icon: Icons.task_alt_rounded,
@@ -1053,14 +1102,59 @@ class _HomeTabState extends State<HomeTab> {
             provider: (m['provider'] ?? '').toString(),
             title: (m['title'] ?? '').toString(),
             desc: (m['shortDesc'] ?? m['description'] ?? '').toString(),
-            coins: reward,
+            coins: null,
             steps: instructions,
             offerId: id.isEmpty ? null : id,
           ));
         },
       );
     }).toList();
-    return SizedBox(height: 168, child: ListView.separated(
+    return SizedBox(height: 178, child: ListView.separated(
+      scrollDirection: Axis.horizontal, itemCount: cards.length,
+      separatorBuilder: (_, __) => const SizedBox(width: 10), itemBuilder: (_, i) => cards[i]));
+  }
+
+  List<Map<String, dynamic>> _multiStepTasks() => _serverTasks().where((task) {
+    final type = (task['type'] ?? task['category'] ?? '').toString().toUpperCase();
+    final instructions = task['instructions'];
+    final milestones = task['milestones'] ?? task['steps'];
+    return type.contains('GAME') || type.contains('MULTI') ||
+        (instructions is List && instructions.length > 1) ||
+        (milestones is List && milestones.length > 1);
+  }).toList();
+
+  Widget _multiTaskRow(BuildContext context) {
+    final tasks = _multiStepTasks();
+    if (tasks.isEmpty) return _emptyRow(_offersUnavailable
+        ? 'Games and multi-step tasks could not be loaded. Pull down to retry.'
+        : 'No games or multi-step tasks have been published yet.');
+    final cards = tasks.map((task) {
+      final instructions = (task['instructions'] as List?)
+          ?.map((step) => step.toString()).toList() ?? const <String>[];
+      final milestones = task['milestones'] ?? task['steps'];
+      final count = instructions.isNotEmpty ? instructions.length : (milestones is List ? milestones.length : 0);
+      final id = (task['id'] ?? task['_id'] ?? task['offerId'] ?? task['providerOfferId'] ?? '').toString().trim();
+      return _hCard(
+        context: context,
+        title: (task['title'] ?? '').toString(),
+        sub: (task['shortDesc'] ?? task['description'] ?? task['provider'] ?? '').toString(),
+        coins: null,
+        meta: count > 0 ? '$count steps' : '',
+        chip: (task['type'] ?? '').toString().toUpperCase().contains('GAME') ? 'Game' : 'Multi-step',
+        icon: Icons.extension_rounded,
+        color: const Color(0xFF8B5CF6),
+        cta: 'View details',
+        provider: (task['provider'] ?? '').toString(),
+        onTap: () => _push(context, TaskDetailScreen(
+          provider: (task['provider'] ?? '').toString(),
+          title: (task['title'] ?? '').toString(),
+          desc: (task['shortDesc'] ?? task['description'] ?? '').toString(),
+          steps: instructions,
+          offerId: id.isEmpty ? null : id,
+        )),
+      );
+    }).toList();
+    return SizedBox(height: 178, child: ListView.separated(
       scrollDirection: Axis.horizontal, itemCount: cards.length,
       separatorBuilder: (_, __) => const SizedBox(width: 10), itemBuilder: (_, i) => cards[i]));
   }
@@ -1129,19 +1223,11 @@ class _HomeTabState extends State<HomeTab> {
               style: const TextStyle(
                   fontSize: 11, color: AppColors.textSecondary)),
           const SizedBox(height: 7),
-          if (coins != null || meta.isNotEmpty)
+          if (meta.isNotEmpty)
             Row(children: [
-              if (coins != null) ...[
-                Icon(Icons.monetization_on_rounded, size: 14, color: AppColors.primary),
-                const SizedBox(width: 4),
-                Text('+${_fmt(coins)} Coins', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.primary)),
-              ],
-              if (coins != null && meta.isNotEmpty) const SizedBox(width: 8),
-              if (meta.isNotEmpty) ...[
-                Icon(Icons.access_time_rounded, size: 13, color: AppColors.textSecondary),
-                const SizedBox(width: 3),
-                Text(meta, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-              ],
+              const Icon(Icons.access_time_rounded, size: 13, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(meta, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
             ]),
           const Spacer(),
           SizedBox(
@@ -1609,7 +1695,6 @@ class _HomeTabState extends State<HomeTab> {
       separatorBuilder: (_, __) => const SizedBox(width: 10),
       itemBuilder: (_, i) {
         final offer = offers[i];
-        final reward = offer['coins'] is num ? (offer['coins'] as num).toInt() : (offer['rewardCoins'] is num ? (offer['rewardCoins'] as num).toInt() : null);
         return Container(width: 190, padding: const EdgeInsets.all(13), decoration: _cardDec(), child: Column(
           crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [Container(width: 30, height: 30, decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
@@ -1623,7 +1708,6 @@ class _HomeTabState extends State<HomeTab> {
               style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
             const Spacer(),
             Row(children: [
-              if (reward != null) Text('+${_fmt(reward)} Coins', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.primary)),
               const Spacer(),
               GestureDetector(onTap: () => _push(context, const EarnScreen()), child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),

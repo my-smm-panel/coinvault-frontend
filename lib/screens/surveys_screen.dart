@@ -245,7 +245,6 @@ class _SurveysScreenState extends State<SurveysScreen> {
   // ─────────────────────────── SURVEY CARD ───────────────────────────
   Widget _surveyCard(Map s) {
     final title = (s['title'] ?? '').toString().trim();
-    final coins = s['coins'] is num ? (s['coins'] as num).toInt() : null;
     final duration = (s['duration'] ?? '').toString().trim();
     final provider = (s['provider'] ?? '').toString().trim();
     final category = (s['category'] ?? '').toString().trim();
@@ -294,12 +293,6 @@ class _SurveysScreenState extends State<SurveysScreen> {
                                   fontWeight: FontWeight.w700)),
                     ),
                     const Spacer(),
-                    if (coins != null)
-                      Text('+${_fmt(coins)} Coins',
-                          style: const TextStyle(
-                              color: Color(0xFF5A3825),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800)),
                   ],
                 ),
                 const SizedBox(height: 10),
@@ -356,16 +349,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
                 // Bottom row: server reward (when supplied) + Start button
                 Row(
                   children: [
-                    if (coins != null) ...[
-                      const Icon(Icons.monetization_on_rounded,
-                          color: _orange, size: 16),
-                      const SizedBox(width: 5),
-                      Text('${_fmt(coins)} Coins',
-                          style: const TextStyle(
-                              color: _primaryText,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700)),
-                    ],
+
                     const Spacer(),
                     SizedBox(
                       height: 34,
@@ -397,13 +381,4 @@ class _SurveysScreenState extends State<SurveysScreen> {
     );
   }
 
-  String _fmt(int n) {
-    final str = n.abs().toString();
-    final sb = StringBuffer();
-    for (var i = 0; i < str.length; i++) {
-      if (i > 0 && (str.length - i) % 3 == 0) sb.write(',');
-      sb.write(str[i]);
-    }
-    return n.isNegative ? '-$sb' : sb.toString();
-  }
 }
