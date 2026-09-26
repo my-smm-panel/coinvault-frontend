@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
 import '../services/balance_stream.dart';
@@ -14,7 +15,7 @@ import 'surveys_screen.dart';
 import 'task_detail_screen.dart';
 import 'withdraw_screen.dart';
 
-/// Main user app shell.
+/// Main user app shell. The existing tab destinations are unchanged.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -77,8 +78,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 }
 
-/// Home dashboard: server-published daily task first, then wallet, surveys,
-/// multi-step content, and compact shortcuts. Nothing here invents rewards.
+/// API-backed home dashboard. The reference image informs spacing and hierarchy,
+/// never the offers, survey names, amounts, badges, or promotional copy.
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
 
@@ -93,16 +94,25 @@ class _HomeTabState extends State<HomeTab> {
   bool _loading = true;
   bool _offersUnavailable = false;
   bool _surveysUnavailable = false;
+  int _loadRevision = 0;
+
+  static const _surveyGradients = <List<Color>>[
+    [Color(0xFF10AAC5), Color(0xFF0875B9)],
+    [Color(0xFFF5A315), Color(0xFFE86A19)],
+    [Color(0xFFEF5570), Color(0xFFBE267A)],
+  ];
 
   @override
   void initState() {
     super.initState();
-    // Do not show a previous account's in-memory balance while refreshing.
-    BalanceStream.instance.clear();
     _loadHome();
   }
 
   Future<void> _loadHome() async {
+    final revision = ++_loadRevision;
+    // Hide an old account's balance and never display a guessed value while
+    // the authenticated, server-authoritative wallet is being refreshed.
+    BalanceStream.instance.clear();
     if (mounted) setState(() => _loading = true);
     final results = await Future.wait<dynamic>([
       AppRepository.instance.fetchOffers(),
@@ -110,7 +120,7 @@ class _HomeTabState extends State<HomeTab> {
       AppRepository.instance.spinStatus(),
       AppRepository.instance.fetchWalletBalance(),
     ]);
-    if (!mounted) return;
+    if (!mounted || revision != _loadRevision) return;
 
     final rawOffers = results[0] as List<dynamic>?;
     final rawSurveys = results[1] as List<dynamic>?;
@@ -128,8 +138,6 @@ class _HomeTabState extends State<HomeTab> {
       _loading = false;
     });
   }
-
-  Future<void> _refreshHome() => _loadHome();
 
   String _offerId(Map<String, dynamic> offer) =>
       (offer['id'] ?? offer['_id'] ?? offer['offerId'] ??
@@ -162,7 +170,6 @@ class _HomeTabState extends State<HomeTab> {
     if (start != null && now.isBefore(start)) return false;
     if (end != null) {
       final rawEnd = offer['endDate'];
-      // Date-only server values remain available through their stated day.
       final effectiveEnd = rawEnd is String && rawEnd.trim().length <= 10
           ? DateTime(end.year, end.month, end.day, 23, 59, 59, 999)
           : end;
@@ -177,42 +184,62 @@ class _HomeTabState extends State<HomeTab> {
           .toString()
           .toUpperCase();
       return _isOfferAvailable(offer) &&
-          (type.contains('TASK') || type.startsWith('INSTALL') ||
-              type.contains('GAME') || type.contains('MULTI')) &&
+          (type.contains('TASK') ||
+              type.startsWith('INSTALL') ||
+              type.contains('GAME') ||
+              type.contains('MULTI') ||
+              offer['isTaskOfDay'] == true ||
+              offer['isDaily'] == true) &&
           (offer['title'] ?? '').toString().trim().isNotEmpty &&
           _offerId(offer).isNotEmpty;
     }).toList();
 
     int priority(Map<String, dynamic> task) {
       if (task['isTaskOfDay'] == true || task['isDaily'] == true) return 3;
-      final type = (task['type'] ?? task['category'] ?? '').toString().toUpperCase();
+      final type =
+          (task['type'] ?? task['category'] ?? '').toString().toUpperCase();
       if (type.contains('TASK')) return 2;
       if (type.contains('GAME') || type.contains('MULTI')) return 1;
       return 0;
     }
+
     tasks.sort((a, b) => priority(b).compareTo(priority(a)));
     return tasks;
   }
 
+  List<Map<String, dynamic>> _taskGridItems() =>
+      _serverTasks().take(6).toList();
+
   List<Map<String, dynamic>> _multiStepContent() {
-    final tasks = _serverTasks();
-    final highlightedId = tasks.isEmpty ? '' : _offerId(tasks.first);
+    final shownIds = _taskGridItems().map(_offerId).toSet();
     return _offers.where((offer) {
       final type = (offer['type'] ?? offer['category'] ?? '')
           .toString()
           .toUpperCase();
       final steps = offer['instructions'];
-      final hasSeveralSteps = steps is List && steps.length > 1;
       final id = _offerId(offer);
       return _isOfferAvailable(offer) &&
-          id != highlightedId &&
-          (type.contains('GAME') || type.contains('MULTI') || hasSeveralSteps) &&
-          (offer['title'] ?? '').toString().trim().isNotEmpty &&
-          id.isNotEmpty;
+          id.isNotEmpty &&
+          !shownIds.contains(id) &&
+          (type.contains('GAME') ||
+              type.contains('MULTI') ||
+              (steps is List && steps.length > 1)) &&
+          (offer['title'] ?? '').toString().trim().isNotEmpty;
     }).toList();
   }
 
+  List<Map<String, dynamic>> _remainingTasks() {
+    final shownIds = _taskGridItems().map(_offerId).toSet();
+    final multiIds = _multiStepContent().map(_offerId).toSet();
+    return _serverTasks()
+        .where((task) =>
+            !shownIds.contains(_offerId(task)) &&
+            !multiIds.contains(_offerId(task)))
+        .toList();
+  }
+
   List<Map<String, dynamic>> _otherOffers() {
+    final multiIds = _multiStepContent().map(_offerId).toSet();
     return _offers.where((offer) {
       final type = (offer['type'] ?? offer['category'] ?? '')
           .toString()
@@ -220,11 +247,14 @@ class _HomeTabState extends State<HomeTab> {
       return _isOfferAvailable(offer) &&
           (offer['title'] ?? '').toString().trim().isNotEmpty &&
           _offerId(offer).isNotEmpty &&
+          !multiIds.contains(_offerId(offer)) &&
           !type.contains('TASK') &&
           !type.contains('SURVEY') &&
           !type.startsWith('INSTALL') &&
           !type.contains('GAME') &&
-          !type.contains('MULTI');
+          !type.contains('MULTI') &&
+          offer['isTaskOfDay'] != true &&
+          offer['isDaily'] != true;
     }).toList();
   }
 
@@ -244,7 +274,6 @@ class _HomeTabState extends State<HomeTab> {
       provider: (offer['provider'] ?? offer['providerName'] ?? '').toString(),
       title: (offer['title'] ?? '').toString(),
       desc: (offer['shortDesc'] ?? offer['description'] ?? '').toString(),
-      // Keep earned/reward amounts off the home task cards.
       coins: null,
       steps: steps,
       offerId: _offerId(offer),
@@ -255,219 +284,321 @@ class _HomeTabState extends State<HomeTab> {
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: BalanceStream.instance,
-      builder: (context, _) {
-        final balance = BalanceStream.instance.value;
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: Column(
-            children: [
-              const CvHeader(
-                showProfile: true,
-                profileLeft: true,
-              ),
-              Expanded(
-                child: RefreshIndicator(
-                  color: AppColors.primary,
-                  backgroundColor: AppColors.surface,
-                  onRefresh: _refreshHome,
-                  child: ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 28),
-                    children: [
-                      _sectionHeader('Task of the Day',
-                          subtitle: 'A task currently available to you'),
-                      const SizedBox(height: 10),
-                      _taskOfDay(),
-                      const SizedBox(height: 14),
-                      _walletSummary(balance),
-                      const SizedBox(height: 24),
-                      _sectionHeader('Surveys',
-                          subtitle: 'Available survey opportunities',
-                          action: 'View all',
-                          onAction: () => _push(const SurveysScreen())),
-                      const SizedBox(height: 10),
-                      _surveyList(),
-                      if (_loading || _multiStepContent().isNotEmpty) ...[
-                        const SizedBox(height: 24),
-                        _sectionHeader('Games & multi-step tasks',
-                            subtitle: 'Activities with more to explore',
-                            action: 'View all',
-                            onAction: () => _push(const EarnScreen())),
-                        const SizedBox(height: 10),
-                        _multiStepList(),
-                      ],
-                      if (_loading || _remainingTasks().isNotEmpty) ...[
-                        const SizedBox(height: 24),
-                        _sectionHeader('More tasks',
-                            subtitle: 'Explore available activities',
-                            action: 'View all',
-                            onAction: () => _push(const EarnScreen())),
-                        const SizedBox(height: 10),
-                        _otherTaskList(),
-                      ],
-                      if (_otherOffers().isNotEmpty) ...[
-                        const SizedBox(height: 24),
-                        _sectionHeader('More offers',
-                            action: 'View all',
-                            onAction: () => _push(const EarnScreen())),
-                        const SizedBox(height: 10),
-                        _otherOfferList(),
-                      ],
-                      const SizedBox(height: 24),
-                      _sectionHeader('Quick access'),
-                      const SizedBox(height: 10),
-                      _quickAccess(),
-                      const SizedBox(height: 18),
-                      _dailySpinCard(),
-                      const SizedBox(height: 12),
-                      _inviteCard(),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _taskOfDay() {
-    if (_loading) return _taskSkeleton();
-    final tasks = _serverTasks();
-    if (tasks.isEmpty) {
-      return _emptyCard(
-        icon: Icons.task_alt_rounded,
-        title: _offersUnavailable ? 'Tasks could not load' : 'No tasks posted yet',
-        message: _offersUnavailable
-            ? 'Pull down to retry.'
-            : 'Tasks added in the admin panel will appear here.',
-        actionLabel: _offersUnavailable ? 'Retry' : 'Browse tasks',
-        onAction: _offersUnavailable ? _refreshHome : () => _push(const EarnScreen()),
-      );
-    }
-
-    final task = tasks.first;
-    final provider = (task['provider'] ?? task['providerName'] ?? task['cat'] ?? '')
-        .toString()
-        .trim();
-    final title = (task['title'] ?? '').toString().trim();
-    final description = (task['shortDesc'] ?? task['description'] ?? '')
-        .toString()
-        .trim();
-    final instructions = task['instructions'];
-    final durationValue = task['durationMinutes'] ?? task['duration'];
-    final duration = durationValue is num && durationValue > 0
-        ? '${durationValue.toInt()} min'
-        : '';
-    final isFeatured = task['isTaskOfDay'] == true ||
-        task['isDaily'] == true ||
-        task['isFeatured'] == true ||
-        task['featured'] == true;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: AppColors.gold.withOpacity(.42)),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: AppColors.primaryContainer,
-                  borderRadius: BorderRadius.circular(13),
-                ),
-                child: AppLogo(
-                  provider: provider,
-                  title: title,
-                  size: 42,
-                  radius: 13,
-                  fallbackIcon: Icons.task_alt_rounded,
-                  fallbackColor: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (context, _) => Scaffold(
+        backgroundColor: AppColors.background,
+        body: Column(
+          children: [
+            const CvHeader(showProfile: true, profileLeft: true),
+            Expanded(
+              child: RefreshIndicator(
+                color: AppColors.primary,
+                backgroundColor: AppColors.surface,
+                onRefresh: _loadHome,
+                child: ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primaryContainer,
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                      ),
-                      child: Text(
-                        isFeatured ? 'FEATURED TASK' : 'AVAILABLE TASK',
-                        style: const TextStyle(
-                          color: AppColors.primaryDark,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: .6,
-                        ),
-                      ),
+                    _walletHero(BalanceStream.instance.value),
+                    const SizedBox(height: 12),
+                    _quickAccess(),
+                    const SizedBox(height: 20),
+                    _taskSection(),
+                    const SizedBox(height: 22),
+                    _sectionHeader(
+                      'Available surveys',
+                      subtitle: 'Explore currently listed surveys',
+                      icon: Icons.auto_awesome_rounded,
+                      action: 'View all',
+                      onAction: () => _push(const SurveysScreen()),
                     ),
-                    if (provider.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(provider,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: AppColors.textSecondary, fontSize: 11)),
+                    const SizedBox(height: 12),
+                    _surveyList(),
+                    if (_loading || _multiStepContent().isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _sectionHeader(
+                        'Games & multi-step tasks',
+                        subtitle: 'More activities from the catalogue',
+                        icon: Icons.sports_esports_rounded,
+                        action: 'View all',
+                        onAction: () => _push(const EarnScreen()),
+                      ),
+                      const SizedBox(height: 10),
+                      _offerRows(_multiStepContent().take(4).toList(),
+                          Icons.sports_esports_rounded,
+                          const Color(0xFF6853B9)),
+                    ],
+                    if (_remainingTasks().isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _sectionHeader('More tasks',
+                          icon: Icons.task_alt_rounded,
+                          action: 'View all',
+                          onAction: () => _push(const EarnScreen())),
+                      const SizedBox(height: 10),
+                      _offerRows(_remainingTasks().take(4).toList(),
+                          Icons.task_alt_rounded, AppColors.success),
+                    ],
+                    if (_otherOffers().isNotEmpty) ...[
+                      const SizedBox(height: 24),
+                      _sectionHeader('More offers',
+                          icon: Icons.local_offer_rounded,
+                          action: 'View all',
+                          onAction: () => _push(const EarnScreen())),
+                      const SizedBox(height: 10),
+                      _offerRows(_otherOffers().take(3).toList(),
+                          Icons.local_offer_rounded, AppColors.primaryDark),
+                    ],
+                    if (_spinStatus != null) ...[
+                      const SizedBox(height: 22),
+                      _dailySpinCard(),
                     ],
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 13),
-          Text(title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: AppTextStyles.titleLarge.copyWith(
-                  fontWeight: FontWeight.w800, height: 1.2)),
-          if (description.isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Text(description,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: AppTextStyles.bodySmall.copyWith(
-                    color: AppColors.textSecondary, height: 1.4)),
-          ],
-          if ((instructions is List && instructions.isNotEmpty) || duration.isNotEmpty) ...[
-            const SizedBox(height: 11),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                if (instructions is List && instructions.isNotEmpty)
-                  _infoChip(Icons.list_alt_rounded, '${instructions.length} steps'),
-                if (duration.isNotEmpty) _infoChip(Icons.schedule_rounded, duration),
-              ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _walletHero(int? balance) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(17),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF171D3B), Color(0xFF302872)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x291B2355),
+            blurRadius: 14,
+            offset: Offset(0, 6),
+          ),
+        ],
+      ),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final narrow = constraints.maxWidth < 285;
+          final balanceText = balance == null
+              ? (_loading ? 'Checking balance…' : 'Balance unavailable')
+              : _formatNumber(balance);
+          final balanceColumn = Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('AVAILABLE BALANCE',
+                  style: TextStyle(
+                      color: Color(0xFFC9CDE3),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 1.1)),
+              const SizedBox(height: 5),
+              if (balance == null)
+                Text(balanceText,
+                    maxLines: 2,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        height: 1.15))
+              else
+                FittedBox(
+                  alignment: Alignment.centerLeft,
+                  fit: BoxFit.scaleDown,
+                  child: Text(balanceText,
+                      maxLines: 1,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 25,
+                          fontWeight: FontWeight.w800,
+                          height: 1.15)),
+                ),
+              if (balance != null)
+                const Text('coins',
+                    style: TextStyle(color: Color(0xFFD8C88E), fontSize: 12)),
+            ],
+          );
+          final withdraw = ElevatedButton(
+            onPressed: () => _push(const WithdrawScreen()),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEEE6FF),
+              foregroundColor: const Color(0xFF302366),
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              minimumSize: const Size(0, 40),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Withdraw',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
+          );
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(.11),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withOpacity(.13)),
+                    ),
+                    child: const Icon(Icons.account_balance_wallet_rounded,
+                        color: Color(0xFFFFD56D), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: balanceColumn),
+                  if (!narrow) ...[
+                    const SizedBox(width: 7),
+                    withdraw,
+                  ],
+                ],
+              ),
+              if (narrow) ...[
+                const SizedBox(height: 12),
+                SizedBox(width: double.infinity, child: withdraw),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _quickAccess() {
+    final actions = <_QuickAction>[
+      _QuickAction('Spin', Icons.casino_rounded, const Color(0xFFB16B08),
+          () => _push(const SpinScreen())),
+      _QuickAction('Quiz', Icons.quiz_rounded, const Color(0xFF21805A),
+          () => _push(const QuizScreen())),
+      _QuickAction('Scratch', Icons.grid_view_rounded,
+          const Color(0xFFB44778), () => _push(const ScratchScreen())),
+      _QuickAction('Invite', Icons.group_add_rounded,
+          const Color(0xFF3B6CCB), () => _push(const InviteScreen())),
+    ];
+    return LayoutBuilder(builder: (context, constraints) {
+      final columns = constraints.maxWidth >= 300 ? 4 : 2;
+      final itemWidth = (constraints.maxWidth - (columns - 1) * 8) / columns;
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: actions.map((action) {
+          return SizedBox(
+            width: itemWidth,
+            child: Material(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(15),
+              child: InkWell(
+                onTap: action.onTap,
+                borderRadius: BorderRadius.circular(15),
+                child: Container(
+                  height: 82,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: AppColors.border),
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: action.color.withOpacity(.12),
+                          borderRadius: BorderRadius.circular(11),
+                        ),
+                        child: Icon(action.icon,
+                            color: action.color.withOpacity(.9), size: 20),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(action.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      );
+    });
+  }
+
+  Widget _taskSection() {
+    final tasks = _taskGridItems();
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+        boxShadow: AppShadows.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _sectionHeader('Task of the Day',
+              subtitle: 'Available tasks from the catalogue',
+              icon: Icons.checklist_rounded),
           const SizedBox(height: 13),
+          if (_loading)
+            _taskGridSkeleton()
+          else if (tasks.isEmpty)
+            _emptyCard(
+              icon: Icons.task_alt_rounded,
+              title: _offersUnavailable
+                  ? 'Tasks could not load'
+                  : 'No tasks posted yet',
+              message: _offersUnavailable
+                  ? 'Pull down to retry.'
+                  : 'New tasks will appear here when available.',
+              actionLabel: _offersUnavailable ? 'Retry' : null,
+              onAction: _offersUnavailable ? _loadHome : null,
+            )
+          else
+            LayoutBuilder(builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 300 ? 3 : 2;
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: tasks.length,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  mainAxisExtent: 158,
+                ),
+                itemBuilder: (context, index) => _taskTile(tasks[index]),
+              );
+            }),
+          const SizedBox(height: 10),
           SizedBox(
-            width: double.infinity,
-            height: 44,
-            child: ElevatedButton.icon(
-              onPressed: () => _openOffer(task),
-              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-              label: const Text('View task details'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
+            height: 40,
+            child: TextButton(
+              onPressed: () => _push(const EarnScreen()),
+              style: TextButton.styleFrom(
+                backgroundColor: AppColors.surfaceVariant,
+                foregroundColor: AppColors.textPrimary,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.md)),
+                    borderRadius: BorderRadius.circular(11)),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('See all tasks'),
+                  SizedBox(width: 5),
+                  Icon(Icons.arrow_forward_rounded, size: 17),
+                ],
               ),
             ),
           ),
@@ -476,178 +607,250 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _walletSummary(int? balance) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(15, 13, 12, 13),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.border),
-        boxShadow: AppShadows.card,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: AppColors.primaryContainer,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.account_balance_wallet_rounded,
-                color: AppColors.primaryDark, size: 20),
+  Widget _taskTile(Map<String, dynamic> task) {
+    final title = (task['title'] ?? '').toString().trim();
+    final provider =
+        (task['provider'] ?? task['providerName'] ?? '').toString().trim();
+    return Material(
+      color: const Color(0xFFFCFDFE),
+      borderRadius: BorderRadius.circular(13),
+      child: InkWell(
+        onTap: () => _openOffer(task),
+        borderRadius: BorderRadius.circular(13),
+        child: Container(
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(13),
           ),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Available balance',
-                    style: TextStyle(
-                        color: AppColors.textSecondary, fontSize: 11)),
-                const SizedBox(height: 2),
-                Text(balance == null ? 'Balance unavailable' : '${_formatNumber(balance)} coins',
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              AppLogo(
+                provider: provider,
+                title: title,
+                size: 40,
+                radius: 11,
+                fallbackIcon: Icons.task_alt_rounded,
+              ),
+              const SizedBox(height: 7),
+              Text(title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2)),
+              if (provider.isNotEmpty) ...[
+                const SizedBox(height: 3),
+                Text(provider,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.titleMedium.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w800)),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: AppColors.textSecondary, fontSize: 10)),
               ],
-            ),
+              const Spacer(),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('Details',
+                      style: TextStyle(
+                          color: AppColors.primaryDark,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700)),
+                  SizedBox(width: 2),
+                  Icon(Icons.arrow_forward_rounded,
+                      size: 12, color: AppColors.primaryDark),
+                ],
+              ),
+            ],
           ),
-          const SizedBox(width: 8),
-          OutlinedButton(
-            onPressed: () => _push(const WithdrawScreen()),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: AppColors.primaryDark,
-              side: const BorderSide(color: AppColors.primary),
-              minimumSize: const Size(86, 42),
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-            ),
-            child: const Text('Withdraw'),
-          ),
-        ],
+        ),
       ),
     );
   }
 
+  Widget _taskGridSkeleton() => LayoutBuilder(builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 300 ? 3 : 2;
+        return GridView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: columns * 2,
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: columns,
+            mainAxisSpacing: 8,
+            crossAxisSpacing: 8,
+            mainAxisExtent: 158,
+          ),
+          itemBuilder: (_, __) => Container(
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(13),
+            ),
+          ),
+        );
+      });
+
   Widget _surveyList() {
-    if (_loading) return _listSkeleton();
-    final surveys = _surveys.whereType<Map>().where((survey) {
-      return (survey['title'] ?? '').toString().trim().isNotEmpty;
-    }).take(5).toList();
+    if (_loading) return _surveySkeleton();
+    final surveys = _surveys.whereType<Map>().where((survey) =>
+        (survey['title'] ?? '').toString().trim().isNotEmpty &&
+        (survey['id'] ?? '').toString().trim().isNotEmpty).take(5).toList();
     if (surveys.isEmpty) {
       return _emptyCard(
         icon: Icons.poll_rounded,
-        title: _surveysUnavailable ? 'Surveys could not load' : 'No surveys available',
+        title: _surveysUnavailable
+            ? 'Surveys could not load'
+            : 'No surveys available',
         message: _surveysUnavailable
             ? 'Pull down to try again.'
-            : 'New survey opportunities will appear here when available.',
+            : 'New surveys will appear here when available.',
+        actionLabel: _surveysUnavailable ? 'Retry' : null,
+        onAction: _surveysUnavailable ? _loadHome : null,
       );
     }
-    return Column(
-      children: surveys.map((survey) {
-        final provider = (survey['provider'] ?? '').toString();
-        final description = (survey['shortDesc'] ?? survey['description'] ?? '')
-            .toString()
-            .trim();
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 9),
-          child: _activityRow(
-            icon: Icons.poll_rounded,
-            title: (survey['title'] ?? '').toString(),
-            detail: description.isEmpty ? provider : description,
-            label: 'Open',
-            color: const Color(0xFF3B82F6),
-            onTap: () => _push(const SurveysScreen()),
+    return SizedBox(
+      height: 172,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: surveys.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 9),
+        itemBuilder: (context, index) {
+          final survey = surveys[index];
+          final title = (survey['title'] ?? '').toString().trim();
+          final provider = (survey['provider'] ?? '').toString().trim();
+          final duration = (survey['duration'] ?? '').toString().trim();
+          final colors = _surveyGradients[index % _surveyGradients.length];
+          return SizedBox(
+            width: 188,
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(16),
+              child: Ink(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: colors,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: InkWell(
+                  onTap: () => _push(SurveysScreen(
+                      initialProvider: provider.isEmpty ? null : provider)),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(13),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            AppLogo(
+                              provider: provider,
+                              title: title,
+                              size: 34,
+                              radius: 9,
+                              fallbackIcon: Icons.poll_rounded,
+                              fallbackColor: Colors.white,
+                            ),
+                            const SizedBox(width: 7),
+                            Expanded(
+                              child: Text(provider.isEmpty ? 'SURVEY' : provider,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 11),
+                        Expanded(
+                          child: Text(title,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.2)),
+                        ),
+                        Row(
+                          children: [
+                            const Text('Browse surveys',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700)),
+                            const Icon(Icons.chevron_right_rounded,
+                                size: 16, color: Colors.white),
+                            if (duration.isNotEmpty) ...[
+                              const Spacer(),
+                              Flexible(
+                                child: Text(duration,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 10)),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _surveySkeleton() => SizedBox(
+        height: 172,
+        child: Row(
+          children: List.generate(
+            2,
+            (index) => Expanded(
+              child: Container(
+                margin: EdgeInsets.only(right: index == 0 ? 9 : 0),
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceVariant,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
           ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _multiStepList() {
-    if (_loading) return _listSkeleton();
-    final items = _multiStepContent().take(6).toList();
-    if (items.isEmpty) {
-      return _emptyCard(
-        icon: Icons.sports_esports_rounded,
-        title: _offersUnavailable ? 'Activities could not load' : 'No games or multi-step tasks yet',
-        message: _offersUnavailable
-            ? 'Pull down to try again.'
-            : 'Activities added by the team will appear here.',
+        ),
       );
-    }
-    return Column(
-      children: items.map((item) => Padding(
-        padding: const EdgeInsets.only(bottom: 9),
-        child: _activityRow(
-          icon: Icons.sports_esports_rounded,
-          title: (item['title'] ?? '').toString(),
-          detail: (item['shortDesc'] ?? item['description'] ?? item['provider'] ?? '')
-              .toString(),
-          label: 'Details',
-          color: const Color(0xFF7056C9),
-          onTap: () => _openOffer(item),
-        ),
-      )).toList(),
-    );
-  }
 
-  List<Map<String, dynamic>> _remainingTasks() {
-    final all = _serverTasks();
-    final highlightedId = all.isEmpty ? '' : _offerId(all.first);
-    final multiStepIds = _multiStepContent().map(_offerId).toSet();
-    return all.where((task) => _offerId(task) != highlightedId &&
-        !multiStepIds.contains(_offerId(task))).toList();
-  }
-
-  Widget _otherTaskList() {
+  Widget _offerRows(
+      List<Map<String, dynamic>> offers, IconData icon, Color color) {
     if (_loading) return _listSkeleton();
-    final remaining = _remainingTasks().take(8).toList();
-    if (remaining.isEmpty) {
-      return _emptyCard(
-        icon: Icons.checklist_rounded,
-        title: _offersUnavailable ? 'Tasks could not load' : 'You’re all caught up',
-        message: _offersUnavailable
-            ? 'Pull down to retry.'
-            : 'See the featured task above, or browse the full task list.',
-        actionLabel: 'Browse tasks',
-        onAction: () => _push(const EarnScreen()),
-      );
-    }
     return Column(
-      children: remaining.map((task) => Padding(
-        padding: const EdgeInsets.only(bottom: 9),
-        child: _activityRow(
-          icon: Icons.task_alt_rounded,
-          title: (task['title'] ?? '').toString(),
-          detail: (task['shortDesc'] ?? task['description'] ?? task['provider'] ?? '')
-              .toString(),
-          label: 'Details',
-          color: AppColors.success,
-          onTap: () => _openOffer(task),
-        ),
-      )).toList(),
-    );
-  }
-
-  Widget _otherOfferList() {
-    final offers = _otherOffers().take(3).toList();
-    if (offers.isEmpty) return const SizedBox.shrink();
-    return Column(
-      children: offers.map((offer) => Padding(
-        padding: const EdgeInsets.only(bottom: 9),
-        child: _activityRow(
-          icon: Icons.local_offer_rounded,
-          title: (offer['title'] ?? '').toString(),
-          detail: (offer['shortDesc'] ?? offer['description'] ?? offer['provider'] ?? '')
-              .toString(),
-          label: 'Details',
-          color: AppColors.primaryDark,
-          onTap: () => _openOffer(offer),
-        ),
-      )).toList(),
+      children: offers
+          .map((offer) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: _activityRow(
+                  icon: icon,
+                  title: (offer['title'] ?? '').toString(),
+                  provider: (offer['provider'] ?? offer['providerName'] ?? '')
+                      .toString(),
+                  detail: (offer['shortDesc'] ?? offer['description'] ?? '')
+                      .toString(),
+                  color: color,
+                  onTap: () => _openOffer(offer),
+                ),
+              ))
+          .toList(),
     );
   }
 
@@ -655,9 +858,9 @@ class _HomeTabState extends State<HomeTab> {
     required IconData icon,
     required String title,
     required String detail,
-    required String label,
     required Color color,
     required VoidCallback onTap,
+    String provider = '',
   }) {
     return Material(
       color: AppColors.surface,
@@ -666,21 +869,19 @@ class _HomeTabState extends State<HomeTab> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppRadius.lg),
             border: Border.all(color: AppColors.border),
           ),
           child: Row(
             children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(.11),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 20),
+              AppLogo(
+                provider: provider,
+                title: title,
+                size: 40,
+                fallbackIcon: icon,
+                fallbackColor: color,
               ),
               const SizedBox(width: 11),
               Expanded(
@@ -691,30 +892,20 @@ class _HomeTabState extends State<HomeTab> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: AppTextStyles.titleMedium.copyWith(
-                            fontSize: 14, fontWeight: FontWeight.w700)),
-                    if (detail.trim().isNotEmpty) ...[
+                            fontSize: 13, fontWeight: FontWeight.w700)),
+                    if (detail.trim().isNotEmpty || provider.isNotEmpty) ...[
                       const SizedBox(height: 3),
-                      Text(detail,
+                      Text(detail.trim().isEmpty ? provider : detail,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.bodySmall.copyWith(
-                              color: AppColors.textSecondary, height: 1.35)),
+                              color: AppColors.textSecondary, height: 1.3)),
                     ],
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(label,
-                      style: TextStyle(
-                          color: color,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700)),
-                  Icon(Icons.chevron_right_rounded, color: color, size: 20),
-                ],
-              ),
+              const SizedBox(width: 7),
+              Icon(Icons.chevron_right_rounded, color: color, size: 20),
             ],
           ),
         ),
@@ -722,43 +913,11 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _quickAccess() {
-    final actions = <_QuickAction>[
-      _QuickAction('Spin', Icons.casino_outlined, const Color(0xFF9A6C00),
-          () => _push(const SpinScreen())),
-      _QuickAction('Quiz', Icons.quiz_outlined, const Color(0xFF21805A),
-          () => _push(const QuizScreen())),
-      _QuickAction('Scratch', Icons.grid_view_rounded, const Color(0xFFB44778),
-          () => _push(const ScratchScreen())),
-      _QuickAction('Invite', Icons.group_add_outlined, const Color(0xFF3B6CCB),
-          () => _push(const InviteScreen())),
-    ];
-    return Wrap(
-      spacing: 9,
-      runSpacing: 9,
-      children: actions.map((action) => SizedBox(
-        width: (MediaQuery.of(context).size.width - 41) / 2,
-        child: OutlinedButton.icon(
-          onPressed: action.onTap,
-          icon: Icon(action.icon, size: 18),
-          label: Text(action.label),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: action.color,
-            backgroundColor: AppColors.surface,
-            side: BorderSide(color: action.color.withOpacity(.24)),
-            alignment: Alignment.centerLeft,
-            minimumSize: const Size(0, 46),
-          ),
-        ),
-      )).toList(),
-    );
-  }
-
   Widget _dailySpinCard() {
     final used = _spinStatus?['spinsUsed'];
     final limit = _spinStatus?['dailyLimit'];
     final canSpin = _spinStatus?['canSpin'];
-    final status = used is num && limit is num
+    final status = used is num && limit is num && limit >= 0 && used >= 0
         ? '${(limit.toInt() - used.toInt()).clamp(0, limit.toInt())} of ${limit.toInt()} spins available'
         : canSpin == true
             ? 'A spin is available'
@@ -769,67 +928,44 @@ class _HomeTabState extends State<HomeTab> {
       icon: Icons.casino_rounded,
       title: 'Daily spin',
       detail: status,
-      label: 'Open',
       color: AppColors.primaryDark,
       onTap: () => _push(const SpinScreen()),
     );
   }
 
-  Widget _inviteCard() {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
-      decoration: BoxDecoration(
-        color: const Color(0xFFEEF5FF),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: const Color(0xFFD9E6FF)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.group_add_rounded, color: Color(0xFF3B6CCB), size: 22),
-          const SizedBox(width: 11),
-          const Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Invite friends',
-                    style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800)),
-                SizedBox(height: 3),
-                Text('Share your referral link',
-                    style: TextStyle(
-                        color: AppColors.textSecondary, fontSize: 11)),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: () => _push(const InviteScreen()),
-            child: const Text('Invite'),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _sectionHeader(String title,
-      {String? subtitle, String? action, VoidCallback? onAction}) {
+      {String? subtitle, IconData? icon, String? action, VoidCallback? onAction}) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
+        if (icon != null) ...[
+          Container(
+            width: 30,
+            height: 30,
+            decoration: BoxDecoration(
+              color: AppColors.primaryContainer,
+              borderRadius: BorderRadius.circular(9),
+            ),
+            child: Icon(icon, color: AppColors.primaryDark, size: 17),
+          ),
+          const SizedBox(width: 8),
+        ],
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                   style: AppTextStyles.titleLarge.copyWith(
-                      color: AppColors.textPrimary,
-                      fontWeight: FontWeight.w800)),
+                      fontSize: 16, fontWeight: FontWeight.w800)),
               if (subtitle != null) ...[
-                const SizedBox(height: 3),
+                const SizedBox(height: 2),
                 Text(subtitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.bodySmall.copyWith(
-                        color: AppColors.textSecondary)),
+                        color: AppColors.textSecondary, fontSize: 11)),
               ],
             ],
           ),
@@ -838,31 +974,15 @@ class _HomeTabState extends State<HomeTab> {
           TextButton(
             onPressed: onAction,
             style: TextButton.styleFrom(
-                minimumSize: const Size(44, 40),
-                padding: const EdgeInsets.symmetric(horizontal: 8)),
-            child: Text(action),
+              foregroundColor: AppColors.primaryDark,
+              minimumSize: const Size(44, 40),
+              padding: const EdgeInsets.symmetric(horizontal: 5),
+            ),
+            child: Text(action,
+                style: const TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w700)),
           ),
       ],
-    );
-  }
-
-  Widget _infoChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(AppRadius.full),
-        border: Border.all(color: AppColors.border),
-      ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(icon, color: AppColors.primaryDark, size: 14),
-        const SizedBox(width: 5),
-        Text(label,
-            style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 10.5,
-                fontWeight: FontWeight.w700)),
-      ]),
     );
   }
 
@@ -874,7 +994,7 @@ class _HomeTabState extends State<HomeTab> {
     VoidCallback? onAction,
   }) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
@@ -883,15 +1003,15 @@ class _HomeTabState extends State<HomeTab> {
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 38,
+            height: 38,
             decoration: BoxDecoration(
               color: AppColors.surfaceVariant,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(11),
             ),
             child: Icon(icon, color: AppColors.textSecondary, size: 20),
           ),
-          const SizedBox(width: 11),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -910,36 +1030,26 @@ class _HomeTabState extends State<HomeTab> {
               ],
             ),
           ),
-          if (actionLabel != null && onAction != null) ...[
-            const SizedBox(width: 6),
+          if (actionLabel != null && onAction != null)
             IconButton(
               tooltip: actionLabel,
               onPressed: onAction,
-              icon: const Icon(Icons.arrow_forward_rounded),
+              icon: const Icon(Icons.refresh_rounded),
               color: AppColors.primaryDark,
               constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
             ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _taskSkeleton() => Container(
-        height: 180,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-        ),
-      );
-
   Widget _listSkeleton() => Column(
         children: List.generate(
           2,
           (index) => Padding(
-            padding: const EdgeInsets.only(bottom: 9),
+            padding: const EdgeInsets.only(bottom: 8),
             child: Container(
-              height: 68,
+              height: 64,
               decoration: BoxDecoration(
                 color: AppColors.surfaceVariant,
                 borderRadius: BorderRadius.circular(AppRadius.lg),
