@@ -42,8 +42,11 @@ class _SplashScreenState extends State<SplashScreen>
       Widget next = const OnboardingScreen();
       try {
         if (FirebaseAuth.instance.currentUser != null) {
-          final model = await AuthService().ensureUserLoaded();
-          if (model != null && mounted) next = const HomeScreen();
+          next = const AuthScreen();
+          final auth = AuthService();
+          final model = await auth.ensureUserLoaded();
+          final backendReady = model != null && await auth.ensureBackendReady();
+          if (backendReady && mounted) next = const HomeScreen();
         }
       } catch (_) {}
       if (mounted) {

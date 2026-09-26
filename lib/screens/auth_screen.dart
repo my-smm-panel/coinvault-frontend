@@ -33,7 +33,7 @@ class _AuthScreenState extends State<AuthScreen> {
   }
 
   void _onAuthChanged() {
-    if (!_navigated && AuthService().isLoggedIn && mounted) {
+    if (!_navigated && AuthService().isLoggedIn && AuthService().backendReady && mounted) {
       _navigated = true;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const HomeScreen()),
@@ -55,13 +55,23 @@ class _AuthScreenState extends State<AuthScreen> {
       _error = null;
     });
     try {
-      final model = await AuthService().signInWithGoogle();
-      if (model == null && mounted && !_navigated) {
-        // Picker dismissed without an account — unlock the button, no error.
-        setState(() => _loading = false);
+      final auth = AuthService();
+      if (auth.firebaseUser == null) {
+        final model = await auth.signInWithGoogle();
+        if (model == null && mounted && !_navigated) {
+          // Picker dismissed without an account — unlock the button, no error.
+          setState(() => _loading = false);
+          return;
+        }
+      }
+      // Do not enter the app until the backend has issued a protected API JWT.
+      final ready = await auth.ensureBackendReady();
+      if (!ready) {
+        if (mounted && !_navigated) {
+          setState(() => _error = 'Could not connect to CoinVault. Check your connection and retry.');
+        }
         return;
       }
-      // Success: the listener (or this) routes to Home.
       _onAuthChanged();
     } catch (e) {
       if (!mounted) return;

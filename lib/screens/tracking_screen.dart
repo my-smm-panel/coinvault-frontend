@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
-import '../services/auth_service.dart';
 
 /// Tracking — CoinVault light theme (per design sheet).
 /// Keeps the 3 tabs (Activity / Withdrawals / Referrals) and all data logic.
@@ -28,14 +27,14 @@ class _TrackingScreenState extends State<TrackingScreen>
 
   // Referrals
   String _referralCode = '';
-  int _totalReferrals = 0;
-  int _activeReferrals = 0;
-  int _referralCoins = 0;
+  int? _totalReferrals;
+  int? _activeReferrals;
+  int? _referralCoins;
   List<Map<String, dynamic>> _referralList = [];
 
   // Stats
-  int _coins = 0;
-  int _spins = 0;
+  int? _coins;
+  int? _spins;
 
   @override
   void initState() {
@@ -50,12 +49,12 @@ class _TrackingScreenState extends State<TrackingScreen>
     });
     try {
       final repo = AppRepository.instance;
-      final auth = AuthService();
       final results = await Future.wait<dynamic>([
         repo.fetchActivity(), // 0
-        repo.fetchWithdrawalHistory(auth.userModel?.uid ?? ''), // 1
+        repo.fetchWithdrawalHistory(''), // 1 (the endpoint is authenticated)
         repo.referralInfo(), // 2
-        repo.spinsRemainingToday(), // 3 — server-authoritative spin count
+        repo.fetchWalletBalance(), // 3 — fresh server wallet
+        repo.spinStatus(), // 4 — server-authoritative spin status
       ]);
 
       // activity
@@ -83,28 +82,24 @@ class _TrackingScreenState extends State<TrackingScreen>
       if (r is Map) {
         final d = r['data'] is Map ? r['data'] as Map : r;
         _referralCode = d['referralCode']?.toString() ?? '';
-        _totalReferrals = (d['totalReferrals'] as num?)?.toInt() ?? 0;
-        _activeReferrals = (d['activeReferrals'] as num?)?.toInt() ?? 0;
-        _referralCoins = (d['totalCoinsEarned'] as num?)?.toInt() ?? 0;
+        final total = d['totalReferrals'];
+        final active = d['activeReferrals'];
+        final referralCoins = d['totalCoinsEarned'];
+        _totalReferrals = total is num ? total.toInt() : null;
+        _activeReferrals = active is num ? active.toInt() : null;
+        _referralCoins = referralCoins is num ? referralCoins.toInt() : null;
         final rl = d['referrals'];
         _referralList = rl is List
             ? rl.map((e) => Map<String, dynamic>.from(e as Map)).toList()
             : [];
       }
 
-      // stats from local model (instant)
-      final u = auth.userModel;
-      if (u != null) {
-        _coins = u.coins;
-      }
-      // Spins used: derive from the server-authoritative remaining count
-      // so the displayed value never disagrees with the spin screen.
-      final remaining = results[3] as int?;
-      if (remaining != null) {
-        _spins = (2 - remaining).clamp(0, 2);
-      } else if (u != null) {
-        _spins = u.dailySpinsUsed; // offline fallback
-      }
+      // Wallet and spin usage are server-only. Do not fall back to the
+      // cached profile or a local/default daily limit.
+      _coins = results[3] as int?;
+      final status = results[4];
+      final used = status is Map ? status['spinsUsed'] : null;
+      _spins = used is num ? used.toInt() : null;
     } catch (e) {
       _error = e.toString().replaceFirst('Exception: ', '');
     } finally {
@@ -252,7 +247,7 @@ class _TrackingScreenState extends State<TrackingScreen>
 // =================== ACTIVITY TAB ===================
 class _ActivityTab extends StatelessWidget {
   final List<Map<String, dynamic>> activity;
-  final int coins, spins;
+  final int? coins, spins;
   const _ActivityTab({required this.activity, required this.coins, required this.spins});
 
   @override
@@ -272,8 +267,8 @@ class _ActivityTab extends StatelessWidget {
           crossAxisSpacing: 10,
           childAspectRatio: 1.0,
           children: [
-            _StatCard('Earned', '$coins', Icons.emoji_events_rounded, AppColors.gold),
-            _StatCard('Spins', '$spins', Icons.casino_rounded, AppColors.primary),
+            _StatCard('Balance', coins == null ? '—' : '$coins', Icons.emoji_events_rounded, AppColors.gold),
+            _StatCard('Spins Used', spins == null ? '—' : '$spins', Icons.casino_rounded, AppColors.primary),
             _StatCard('Activity', '${activity.length}', Icons.history_rounded, const Color(0xFF3B82F6)),
           ],
         ),
@@ -325,7 +320,7 @@ class _ActivityTab extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '$coins',
+                      coins == null ? '—' : '$coins',
                       style: const TextStyle(
                         color: AppColors.primary,
                         fontSize: 34,
@@ -337,7 +332,7 @@ class _ActivityTab extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(bottom: 5),
                       child: Text(
-                        '= ₹${(coins / 10).toStringAsFixed(0)}',
+                        coins == null ? '' : 'server balance',
                         style: AppTextStyles.bodyMedium.copyWith(
                           color: AppColors.textSecondary,
                           fontWeight: FontWeight.w700,
@@ -429,12 +424,13 @@ class _ActivityItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final type = a['type']?.toString() ?? 'task';
     final title = a['title']?.toString() ?? '';
-    final coins = (a['coins'] as num?)?.toInt() ?? 0;
+    final rawCoins = a['coins'];
+    final coins = rawCoins is num ? rawCoins.toInt() : null;
     final status = a['status']?.toString() ?? '';
     final at = a['at'];
 
     final spec = _typeSpec(type);
-    final positive = coins > 0;
+    final positive = coins != null && coins > 0;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
@@ -486,7 +482,7 @@ class _ActivityItem extends StatelessWidget {
               ],
             ),
           ),
-          if (coins != 0)
+          if (coins != null)
             Text(
               positive ? '+$coins' : '$coins',
               style: TextStyle(
@@ -640,10 +636,10 @@ class _WithdrawalItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final status = w['status']?.toString() ?? 'PENDING';
-    final amount = (w['amount'] as num?)?.toInt() ?? 0;
-    final inr = (w['rupeeAmount'] as num?)?.toInt() ?? (amount ~/ 10);
-    final method = w['method']?.toString() ?? 'UPI';
+    final status = w['status']?.toString() ?? 'UNKNOWN';
+    final rawAmount = w['amount'] ?? w['coins'];
+    final amount = rawAmount is num ? rawAmount.toInt() : null;
+    final method = w['method']?.toString() ?? 'UNKNOWN';
     final createdAt = w['createdAt'];
     final processedAt = w['processedAt'];
     final reason = w['rejectionReason']?.toString();
@@ -676,13 +672,13 @@ class _WithdrawalItem extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('₹$inr via ${_methodLabel(method)}',
+                    Text('${amount == null ? 'Amount unavailable' : '$amount coins'} via ${_methodLabel(method)}',
                         style: const TextStyle(
                           color: AppColors.textPrimary,
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                         )),
-                    Text('${_fmtDate(createdAt)}  •  $amount coins',
+                    Text(_fmtDate(createdAt),
                         style: AppTextStyles.bodySmall),
                   ],
                 ),
@@ -691,7 +687,8 @@ class _WithdrawalItem extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          _Timeline(status: status, createdAt: createdAt, processedAt: processedAt),
+          if (status != 'UNKNOWN')
+            _Timeline(status: status, createdAt: createdAt, processedAt: processedAt),
           if (reason != null && reason.isNotEmpty) ...[
             const SizedBox(height: 8),
             Container(
@@ -717,11 +714,6 @@ class _WithdrawalItem extends StatelessWidget {
       case 'BANK_TRANSFER':
       case 'BANK':
         return Icons.account_balance_outlined;
-      case 'PHONEPE':
-        return Icons.phone_android_rounded;
-      case 'VOUCHER':
-      case 'GIFTCARD':
-        return Icons.card_giftcard_rounded;
       default:
         return Icons.payment_rounded;
     }
@@ -734,11 +726,6 @@ class _WithdrawalItem extends StatelessWidget {
       case 'BANK_TRANSFER':
       case 'BANK':
         return 'Bank Transfer';
-      case 'PHONEPE':
-        return 'PhonePe';
-      case 'VOUCHER':
-      case 'GIFTCARD':
-        return 'Voucher';
       default:
         return m;
     }
@@ -863,7 +850,7 @@ class _Timeline extends StatelessWidget {
 // =================== REFERRALS TAB ===================
 class _ReferralsTab extends StatelessWidget {
   final String code;
-  final int total, active, coins;
+  final int? total, active, coins;
   final List<Map<String, dynamic>> list;
   const _ReferralsTab({
     required this.code,
@@ -890,11 +877,11 @@ class _ReferralsTab extends StatelessWidget {
           crossAxisSpacing: 10,
           childAspectRatio: 1.0,
           children: [
-            _StatCard('Invited', '$total', Icons.group_rounded,
+            _StatCard('Invited', total == null ? '—' : '$total', Icons.group_rounded,
                 const Color(0xFF3B82F6)),
-            _StatCard('Active', '$active', Icons.person_rounded,
+            _StatCard('Active', active == null ? '—' : '$active', Icons.person_rounded,
                 AppColors.success),
-            _StatCard('Coins', '$coins', Icons.emoji_events_rounded,
+            _StatCard('Coins', coins == null ? '—' : '$coins', Icons.emoji_events_rounded,
                 AppColors.gold),
           ],
         ),
@@ -975,9 +962,11 @@ class _ReferralsTab extends StatelessWidget {
             final referred = r['referred'] as Map?;
             final name = referred?['name']?.toString() ??
                 referred?['phone']?.toString() ??
-                'Friend';
-            final earned = (r['coinsEarned'] as num?)?.toInt() ?? 0;
-            final isActive = r['isActive'] == true;
+                'Name unavailable';
+            final rawEarned = r['coinsEarned'];
+            final earned = rawEarned is num ? rawEarned.toInt() : null;
+            final rawActive = r['isActive'];
+            final bool? isActive = rawActive is bool ? rawActive : null;
             final at = r['createdAt'];
             return Container(
               margin: const EdgeInsets.only(bottom: 10),
@@ -993,14 +982,14 @@ class _ReferralsTab extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: (isActive
+                      color: ((isActive == true)
                               ? AppColors.success
                               : AppColors.textTertiary)
                           .withOpacity(0.12),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(Icons.person_rounded,
-                        color: isActive
+                        color: isActive == true
                             ? AppColors.success
                             : AppColors.textTertiary,
                         size: 18),
@@ -1019,12 +1008,12 @@ class _ReferralsTab extends StatelessWidget {
                               fontWeight: FontWeight.w700,
                             )),
                         Text(
-                            '${_fmtDate(at)}  •  ${isActive ? 'Active' : 'Inactive'}',
+                            '${_fmtDate(at)}  •  ${isActive == null ? 'Status unavailable' : (isActive == true ? 'Active' : 'Inactive')}',
                             style: AppTextStyles.bodySmall),
                       ],
                     ),
                   ),
-                  if (earned > 0)
+                  if (earned != null)
                     Text('+$earned',
                         style: const TextStyle(
                           color: AppColors.success,

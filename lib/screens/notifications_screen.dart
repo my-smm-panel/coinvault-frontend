@@ -15,6 +15,7 @@ class NotificationsScreen extends StatefulWidget {
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List<dynamic> _items = [];
   bool _loading = true;
+  bool _failed = false;
 
   @override
   void initState() {
@@ -23,11 +24,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
     final items = await AppRepository.instance.notificationsList();
     if (!mounted) return;
     setState(() {
-      _items = items;
+      _items = items ?? [];
+      _failed = items == null;
       _loading = false;
     });
   }
@@ -35,8 +40,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _open(Map m) async {
     final id = (m['id'] ?? '').toString();
     if (id.isNotEmpty && m['isRead'] != true) {
-      await AppRepository.instance.notifRead(id);
-      if (mounted) {
+      final updated = await AppRepository.instance.notifRead(id);
+      if (updated && mounted) {
         setState(() {
           final i = _items.indexWhere((e) => (e as Map)['id'] == id);
           if (i >= 0) {
@@ -50,8 +55,14 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _readAll() async {
-    await AppRepository.instance.notifReadAll();
-    _load();
+    final updated = await AppRepository.instance.notifReadAll();
+    if (updated) {
+      await _load();
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not update notifications right now.')),
+      );
+    }
   }
 
   @override
@@ -70,98 +81,101 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       ),
       body: _loading
           ? const ShimmerCardList(rows: 5)
-          : _items.isEmpty
-              ? Center(
-                  child: Text('No notifications yet',
-                      style: AppTextStyles.bodyMedium
-                          .copyWith(color: AppColors.textTertiary)),
+          : _failed
+              ? ErrorState(
+                  message: 'Notifications could not be fetched. Try again.',
+                  onRetry: _load,
                 )
-              : RefreshIndicator(
-                  color: AppColors.primary,
-                  onRefresh: _load,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _items.length,
-                    itemBuilder: (_, i) {
-                      final m =
-                          Map<String, dynamic>.from(_items[i] as Map);
-                      final unread = m['isRead'] != true;
-                      return InkWell(
-                        onTap: () => _open(m),
-                        borderRadius:
-                            BorderRadius.circular(AppRadius.lg),
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: unread
-                                ? AppColors.primaryContainer
-                                : AppColors.surface,
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.lg),
-                            border: Border.all(
-                              color: unread
-                                  ? AppColors.primary.withOpacity(0.3)
-                                  : AppColors.divider,
-                            ),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
+              : _items.isEmpty
+                  ? const EmptyState(
+                      icon: Icons.notifications_none_rounded,
+                      title: 'No notifications yet',
+                    )
+                  : RefreshIndicator(
+                      color: AppColors.primary,
+                      onRefresh: _load,
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _items.length,
+                        itemBuilder: (_, i) {
+                          final m =
+                              Map<String, dynamic>.from(_items[i] as Map);
+                          final unread = m['isRead'] != true;
+                          return InkWell(
+                            onTap: () => _open(m),
+                            borderRadius: BorderRadius.circular(AppRadius.lg),
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: unread
+                                    ? AppColors.primaryContainer
+                                    : AppColors.surface,
+                                borderRadius:
+                                    BorderRadius.circular(AppRadius.lg),
+                                border: Border.all(
                                   color: unread
-                                      ? AppColors.primary.withOpacity(0.15)
-                                      : AppColors.surfaceVariant,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.notifications_rounded,
-                                  size: 20,
-                                  color: unread
-                                      ? AppColors.primary
-                                      : AppColors.textTertiary,
+                                      ? AppColors.primary.withOpacity(0.3)
+                                      : AppColors.divider,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment:
-                                      CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      (m['title'] ?? 'Notification')
-                                          .toString(),
-                                      style: AppTextStyles.bodyMedium
-                                          .copyWith(
-                                              fontWeight: FontWeight.w700),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(8),
+                                    decoration: BoxDecoration(
+                                      color: unread
+                                          ? AppColors.primary.withOpacity(0.15)
+                                          : AppColors.surfaceVariant,
+                                      shape: BoxShape.circle,
                                     ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      (m['message'] ?? '').toString(),
-                                      style: AppTextStyles.bodySmall,
+                                    child: Icon(
+                                      Icons.notifications_rounded,
+                                      size: 20,
+                                      color: unread
+                                          ? AppColors.primary
+                                          : AppColors.textTertiary,
                                     ),
-                                  ],
-                                ),
-                              ),
-                              if (unread)
-                                Container(
-                                  width: 10,
-                                  height: 10,
-                                  margin: const EdgeInsets.only(top: 4),
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.primary,
-                                    shape: BoxShape.circle,
                                   ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          (m['title'] ?? 'Notification')
+                                              .toString(),
+                                          style: AppTextStyles.bodyMedium
+                                              .copyWith(
+                                                  fontWeight: FontWeight.w700),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          (m['message'] ?? '').toString(),
+                                          style: AppTextStyles.bodySmall,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  if (unread)
+                                    Container(
+                                      width: 10,
+                                      height: 10,
+                                      margin: const EdgeInsets.only(top: 4),
+                                      decoration: const BoxDecoration(
+                                        color: AppColors.primary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
     );
   }
 }

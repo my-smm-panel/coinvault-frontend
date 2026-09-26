@@ -24,7 +24,7 @@ class CvHeader extends StatelessWidget {
   final bool showMoney;
 
   /// Live coin balance for the money pill.
-  final int coins;
+  final int? coins;
 
   /// Show the "CoinVault" wordmark.
   final bool showWordmark;
@@ -35,7 +35,7 @@ class CvHeader extends StatelessWidget {
     this.showProfile = false,
     this.profileLeft = false,
     this.showMoney = false,
-    this.coins = 0,
+    this.coins,
     this.showWordmark = true,
   });
 
@@ -54,7 +54,7 @@ class CvHeader extends StatelessWidget {
       onTap: () => _goNotifications(context),
       dot: showBellDot,
     );
-    final money = _moneyPill();
+    final money = coins == null ? null : _moneyPill(coins!);
     final wordmark = RichText(
       text: const TextSpan(
         style: TextStyle(
@@ -85,7 +85,7 @@ class CvHeader extends StatelessWidget {
                   if (showProfile) avatar,
                   if (showProfile) const SizedBox(width: 8),
                   bell,
-                  if (showMoney) ...[
+                  if (showMoney && money != null) ...[
                     const SizedBox(width: 8),
                     money,
                   ],
@@ -131,7 +131,7 @@ class CvHeader extends StatelessWidget {
     );
   }
 
-  Widget _moneyPill() {
+  Widget _moneyPill(int coins) {
     return GestureDetector(
       onTap: () {},
       child: Container(

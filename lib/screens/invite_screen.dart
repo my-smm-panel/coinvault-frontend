@@ -5,9 +5,7 @@ import '../core/app_theme.dart';
 import '../services/app_repository.dart';
 import '../widgets/state_views.dart';
 
-/// Invite & Earn (light theme, per design sheet):
-/// referral code + Copy, share row (FB/WA/TG/share), stats grid,
-/// invite milestones, orange "Invite Friends" CTA.
+/// Referral code/link, server-provided referral statistics, and share actions.
 class InviteScreen extends StatefulWidget {
   const InviteScreen({super.key});
 
@@ -20,9 +18,11 @@ class _InviteScreenState extends State<InviteScreen> {
 
   bool _loading = true;
   String _code = '';
-  int _successful = 0;
-  int _pending = 0;
-  int _earned = 0;
+  String _link = '';
+  int? _active;
+  int? _total;
+  int? _earned;
+  List<Map<String, dynamic>> _referrals = [];
 
   @override
   void initState() {
@@ -34,19 +34,24 @@ class _InviteScreenState extends State<InviteScreen> {
     final info = await AppRepository.instance.referralInfo();
     if (!mounted) return;
     setState(() {
-      final code = info['referralCode']?.toString() ?? '';
-      if (code.isNotEmpty) _code = code;
-      _successful = (info['activeReferrals'] as num?)?.toInt() ??
-          (info['totalReferrals'] as num?)?.toInt() ??
-          0;
-      _pending = (info['pendingReferrals'] as num?)?.toInt() ?? 0;
-      _earned = (info['totalCoinsEarned'] as num?)?.toInt() ?? 0;
+      _code = info['referralCode']?.toString() ?? '';
+      _link = info['referralLink']?.toString() ?? '';
+      _active = (info['activeReferrals'] as num?)?.toInt();
+      _total = (info['totalReferrals'] as num?)?.toInt();
+      _earned = (info['totalCoinsEarned'] as num?)?.toInt();
+      _referrals = (info['referrals'] is List ? info['referrals'] as List : [])
+          .whereType<Map>()
+          .map((item) => Map<String, dynamic>.from(item))
+          .toList();
       _loading = false;
     });
   }
 
-  String get _shareText =>
-      'Join me on CoinVault and earn coins daily! Use my referral code $_code 🎁';
+  String get _shareText {
+    if (_link.isNotEmpty) return 'Join me on CoinVault: $_link';
+    if (_code.isNotEmpty) return 'Join me on CoinVault. My referral code is $_code';
+    return 'Join me on CoinVault.';
+  }
 
   Future<void> _copy(String text, String label) async {
     await Clipboard.setData(ClipboardData(text: text));
@@ -109,7 +114,7 @@ class _InviteScreenState extends State<InviteScreen> {
                   const SizedBox(height: 20),
                   _statsGrid(),
                   const SizedBox(height: 20),
-                  _milestones(),
+                  _referrals(),
                   const SizedBox(height: 20),
                   _howItWorks(),
                   const SizedBox(height: 24),
@@ -117,7 +122,7 @@ class _InviteScreenState extends State<InviteScreen> {
                   const SizedBox(height: 12),
                   Center(
                     child: Text(
-                      'Earn coins for every friend who joins & earns',
+                      'Referral details are provided by the server.',
                       style: AppTextStyles.bodySmall,
                     ),
                   ),
@@ -156,7 +161,7 @@ class _InviteScreenState extends State<InviteScreen> {
           ),
           const SizedBox(height: 10),
           const Text(
-            'Invite friends, earn coins',
+            'Invite friends',
             style: TextStyle(
               color: Colors.white,
               fontSize: 17,
@@ -165,7 +170,7 @@ class _InviteScreenState extends State<InviteScreen> {
           ),
           const SizedBox(height: 4),
           Text(
-            'Give 100 coins, get 100 coins — every time',
+            'Share your referral code or link',
             style: TextStyle(
               color: Colors.white.withOpacity(0.9),
               fontSize: 12,
@@ -197,7 +202,7 @@ class _InviteScreenState extends State<InviteScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        _code,
+                        _code.isEmpty ? 'Unavailable' : _code,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 24,
@@ -209,10 +214,26 @@ class _InviteScreenState extends State<InviteScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                _CopyButton(onTap: () => _copy(_code, 'Referral code')),
+                if (_code.isNotEmpty)
+                  _CopyButton(onTap: () => _copy(_code, 'Referral code')),
               ],
             ),
           ),
+          if (_link.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Row(children: [
+              Expanded(
+                child: Text(
+                  _link,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 11),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _CopyButton(onTap: () => _copy(_link, 'Referral link')),
+            ]),
+          ],
         ],
       ),
     );
@@ -229,20 +250,20 @@ class _InviteScreenState extends State<InviteScreen> {
       childAspectRatio: 1.0,
       children: [
         _StatTile(
-          label: 'Successful',
-          value: '$_successful',
+          label: 'Active',
+          value: _active?.toString() ?? '—',
           icon: Icons.group_rounded,
           color: AppColors.success,
         ),
         _StatTile(
-          label: 'Pending',
-          value: '$_pending',
-          icon: Icons.hourglass_top_rounded,
-          color: AppColors.warning,
+          label: 'Total',
+          value: _total?.toString() ?? '—',
+          icon: Icons.people_alt_rounded,
+          color: AppColors.primary,
         ),
         _StatTile(
-          label: 'Total Earned',
-          value: '$_earned',
+          label: 'Coins earned',
+          value: _earned?.toString() ?? '—',
           icon: Icons.emoji_events_rounded,
           color: AppColors.gold,
         ),
@@ -250,32 +271,7 @@ class _InviteScreenState extends State<InviteScreen> {
     );
   }
 
-  // ───────────────────────────── milestones ─────────────────────────────
-  Widget _milestones() {
-    final steps = <Map<String, dynamic>>[
-      {
-        'count': 1,
-        'bonus': 100,
-        'label': 'First friend',
-        'icon': Icons.person_rounded,
-        'color': const Color(0xFF3B82F6),
-      },
-      {
-        'count': 5,
-        'bonus': 500,
-        'label': '5 friends',
-        'icon': Icons.people_rounded,
-        'color': AppColors.primary,
-      },
-      {
-        'count': 10,
-        'bonus': 1000,
-        'label': '10 friends',
-        'icon': Icons.emoji_events_rounded,
-        'color': AppColors.gold,
-      },
-    ];
-
+  Widget _referrals() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -287,103 +283,48 @@ class _InviteScreenState extends State<InviteScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.flag_rounded,
-                  color: AppColors.primary, size: 18),
-              const SizedBox(width: 8),
-              const Text('Milestones',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                  )),
-              const Spacer(),
-              Text('$_successful invited',
-                  style: AppTextStyles.bodySmall),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: List.generate(steps.length * 2 - 1, (i) {
-              if (i.isOdd) {
-                final reached = _successful >= (steps[i ~/ 2]['count'] as int);
-                return Expanded(
-                  child: Container(
-                    height: 2,
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    color: reached ? AppColors.primary : AppColors.border,
-                  ),
-                );
-              }
-              final s = steps[i ~/ 2];
-              final reached = _successful >= (s['count'] as int);
-              return _MilestoneBadge(
-                count: s['count'] as int,
-                bonus: s['bonus'] as int,
-                icon: s['icon'] as IconData,
-                color: s['color'] as Color,
-                reached: reached,
-              );
-            }),
-          ),
-          const SizedBox(height: 12),
-          ...steps.map((s) {
-            final reached = _successful >= (s['count'] as int);
-            final bonus = s['bonus'] as int;
-            final need = (s['count'] as int) - _successful;
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 5),
-              child: Row(
-                children: [
-                  Icon(
-                    reached
-                        ? Icons.check_circle_rounded
-                        : Icons.radio_button_unchecked_rounded,
-                    size: 17,
-                    color: reached
-                        ? AppColors.success
-                        : AppColors.textTertiary,
-                  ),
+          const Text('Referral activity',
+              style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              )),
+          const SizedBox(height: 10),
+          if (_referrals.isEmpty)
+            const Text('No referral activity to show yet.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13))
+          else
+            ..._referrals.map((referral) {
+              final referred = referral['referred'];
+              final name = referred is Map
+                  ? (referred['name']?.toString().trim().isNotEmpty == true
+                      ? referred['name'].toString()
+                      : 'Referral')
+                  : 'Referral';
+              final active = referral['isActive'] == true;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 5),
+                child: Row(children: [
+                  const Icon(Icons.person_outline_rounded,
+                      size: 18, color: AppColors.primary),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      s['label'] as String,
+                    child: Text(name,
+                        style: const TextStyle(
+                            color: AppColors.textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600)),
+                  ),
+                  Text(active ? 'Active' : 'Inactive',
                       style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        decoration:
-                            reached ? TextDecoration.lineThrough : null,
-                        decorationColor: AppColors.textTertiary,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    reached
-                        ? 'Claimed'
-                        : (need > 0 ? '$need to go' : 'Ready'),
-                    style: TextStyle(
-                      color: reached
-                          ? AppColors.success
-                          : AppColors.textSecondary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '+$bonus',
-                    style: TextStyle(
-                      color: reached ? AppColors.textTertiary : AppColors.gold,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
+                          color: active
+                              ? AppColors.success
+                              : AppColors.textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600)),
+                ]),
+              );
+            }),
         ],
       ),
     );
@@ -392,9 +333,9 @@ class _InviteScreenState extends State<InviteScreen> {
   // ───────────────────────────── how it works ─────────────────────────────
   Widget _howItWorks() {
     const steps = [
-      ('Share your code', Icons.share_rounded),
-      ('Friend joins & verifies', Icons.person_add_rounded),
-      ('Both get 100 coins', Icons.emoji_events_rounded),
+      ('Share your referral code or link', Icons.share_rounded),
+      ('Friends can use it when joining', Icons.person_add_rounded),
+      ('View referral activity and stats here', Icons.insights_rounded),
     ];
     return Container(
       padding: const EdgeInsets.all(16),
@@ -622,55 +563,6 @@ class _StatTile extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _MilestoneBadge extends StatelessWidget {
-  final int count, bonus;
-  final IconData icon;
-  final Color color;
-  final bool reached;
-  const _MilestoneBadge({
-    required this.count,
-    required this.bonus,
-    required this.icon,
-    required this.color,
-    required this.reached,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 44,
-          height: 44,
-          decoration: BoxDecoration(
-            color: reached ? color : AppColors.surfaceVariant,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: reached ? color : AppColors.border,
-              width: 1.5,
-            ),
-          ),
-          child: Icon(
-            reached ? Icons.check_rounded : icon,
-            color: reached ? Colors.white : AppColors.textTertiary,
-            size: 20,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          '+$bonus',
-          style: TextStyle(
-            color: reached ? AppColors.textTertiary : color,
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-      ],
     );
   }
 }

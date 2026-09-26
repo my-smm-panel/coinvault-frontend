@@ -2,12 +2,13 @@ import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:async';
 import 'dart:convert';
 
 import '../models/app_models.dart';
 import '../services/app_repository.dart';
 import 'api_client.dart';
-import 'firebase_stats.dart';
+import 'balance_stream.dart';
 
 /// Auth service handling Firebase Google Sign-In and user session.
 /// Extends ChangeNotifier so wallet/balance UI updates instantly (no restart).
@@ -19,10 +20,15 @@ class AuthService extends ChangeNotifier {
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
   firebase_auth.User? _currentUser;
   UserModel? _userModel;
+  bool _backendReady = false;
+  bool _loadingBackendSession = false;
+  String? _loadingUid;
+  int _sessionGeneration = 0;
 
   firebase_auth.User? get firebaseUser => _currentUser;
   UserModel? get userModel => _userModel;
   bool get isLoggedIn => _currentUser != null && _userModel != null;
+  bool get backendReady => _backendReady && ApiClient.instance.token != null;
 
   /// Initialize Firebase and check for existing session
   Future<void> initialize() async {
@@ -50,44 +56,75 @@ class AuthService extends ChangeNotifier {
   void _onAuthStateChanged(firebase_auth.User? user) {
     _currentUser = user;
     if (user != null) {
-      // Fire-and-forget: the load is now non-blocking, and the UI routes
-      // to Home from the notifyListeners inside _loadUserModel.
-      _loadUserModel(user);
+      unawaited(_loadUserModel(user));
     } else {
+      _sessionGeneration++;
+      _backendReady = false;
+      _loadingBackendSession = false;
+      _loadingUid = null;
       _userModel = null;
+      ApiClient.instance.token = null;
+      BalanceStream.instance.clear();
       notifyListeners();
     }
   }
 
   Future<void> _loadUserModel(firebase_auth.User firebaseUser) async {
+    if (_loadingBackendSession && _loadingUid == firebaseUser.uid) return;
+    _loadingBackendSession = true;
+    _loadingUid = firebaseUser.uid;
+    final generation = ++_sessionGeneration;
+    final previousUid = _currentUser?.uid;
     _currentUser = firebaseUser;
+    _backendReady = false;
+    if (previousUid != firebaseUser.uid) BalanceStream.instance.clear();
 
-    // 1. Set the user IMMEDIATELY from the Firebase profile so login
-    //    completes and the UI can leave the auth screen. Backend sync
-    //    must never block the sign-in flow (that is what freezes the
-    //    login page with the spinner spinning).
-    final prefs = await SharedPreferences.getInstance();
-    final cached = prefs.getString('user_${firebaseUser.uid}');
-    if (cached != null) {
-      try {
-        final data = json.decode(cached);
-        _userModel = UserModel.fromFirebase(data, firebaseUser.uid);
-      } catch (_) {}
+    try {
+      // Cached fields are only for non-financial profile text. The wallet
+      // balance and spin/reward state are never restored from device storage.
+      final prefs = await SharedPreferences.getInstance();
+      final cached = prefs.getString('user_${firebaseUser.uid}');
+      if (cached != null) {
+        try {
+          final data = json.decode(cached);
+          if (data is Map<String, dynamic>) {
+            _userModel = UserModel.fromFirebase(data, firebaseUser.uid);
+          }
+        } catch (_) {}
+      }
+      _userModel ??= UserModel(
+        uid: firebaseUser.uid,
+        displayName: firebaseUser.displayName ?? 'User',
+        email: firebaseUser.email,
+        photoUrl: firebaseUser.photoURL,
+      );
+      await _cacheUserModel();
+      notifyListeners();
+
+      // Exchange the Firebase identity token first. Protected profile/wallet
+      // reads must never race ahead of backend authentication.
+      final authenticated = await _loginToBackend(firebaseUser);
+      if (generation != _sessionGeneration || _currentUser?.uid != firebaseUser.uid) return;
+      if (!authenticated) return;
+
+      // A valid backend JWT makes the session ready. Wallet data is fetched
+      // separately; a wallet endpoint failure must not strand the user at login.
+      _backendReady = true;
+      notifyListeners();
+      await _refreshProfileFromBackend(firebaseUser);
+      if (generation != _sessionGeneration || _currentUser?.uid != firebaseUser.uid) return;
+      await AppRepository.instance.fetchWalletBalance();
+      if (generation != _sessionGeneration || _currentUser?.uid != firebaseUser.uid) return;
+    } catch (e) {
+      debugPrint('Backend session initialization failed: $e');
+      _backendReady = false;
+      notifyListeners();
+    } finally {
+      if (generation == _sessionGeneration) {
+        _loadingBackendSession = false;
+        _loadingUid = null;
+      }
     }
-    _userModel ??= UserModel(
-      uid: firebaseUser.uid,
-      displayName: firebaseUser.displayName ?? 'User',
-      email: firebaseUser.email,
-      photoUrl: firebaseUser.photoURL,
-    );
-    await _cacheUserModel();
-    notifyListeners();
-
-    // 2. Background: refresh backend profile + exchange idToken for a JWT.
-    //    Fire-and-forget — the user is already in and the app works offline.
-    _refreshProfileFromBackend(firebaseUser);
-    _loginToBackend(firebaseUser);
-    FirebaseStats.syncUser(_userModel!);
   }
 
   /// Fetch backend profile and merge (keeps Firebase name/photo).
@@ -116,10 +153,10 @@ class AuthService extends ChangeNotifier {
   }
 
   /// Exchange Firebase idToken for backend JWT (fire-and-forget).
-  Future<void> _loginToBackend(firebase_auth.User firebaseUser) async {
+  Future<bool> _loginToBackend(firebase_auth.User firebaseUser) async {
     try {
       final idToken = await firebaseUser.getIdToken();
-      if (idToken == null) return;
+      if (idToken == null || idToken.isEmpty) return false;
       final res = await ApiClient.instance.post(
         '/api/auth/google',
         {'idToken': idToken},
@@ -137,10 +174,13 @@ class AuthService extends ChangeNotifier {
             await prefs.setString('backend_refresh_token', refresh);
           }
           debugPrint('Backend login ok');
+          return true;
         }
       }
+      return false;
     } catch (e) {
-      debugPrint('Backend login skipped: $e');
+      debugPrint('Backend login failed: $e');
+      return false;
     }
   }
 
@@ -186,8 +226,14 @@ class AuthService extends ChangeNotifier {
       // and return. The auth_screen listener routes to Home the instant the
       // user model is ready.
       if (userCred.user != null) {
-        _loadUserModel(userCred.user!);
-        return _userModel;
+        final signedInUser = userCred.user!;
+        unawaited(_loadUserModel(signedInUser));
+        return UserModel(
+          uid: signedInUser.uid,
+          displayName: signedInUser.displayName ?? 'User',
+          email: signedInUser.email,
+          photoUrl: signedInUser.photoURL,
+        );
       }
       return null;
     } on firebase_auth.FirebaseAuthException {
@@ -198,6 +244,27 @@ class AuthService extends ChangeNotifier {
     }
   }
 
+
+  /// Wait for an authenticated backend JWT before showing protected screens.
+  /// The wallet itself is loaded separately and is never a locally sourced value.
+  Future<bool> ensureBackendReady({
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    if (backendReady) return true;
+    final currentUser = _auth.currentUser;
+    if (currentUser == null) return false;
+    _currentUser = currentUser;
+    if (!_loadingBackendSession) {
+      unawaited(_loadUserModel(currentUser));
+    }
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      if (backendReady) return true;
+      if (_currentUser == null) return false;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    return backendReady;
+  }
 
   /// Ensure locally persisted Firebase user has a loaded UserModel.
   /// Returns null if no Firebase session exists.
@@ -223,6 +290,9 @@ class AuthService extends ChangeNotifier {
     await _auth.signOut();
     _currentUser = null;
     _userModel = null;
+    _backendReady = false;
+    _sessionGeneration++;
+    BalanceStream.instance.clear();
     notifyListeners();
     ApiClient.instance.token = null;
     try {
@@ -232,64 +302,4 @@ class AuthService extends ChangeNotifier {
     } catch (_) {}
   }
 
-  /// Update user coins (local + backend sync + Firebase RTDB mirror)
-  Future<void> addCoins(int amount) async {
-    if (_userModel == null) return;
-    _userModel = _userModel!.copyWith(coins: _userModel!.coins + amount);
-    notifyListeners(); // wallet updates INSTANTLY
-    _cacheUserModel(); // fire-and-forget cache write
-    FirebaseStats.addCoinsDelta(_userModel!.uid, amount);
-    _syncToBackend(); // fire-and-forget background sync
-  }
-
-  Future<void> deductCoins(int amount) async {
-    if (_userModel == null) return;
-    _userModel = _userModel!.copyWith(coins: (_userModel!.coins - amount).clamp(0, 999999));
-    notifyListeners(); // wallet updates INSTANTLY
-    _cacheUserModel();
-    FirebaseStats.addCoinsDelta(_userModel!.uid, -amount);
-    _syncToBackend();
-  }
-
-  /// Record spin usage
-  Future<void> recordSpin() async {
-    if (_userModel == null) return;
-    final now = DateTime.now();
-    _userModel = _userModel!.copyWith(
-      dailySpinsUsed: _userModel!.dailySpinsUsed + 1,
-      lastSpinDate: now,
-    );
-    notifyListeners();
-    _cacheUserModel();
-    FirebaseStats.recordSpin(_userModel!.uid);
-    await _syncToBackend();
-  }
-
-  /// Update withdraw info
-  Future<void> updateWithdrawInfo({String? upiId, String? bankDetails}) async {
-    if (_userModel == null) return;
-    _userModel = _userModel!.copyWith(upiId: upiId, bankDetails: bankDetails);
-    await _cacheUserModel();
-    notifyListeners();
-    await _syncToBackend();
-  }
-
-  Future<void> _syncToBackend() async {
-    if (_userModel == null) return;
-    try {
-      final repo = AppRepository.instance;
-      await repo.updateUserProfile(_userModel!.uid, _userModel!.toFirestore());
-    } catch (_) {
-      // Silently fail - local cache is source of truth
-    }
-  }
-
-  /// Get user's remaining spins for today
-  int getRemainingSpins() {
-    return _userModel?.remainingSpins() ?? 2;
-  }
-
-  bool canSpin() {
-    return _userModel?.canSpin() ?? true;
-  }
 }

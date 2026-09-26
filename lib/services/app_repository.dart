@@ -6,9 +6,8 @@ import '../core/api_config.dart';
 import 'api_client.dart';
 import 'balance_stream.dart';
 
-/// Repository that loads real data from the CoinVault backend.
-/// Falls back to safe defaults when the API is unreachable so the
-/// app never crashes on a network error.
+/// Repository for CoinVault backend APIs. Missing/error responses remain
+/// unavailable to callers; financial values are never replaced with defaults.
 class AppRepository {
   AppRepository._();
   static final AppRepository instance = AppRepository._();
@@ -16,13 +15,32 @@ class AppRepository {
   final ApiClient _api = ApiClient.instance;
 
   /// Feed the global BalanceStream from a fresh server payload (spec R1).
-  /// Handles {balance}, {coins}, {user:{coins}}, and {data:{...}} shapes.
-  void _syncBalanceFrom(Map<String, dynamic> src) {
-    final m = src['data'] is Map ? (src['data'] as Map) : src;
-    final user = m['user'] is Map ? (m['user'] as Map) : null;
-    num? c = user?['coins'];
-    if (c == null) c = m['balance'] ?? m['coins'];
-    BalanceStream.instance.setFromServer(c?.toInt());
+  /// Only server wallet/action responses can update the displayed balance.
+  /// `availableBalance` is the spendable balance from /api/wallet/balances;
+  /// action responses use `balance`.
+  int? _syncBalanceFrom(Map<String, dynamic> src) {
+    final m = src['data'] is Map ? Map<String, dynamic>.from(src['data'] as Map) : src;
+    final wallet = m['wallet'] is Map ? Map<String, dynamic>.from(m['wallet'] as Map) : m;
+    final raw = wallet['availableBalance'] ?? wallet['balance'] ?? wallet['coins'];
+    if (raw is! num || raw < 0) return null;
+    final coins = raw.toInt();
+    BalanceStream.instance.setFromServer(coins);
+    return coins;
+  }
+
+  /// Fetch the authenticated, server-authoritative spendable wallet balance.
+  /// Returns null when no valid balance was received; never substitutes a local default.
+  Future<int?> fetchWalletBalance() async {
+    try {
+      final res = await _api.get('/api/wallet/balances');
+      if (res is Map && res['success'] == true && res['data'] is Map) {
+        final data = Map<String, dynamic>.from(res['data'] as Map);
+        return _syncBalanceFrom(data);
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Single bootstrap call — returns all home-screen data.
@@ -31,7 +49,8 @@ class AppRepository {
       final res = await _api.get('/api/bootstrap', auth: false);
       if (res is Map && res['success'] == true && res['data'] is Map) {
         final data = res['data'] as Map<String, dynamic>;
-        _syncBalanceFrom(data);
+        // Bootstrap is public and may contain stale legacy user coin fields;
+        // never use it as a wallet source.
         return data;
       }
       return {};
@@ -55,9 +74,7 @@ class AppRepository {
     try {
       final res = await _api.get('/api/users/profile');
       if (res is Map && res['success'] == true && res['data'] is Map) {
-        final data = Map<String, dynamic>.from(res['data'] as Map);
-        _syncBalanceFrom(data);
-        return data;
+        return Map<String, dynamic>.from(res['data'] as Map);
       }
       return null;
     } catch (_) {
@@ -65,10 +82,18 @@ class AppRepository {
     }
   }
 
-  /// Update user profile on backend
+  /// Update only profile fields accepted by the authenticated backend route.
+  /// The server derives the user identity from the JWT; the client never picks
+  /// a user id or writes balances/payment credentials through this endpoint.
   Future<bool> updateUserProfile(String uid, Map<String, dynamic> data) async {
     try {
-      final res = await _api.put('/api/users/$uid', data);
+      final body = <String, dynamic>{};
+      final name = data['name'] ?? data['displayName'];
+      final avatar = data['avatar'] ?? data['photoUrl'];
+      if (name is String && name.trim().isNotEmpty) body['name'] = name.trim();
+      if (avatar is String) body['avatar'] = avatar;
+      if (body.isEmpty) return true;
+      final res = await _api.patch('/api/auth/profile', body);
       return res is Map && res['success'] == true;
     } catch (_) {
       return false;
@@ -92,26 +117,30 @@ class AppRepository {
   Future<List<dynamic>?> fetchOffers() async {
     try {
       final res = await _api.get('/api/offers', auth: false);
-      if (res is Map && res['data'] is Map) {
-        final items = res['data']['items'];
-        return items is List ? items : [];
+      if (res is Map && res['success'] == true) {
+        final data = res['data'];
+        if (data is List) return data;
+        if (data is Map) {
+          final items = data['items'] ?? data['offers'];
+          if (items is List) return items;
+        }
       }
-      return [];
+      return null;
     } catch (_) {
       return null;
     }
   }
 
   /// Fetch leaderboard for a period (DAILY / WEEKLY / MONTHLY / ALL_TIME).
-  Future<Map<String, dynamic>> fetchLeaderboard(String period) async {
+  Future<Map<String, dynamic>?> fetchLeaderboard(String period) async {
     try {
       final res = await _api.get('/api/leaderboard/$period');
       if (res is Map && res['success'] == true && res['data'] is Map) {
         return Map<String, dynamic>.from(res['data'] as Map);
       }
-      return {};
+      return null;
     } catch (_) {
-      return {};
+      return null;
     }
   }
 
@@ -140,16 +169,19 @@ class AppRepository {
   }
 
   /// Notifications list.
-  Future<List<dynamic>> notificationsList() async {
+  Future<List<dynamic>?> notificationsList() async {
     try {
       final res = await _api.get('/api/notifications');
-      if (res is Map && res['success'] == true && res['data'] is Map) {
-        final items = res['data']['items'];
-        return items is List ? items : [];
+      if (res is Map && res['success'] == true) {
+        final data = res['data'];
+        if (data is List) return data;
+        if (data is Map && data['items'] is List) {
+          return data['items'] as List<dynamic>;
+        }
       }
-      return [];
+      return null;
     } catch (_) {
-      return [];
+      return null;
     }
   }
 
@@ -172,37 +204,37 @@ class AppRepository {
   }
 
   /// Spin history (backend returns a raw list).
-  Future<List<dynamic>> spinHistoryList() async {
+  Future<List<dynamic>?> spinHistoryList() async {
     try {
       final res = await _api.get('/api/spin/history');
       if (res is Map && res['success'] == true) {
         final d = res['data'];
-        return d is List ? d : [];
+        return d is List ? d : null;
       }
-      return [];
+      return null;
     } catch (_) {
-      return [];
+      return null;
     }
   }
 
   /// Task history (backend returns a raw list).
-  Future<List<dynamic>> taskHistoryList() async {
+  Future<List<dynamic>?> taskHistoryList() async {
     try {
       final res = await _api.get('/api/tasks/history');
       if (res is Map && res['success'] == true) {
         final d = res['data'];
-        return d is List ? d : [];
+        return d is List ? d : null;
       }
-      return [];
+      return null;
     } catch (_) {
-      return [];
+      return null;
     }
   }
 
   /// Fetch withdrawal methods.
   Future<List<dynamic>> fetchWithdrawalMethods() async {
     try {
-      final res = await _api.get('/api/withdrawals/methods', auth: false);
+      final res = await _api.get('/api/withdrawals/methods');
       if (res is Map && res['data'] is Map) {
         final methods = res['data']['methods'];
         return methods is List ? methods : [];
@@ -231,14 +263,15 @@ class AppRepository {
   /// Returns null when unreachable so the caller can decide the fallback.
   Future<int?> spinsRemainingToday() async {
     final s = await spinStatus();
-    if (s == null) return null;
-    final limit = (s['dailyLimit'] ?? 2) as int;
-    final used = (s['spinsUsed'] ?? 0) as int;
-    return (limit - used).clamp(0, limit);
+    if (s == null || s['dailyLimit'] is! num || s['spinsUsed'] is! num) return null;
+    final limit = (s['dailyLimit'] as num).toInt();
+    final used = (s['spinsUsed'] as num).toInt();
+    if (limit < 0 || used < 0) return null;
+    return (limit - used).clamp(0, limit).toInt();
   }
 
-  /// Server-authoritative spin. Reward is decided + credited by the backend
-  /// (Supabase ledger). Returns data {rewardType, coins, spinId, dailyLimit}.
+  /// Server-authoritative spin. Reward is decided and credited by the backend
+  /// wallet ledger. Returns data {rewardType, coins, spinId, dailyLimit}.
   /// Throws ApiException when limit is over, session expired, or offline.
   Future<Map<String, dynamic>> spinNow() async {
     final res = await _api.post('/api/spin/spin', {});
@@ -250,49 +283,24 @@ class AppRepository {
     throw ApiException(-1, 'Spin failed');
   }
 
-  /// Submit withdrawal request (real endpoint: POST /api/withdrawals/request).
-  /// Throws ApiException with the server message on failure.
-  /// Supports UPI, BANK_TRANSFER, PHONEPE, and VOUCHER methods.
+  /// Submit a coin withdrawal request. Supported methods come from the
+  /// authenticated backend methods endpoint: UPI and BANK_TRANSFER.
   Future<Map<String, dynamic>> submitWithdrawal({
     required String uid,
     required int coins,
-    required String method, // 'upi' | 'bank' | 'phonepe' | 'voucher'
+    required String method,
     required String details,
   }) async {
-    final m = method.toLowerCase();
-    final body = <String, dynamic>{
-      'amount': coins,
-      'method': m == 'upi'
-          ? 'UPI'
-          : m == 'bank'
-              ? 'BANK_TRANSFER'
-              : m == 'phonepe'
-                  ? 'PHONEPE'
-                  : 'VOUCHER',
-    };
-    if (m == 'upi') {
+    final normalized = method.toUpperCase();
+    final body = <String, dynamic>{'amount': coins};
+    if (normalized == 'UPI') {
+      body['method'] = 'UPI';
       body['upiId'] = details;
-    } else if (m == 'bank') {
+    } else if (normalized == 'BANK' || normalized == 'BANK_TRANSFER') {
+      body['method'] = 'BANK_TRANSFER';
       body.addAll(_splitBankDetails(details));
-    } else if (m == 'phonepe') {
-      // details = phone number
-      final digits = details.replaceAll(RegExp(r'\D'), '');
-      if (digits.length < 10 || digits.length > 12) {
-        throw ApiException(-1, 'Enter a valid PhonePe number (10 digits)');
-      }
-      body['phone'] = digits;
-      body['accountHolder'] = details;
     } else {
-      // voucher: details = 'Brand|contact'
-      final parts = details.split('|');
-      final brand = parts[0].trim();
-      final contact = parts.length > 1 ? parts[1].trim() : '';
-      if (brand.isEmpty) throw ApiException(-1, 'Select a gift card brand');
-      if (contact.isEmpty || contact.length < 3) {
-        throw ApiException(-1, 'Enter email/mobile for voucher delivery');
-      }
-      body['brand'] = brand;
-      body['contact'] = contact;
+      throw ApiException(-1, 'This withdrawal method is not supported by the server');
     }
     final res = await _api.post('/api/withdrawals/request', body);
     if (res is Map && res['success'] == true && res['data'] is Map) {
@@ -306,6 +314,35 @@ class AppRepository {
     throw ApiException(-1, msg);
   }
 
+  /// Redeem one backend-listed gift card. The backend validates and debits the
+  /// wallet atomically; this client never estimates or deducts the cost.
+  Future<Map<String, dynamic>> redeemGiftCard(String giftCardId) async {
+    final res = await _api.post('/api/giftcards/redeem/$giftCardId', {});
+    if (res is Map && res['success'] == true && res['data'] is Map) {
+      final data = Map<String, dynamic>.from(res['data'] as Map);
+      _syncBalanceFrom(data);
+      await fetchWalletBalance();
+      return data;
+    }
+    final msg = (res is Map && res['error'] is String)
+        ? res['error'] as String
+        : 'Gift card redemption failed';
+    throw ApiException(-1, msg);
+  }
+
+  /// Start a real backend offer/task session and return its tracking URL/data.
+  Future<Map<String, dynamic>> startOffer(String offerId) async {
+    final id = Uri.encodeComponent(offerId);
+    final res = await _api.post('/api/offers/$id/start', {});
+    if (res is Map && res['success'] == true && res['data'] is Map) {
+      return Map<String, dynamic>.from(res['data'] as Map);
+    }
+    final msg = (res is Map && res['error'] is String)
+        ? res['error'] as String
+        : 'Could not start this offer';
+    throw ApiException(-1, msg);
+  }
+
   /// Best-effort split of free-text bank details into accountNumber/IFSC.
   /// Server validates strictly and returns a clear message if missing.
   Map<String, String> _splitBankDetails(String details) {
@@ -314,7 +351,8 @@ class AppRepository {
     if (ifsc != null) out['ifscCode'] = ifsc.group(0)!;
     final ac = RegExp(r'\d{9,20}').firstMatch(details.replaceAll(' ', ''));
     if (ac != null) out['accountNumber'] = ac.group(0)!;
-    out['accountHolder'] = details.length > 100 ? details.substring(0, 100) : details;
+    // Payout name is optional in the backend schema. Never copy the entire
+    // free-text account/IFSC input into a person's name field.
     return out;
   }
 
@@ -326,25 +364,26 @@ class AppRepository {
       final res = await _api.get('/api/surveys', auth: false);
       if (res is Map && res['success'] == true) {
         final d = res['data'];
-        return d is List ? d : [];
+        return d is List ? d : null;
       }
-      return [];
+      return null;
     } catch (_) {
       return null;
     }
   }
 
   /// Fetch user activity feed (real endpoint: GET /api/users/activity).
-  Future<List<dynamic>> fetchActivity() async {
+  Future<List<dynamic>?> fetchActivity() async {
     try {
       final res = await _api.get('/api/users/activity');
       if (res is Map && res['success'] == true) {
         final d = res['data'];
-        return d is List ? d : [];
+        if (d is List) return d;
+        if (d is Map && d['items'] is List) return d['items'] as List<dynamic>;
       }
-      return [];
+      return null;
     } catch (_) {
-      return [];
+      return null;
     }
   }
 
@@ -355,9 +394,9 @@ class AppRepository {
       final res = await _api.get('/api/giftcards', auth: false);
       if (res is Map && res['success'] == true) {
         final d = res['data'];
-        return d is List ? d : [];
+        return d is List ? d : null;
       }
-      return [];
+      return null;
     } catch (_) {
       return null;
     }
@@ -377,16 +416,22 @@ class AppRepository {
   }
 
   /// Fetch withdrawal history for user (real endpoint: GET /api/withdrawals/my).
-  Future<List<dynamic>> fetchWithdrawalHistory(String uid) async {
+  Future<List<dynamic>?> fetchWithdrawalHistory(String uid) async {
     try {
       final res = await _api.get('/api/withdrawals/my');
       if (res is Map && res['success'] == true) {
-        final items = res['data']['items'] ?? res['data']['withdrawals'] ?? res['data']['data'];
-        return items is List ? items : [];
+        final data = res['data'];
+        if (data is List) return data;
+        if (data is Map) {
+          final items = data['items'] ?? data['withdrawals'] ?? data['data'];
+          if (items is List) return items;
+        }
+        final topLevelItems = res['items'] ?? res['withdrawals'];
+        return topLevelItems is List ? topLevelItems : null;
       }
-      return [];
+      return null;
     } catch (_) {
-      return [];
+      return null;
     }
   }
 

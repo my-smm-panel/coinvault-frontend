@@ -21,6 +21,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   List<Map<String, dynamic>> _top = [];
   Map<String, dynamic> _mine = {};
   bool _loading = true;
+  bool _failed = false;
 
   static const Color _bg = Color(0xFFFAFAF8);
   static const Color _card = Color(0xFFFFFFFF);
@@ -38,17 +39,21 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
     final data = await AppRepository.instance.fetchLeaderboard(_period);
     if (!mounted) return;
     setState(() {
       _loading = false;
-      final top = data['top'];
+      _failed = data == null;
+      final top = data?['top'];
       _top = top is List
-          ? top.map((e) => Map<String, dynamic>.from(e as Map)).toList()
+          ? top.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
           : [];
-      _mine = (data['my'] is Map)
-          ? Map<String, dynamic>.from(data['my'] as Map)
+      _mine = (data?['my'] is Map)
+          ? Map<String, dynamic>.from(data!['my'] as Map)
           : {};
     });
   }
@@ -96,7 +101,18 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                   ? const Center(
                       child: CircularProgressIndicator(
                           color: _orange, strokeWidth: 2.5))
-                  : RefreshIndicator(
+                  : _failed
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('Leaderboard could not be loaded.'),
+                              const SizedBox(height: 8),
+                              TextButton(onPressed: _load, child: const Text('Retry')),
+                            ],
+                          ),
+                        )
+                      : RefreshIndicator(
                       color: _orange,
                       backgroundColor: _card,
                       onRefresh: _load,
@@ -203,7 +219,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   Widget _podiumSlot(Map? e, int rank, bool gold, {required double height}) {
     final name = e != null ? _name(e) : '—';
-    final coins = e != null ? ((e['coinsEarned'] ?? 0) as num).toInt() : 0;
+    final rawCoins = e?['coinsEarned'];
+    final coins = rawCoins is num ? rawCoins.toInt() : null;
     final avatar = e != null ? _avatar(e) : null;
     final d = 52.0 + (gold ? 12 : 0);
     return Column(
@@ -238,7 +255,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             style: const TextStyle(
                 color: _primaryText, fontSize: 12.5, fontWeight: FontWeight.w700)),
         const SizedBox(height: 2),
-        Text('${_fmt(coins)} Coins',
+        Text(coins == null ? 'Coins unavailable' : '${_fmt(coins)} Coins',
             style: TextStyle(
                 color: gold ? _brown : _secondaryText,
                 fontSize: 11.5,
@@ -283,7 +300,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   // ─────────────────────────── MY RANK CARD ───────────────────────────
   Widget _myRankCard() {
     final rank = (_mine['rank'] as num?)?.toInt();
-    final coins = (_mine['coinsEarned'] as num?)?.toInt() ?? 0;
+    final rawCoins = _mine['coinsEarned'];
+    final coins = rawCoins is num ? rawCoins.toInt() : null;
+    final periodCoins = coins == null
+        ? 'Coins unavailable'
+        : '${_fmt(coins)} Coins';
     if (rank == null) {
       return Container(
         padding: const EdgeInsets.all(14),
@@ -325,7 +346,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Text('${_fmt(coins)} Coins ${_periodLabel()}',
+          Text('$periodCoins ${_periodLabel()}',
               style: const TextStyle(
                   color: _primaryText, fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 9),
@@ -365,11 +386,17 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         ),
       ];
     }
-    // start list from rank 4 (podium shows 1-3)
-    final rest = _top.where((e) => ((e['rank'] ?? 0) as num).toInt() >= 4).toList();
+    // Start from rank 4 (podium shows 1-3); malformed server rows are omitted.
+    final rest = _top.where((e) {
+      final rank = e['rank'];
+      return rank is num && rank.toInt() >= 4;
+    }).toList();
     return rest.map((e) {
-      final rank = ((e['rank'] ?? 0) as num).toInt();
-      final coins = ((e['coinsEarned'] ?? 0) as num).toInt();
+      final rankValue = e['rank'];
+      if (rankValue is! num) return const SizedBox.shrink();
+      final rank = rankValue.toInt();
+      final rawCoins = e['coinsEarned'];
+      final coins = rawCoins is num ? rawCoins.toInt() : null;
       final name = _name(e);
       final avatar = _avatar(e);
       final isMe = e['userId']?.toString() == uid;
@@ -386,7 +413,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   Widget _rankRow({
     required int rank,
     required String name,
-    required int coins,
+    required int? coins,
     String? avatar,
     bool isMe = false,
   }) {
@@ -456,7 +483,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               ],
             ),
           ),
-          Text('${_fmt(coins)}',
+          Text(coins == null ? '—' : _fmt(coins),
               style: const TextStyle(
                   color: _brown, fontSize: 13.5, fontWeight: FontWeight.w800)),
           const SizedBox(width: 4),
@@ -469,16 +496,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   // ─────────────────────────── YOUR STATS ───────────────────────────
   Widget _statsSection() {
-    final myTasks = _top
-        .where((e) => e['userId']?.toString() == AuthService().userModel?.uid)
-        .fold<int>(0, (a, e) => a + ((e['tasksCompleted'] ?? 0) as num).toInt());
-    final coins = (_mine['coinsEarned'] as num?)?.toInt() ?? 0;
     final uid = AuthService().userModel?.uid;
-    final mine = _top.firstWhere(
-      (e) => e['userId']?.toString() == uid,
-      orElse: () => {},
-    );
-    final surveys = (mine['tasksCompleted'] as num?)?.toInt() ?? 0;
+    final mineRows = _top.where((e) => e['userId']?.toString() == uid).toList();
+    final mineRow = mineRows.isEmpty ? null : mineRows.first;
+    final rawTasks = _mine['tasksCompleted'] ?? mineRow?['tasksCompleted'];
+    final myTasks = rawTasks is num ? rawTasks.toInt() : null;
+    final rawCoins = _mine['coinsEarned'] ?? mineRow?['coinsEarned'];
+    final coins = rawCoins is num ? rawCoins.toInt() : null;
+    final rawSurveys = _mine['surveysCompleted'] ?? mineRow?['surveysCompleted'];
+    final surveys = rawSurveys is num ? rawSurveys.toInt() : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -488,13 +514,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         const SizedBox(height: 10),
         Row(
           children: [
-            _statCard('Coins Earned', _fmt(coins), Icons.savings_rounded,
+            _statCard('Coins Earned', coins == null ? '—' : _fmt(coins), Icons.savings_rounded,
                 const Color(0xFFF59E0B)),
             const SizedBox(width: 10),
-            _statCard('Tasks Completed', '$myTasks', Icons.task_alt_rounded,
+            _statCard('Tasks Completed', myTasks?.toString() ?? '—', Icons.task_alt_rounded,
                 const Color(0xFF16A34A)),
             const SizedBox(width: 10),
-            _statCard('Surveys', '$surveys', Icons.poll_rounded,
+            _statCard('Surveys', surveys?.toString() ?? '—', Icons.poll_rounded,
                 const Color(0xFF3B82F6)),
           ],
         ),

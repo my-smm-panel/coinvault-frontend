@@ -166,7 +166,7 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
                     title: 'No offers available',
                     subtitle: _filter != 'All Providers'
                         ? 'For $_filter right now.'
-                        : 'New offers are added regularly — check back soon.',
+                        : 'No offers are currently returned by the provider.'
                   ),
                 )
               else
@@ -251,13 +251,12 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
 
   // ─────────────────────────── OFFER CARD ───────────────────────────
   Widget _offerCard(OfferwallOffer offer) {
-    final title = offer.title.isEmpty ? 'Offer' : offer.title;
+    final title = offer.title;
     final coins = offer.coinReward;
     final provider = offer.provider.isEmpty ? 'Offerwall.GG' : offer.provider;
     final shortReq = offer.shortRequirement ?? '';
     final estimatedTime = offer.estimatedTime ?? '';
     final color = ProviderLogos.colorFor(provider);
-    final inr = (coins / 10).toStringAsFixed(0);
 
     return GestureDetector(
       onTap: () => _openDetail(offer),
@@ -300,20 +299,12 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
                     ),
                   ),
                   const Spacer(),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('+${_fmt(coins)} Coins',
-                          style: const TextStyle(
-                              color: Color(0xFF5A3825),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800)),
-                      Text('≈ ₹$inr',
-                          style: const TextStyle(
-                              color: _secondaryText,
-                              fontSize: 10)),
-                    ],
-                  ),
+                  if (coins != null)
+                    Text('+${_fmt(coins)} Coins',
+                        style: const TextStyle(
+                            color: Color(0xFF5A3825),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800)),
                 ],
               ),
               const SizedBox(height: 10),

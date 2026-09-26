@@ -21,6 +21,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<dynamic> _withdrawals = [];
   List<dynamic> _tasks = [];
   bool _loading = true;
+  bool _failed = false;
 
   static const _bg = Color(0xFFF7F8FA);
   static const _card = Color(0xFFFFFFFF);
@@ -43,14 +44,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
     final repo = AppRepository.instance;
     final w = await repo.fetchWithdrawalHistory('');
     final t = await repo.taskHistoryList();
     if (!mounted) return;
     setState(() {
-      _withdrawals = w;
-      _tasks = t;
+      _withdrawals = w ?? [];
+      _tasks = t ?? [];
+      _failed = w == null || t == null;
       _loading = false;
     });
   }
@@ -72,14 +77,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       rows: 6,
                       padding: EdgeInsets.fromLTRB(14, 10, 14, 20),
                     )
-                  : RefreshIndicator(
-                      color: AppColors.primary,
-                      backgroundColor: _card,
-                      onRefresh: _load,
-                      child: _tab == 'Payouts'
-                          ? _payoutsList()
-                          : _tasksList(),
-                    ),
+                  : _failed
+                      ? ErrorState(
+                          message: 'History could not be fetched. Try again.',
+                          onRetry: _load,
+                        )
+                      : RefreshIndicator(
+                          color: AppColors.primary,
+                          backgroundColor: _card,
+                          onRefresh: _load,
+                          child: _tab == 'Payouts'
+                              ? _payoutsList()
+                              : _tasksList(),
+                        ),
             ),
           ],
         ),
@@ -301,12 +311,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
             : 'Task';
         final status = (m['status'] ?? '').toString();
         final bucket = _taskBucket(status);
-        final coins = ((m['coinsEarned'] ?? 0) as num).toInt();
+        final coins = m['coinsEarned'];
         final date = _date(m);
         return _darkTile(
           title: title,
           sub: date.isEmpty ? bucket : '$bucket • $date',
-          coinsText: '+$coins',
+          coinsText: coins is num ? '+${coins.toInt()}' : 'Coins unavailable',
           bucket: bucket,
           icon: Icons.task_alt_rounded,
           color: _tileColors[title.hashCode.abs() % _tileColors.length],
@@ -330,17 +340,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
         final status =
             (m['status'] ?? 'PENDING').toString();
         final bucket = _payoutBucket(status);
-        final amount = (m['amount'] ?? 0).toString();
-        final rupees = (m['rupeeAmount'] ?? 0).toString();
+        final amount = m['amount'];
+        final rupees = m['rupeeAmount'];
         final method =
             (m['method'] ?? '').toString().replaceAll('_', ' ');
         final date = _date(m);
+        final amountText = amount is num
+            ? '${amount.toInt()} coins'
+            : 'Amount unavailable';
+        final rupeesText = rupees is num ? '  →  ₹${rupees.toString()}' : '';
+        final amountBadge = rupees is num
+            ? '₹${rupees.toString()}'
+            : (amount is num ? '${amount.toInt()} coins' : '—');
         final sub =
             '${method.isEmpty ? 'Withdrawal' : method}${date.isEmpty ? '' : ' • $date'}';
         return _darkTile(
-          title: '$amount coins  →  ₹$rupees',
+          title: '$amountText$rupeesText',
           sub: '$bucket • $sub',
-          coinsText: '₹$rupees',
+          coinsText: amountBadge,
           bucket: bucket,
           icon: Icons.payments_rounded,
           color: AppColors.primary,

@@ -4,6 +4,7 @@ import '../core/app_theme.dart';
 import '../models/app_models.dart';
 import '../services/app_repository.dart';
 import '../services/auth_service.dart';
+import '../services/balance_stream.dart';
 import '../widgets/state_views.dart';
 import 'earn_screen.dart';
 import 'help_screen.dart';
@@ -44,19 +45,24 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _user = auth.userModel;
         _loading = false;
       });
+      // Wallet balance must come from a fresh authenticated response.
+      await AppRepository.instance.fetchWalletBalance();
+      if (mounted) setState(() {});
     } else {
       setState(() => _loading = false);
     }
     // Refresh server-authoritative remaining spins so the "Spins left"
     // tile matches what the spin screen enforces.
     try {
-      final left = await AppRepository.instance.spinsRemainingToday();
-      if (!mounted || left == null) return;
-      setState(() => _spinsLeft = left);
+      final status = await AppRepository.instance.spinStatus();
+      final limit = status?['dailyLimit'];
+      final used = status?['spinsUsed'];
+      if (!mounted || limit is! num || used is! num) return;
+      setState(() => _spinsLeft = (limit.toInt() - used.toInt()).clamp(0, limit.toInt()).toInt());
     } catch (_) {}
   }
 
-  int _spinsLeft = 0;
+  int? _spinsLeft;
 
   Future<void> _signOut() async {
     await AuthService().signOut();
@@ -138,7 +144,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     final user = _user!;
-    final spinsLeft = _spinsLeft.toString();
+    final balance = BalanceStream.instance.value;
+    final spinsLeft = _spinsLeft?.toString() ?? '—';
     final name = user.displayName.isEmpty ? 'User' : user.displayName;
 
     return Scaffold(
@@ -167,11 +174,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(height: 18),
 
               // ── Profile card ──
-              _profileCard(user, name),
+              _profileCard(user, name, balance),
               const SizedBox(height: 14),
 
               // ── Stats grid ──
-              _statsGrid(user, spinsLeft),
+              _statsGrid(balance, spinsLeft),
               const SizedBox(height: 14),
 
               // ── Payout details ──
@@ -227,7 +234,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _profileCard(UserModel user, String name) {
+  Widget _profileCard(UserModel user, String name, int? balance) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
@@ -291,22 +298,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: AppColors.primary, size: 16),
                     const SizedBox(width: 5),
                     Text(
-                      '${_fmt(user.coins)} Coins',
+                      balance == null ? 'Balance unavailable' : '${_fmt(balance)} Coins',
                       style: const TextStyle(
                         color: _textPrimary,
                         fontSize: 13.5,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '≈ ₹${(user.coins / 10).toStringAsFixed(0)}',
-                      style: const TextStyle(
-                        color: _textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
+
                   ],
                 ),
               ],
@@ -317,7 +316,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _statsGrid(UserModel user, String spinsLeft) {
+  Widget _statsGrid(int? balance, String spinsLeft) {
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -326,13 +325,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       crossAxisSpacing: 10,
       childAspectRatio: 2.3,
       children: [
-        _stat('Withdrawable', _fmt(user.coins), Icons.payments_rounded,
+        _stat('Balance', balance == null ? '—' : _fmt(balance), Icons.payments_rounded,
             AppColors.primary),
         _stat('Spins Left', spinsLeft, Icons.donut_large_rounded,
             const Color(0xFFF59E0B)),
-        _stat('Total Earned', _fmt(user.coins), Icons.emoji_events_rounded,
+        _stat('Wallet status', balance == null ? 'Unknown' : 'Fresh', Icons.account_balance_wallet_rounded,
             const Color(0xFF16A34A)),
-        _stat('Rate', '100 = ₹10', Icons.currency_rupee_rounded,
+        _stat('Payouts', 'View', Icons.currency_rupee_rounded,
             const Color(0xFF3B82F6)),
       ],
     );
@@ -388,7 +387,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           AppColors.primary, const HistoryScreen(initialTab: 'Payouts')],
       ['Ranks', 'Leaderboard standings', Icons.emoji_events_rounded,
           const Color(0xFFF59E0B), const LeaderboardScreen()],
-      ['Refer & Earn', 'Invite friends, bonus coins', Icons.group_add_rounded,
+      ['Refer & Earn', 'Referral code and activity', Icons.group_add_rounded,
           const Color(0xFFEC4899), const InviteScreen()],
       ['Earn More', 'Tasks & offers', Icons.task_alt_rounded,
           const Color(0xFF3B82F6), const EarnScreen()],
