@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
+import '../widgets/state_views.dart';
 
 /// Gift-card catalogue and server-authoritative redemption.
 class RedeemScreen extends StatefulWidget {
@@ -77,20 +78,20 @@ class _RedeemScreenState extends State<RedeemScreen> {
   }
 
   Widget _body() {
-    if (_loading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    if (_loading) return const SingleChildScrollView(child: ShimmerCardList(rows: 4));
     if (_failed) {
-      return Center(
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Icon(Icons.wifi_off_rounded, size: 40, color: AppColors.textSecondary),
-          const SizedBox(height: 10),
-          const Text('Could not load gift cards', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-          const SizedBox(height: 12),
-          TextButton(onPressed: _load, child: const Text('Retry')),
-        ]),
-      );
+      return ErrorState(message: 'Gift cards could not be loaded.', onRetry: _load);
     }
     if (_brands.isEmpty) {
-      return const Center(child: Text('No gift cards available yet', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)));
+      return RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(physics: const AlwaysScrollableScrollPhysics(), children: const [
+          SizedBox(height: 64),
+          EmptyState(icon: Icons.card_giftcard_outlined,
+            title: 'No gift cards available yet',
+            subtitle: 'Pull down to check again.'),
+        ]),
+      );
     }
     return RefreshIndicator(
       color: AppColors.primary,
@@ -104,7 +105,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
             padding: const EdgeInsets.all(16),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: columns,
-              childAspectRatio: 0.96,
+              childAspectRatio: 0.78,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
             ),

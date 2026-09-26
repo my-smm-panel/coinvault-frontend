@@ -34,6 +34,7 @@ class TaskDetailScreen extends StatefulWidget {
 class _TaskDetailScreenState extends State<TaskDetailScreen> {
   bool _started = false;
   bool _starting = false;
+  Uri? _trackingUri;
 
   String? get _validOfferId {
     final id = widget.offerId?.trim();
@@ -42,7 +43,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
 
   Future<void> _startTask() async {
     final id = _validOfferId;
-    if (id == null || _starting || _started) {
+    if (id == null || _starting) {
       if (id == null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('This task has no valid backend offer ID')),
@@ -50,16 +51,15 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       }
       return;
     }
+    if (_started) {
+      final existingLink = _trackingUri;
+      if (existingLink != null) await _openTrackingLink(existingLink);
+      return;
+    }
 
     setState(() => _starting = true);
     try {
       final result = await AppRepository.instance.startOffer(id);
-      if (!mounted) return;
-      setState(() {
-        _starting = false;
-        _started = true;
-      });
-
       final rawUrl = (result['trackingUrl'] ??
               result['clickUrl'] ??
               result['externalUrl'] ??
@@ -69,19 +69,48 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
           .toString()
           .trim();
       final uri = Uri.tryParse(rawUrl);
-      if (uri != null && await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else if (mounted) {
+      if (!mounted) return;
+      if (uri == null || uri.scheme.toLowerCase() != 'https' || uri.host.isEmpty) {
+        // The backend accepted the start request; don't submit it twice just
+        // because a redirect was missing or malformed.
+        setState(() {
+          _starting = false;
+          _started = true;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Task started; no tracking link was provided')),
+          const SnackBar(content: Text('Task started, but a secure tracking link was not provided. Please contact support.')),
         );
+        return;
       }
+      setState(() {
+        _starting = false;
+        _started = true;
+        _trackingUri = uri;
+      });
+      await _openTrackingLink(uri);
     } catch (_) {
       if (!mounted) return;
       setState(() => _starting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not start this task')),
+        const SnackBar(content: Text('Could not start this task. Please try again.')),
       );
+    }
+  }
+
+  Future<void> _openTrackingLink(Uri uri) async {
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Task is ready, but the link could not be opened. Tap Open task to retry.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Task is ready, but the link could not be opened. Tap Open task to retry.')),
+        );
+      }
     }
   }
 
@@ -265,7 +294,8 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
   }
 
   Widget _bottomCta(Color color, bool hasId) {
-    final enabled = hasId && !_started && !_starting;
+    final enabled = hasId && !_starting &&
+        (!_started || _trackingUri != null);
     return Container(
       padding: EdgeInsets.fromLTRB(
           16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
@@ -283,7 +313,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
               onPressed: enabled ? _startTask : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: enabled ? color : const Color(0xFFE8E8E8),
-                foregroundColor: enabled ? Colors.white : AppColors.textSecondary,
+                foregroundColor: enabled
+                    ? (color.computeLuminance() < 0.36 ? Colors.white : AppColors.textPrimary)
+                    : AppColors.textSecondary,
                 disabledBackgroundColor: const Color(0xFFE8E8E8),
                 disabledForegroundColor: AppColors.textSecondary,
                 elevation: 0,
@@ -303,10 +335,10 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    _started
-                        ? 'In Progress'
-                        : _starting
-                            ? 'Starting…'
+                    _starting
+                        ? 'Starting…'
+                        : _started
+                            ? (_trackingUri == null ? 'In Progress' : 'Open task')
                             : hasId
                                 ? 'Start Task'
                                 : 'Start unavailable',

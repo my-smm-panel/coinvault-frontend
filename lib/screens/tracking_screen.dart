@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
 
@@ -18,6 +19,9 @@ class _TrackingScreenState extends State<TrackingScreen>
   late final TabController _tabs = TabController(length: 3, vsync: this);
   bool _loading = true;
   String? _error;
+  bool _activityFailed = false;
+  bool _withdrawalsFailed = false;
+  bool _referralsFailed = false;
 
   // Activity
   List<Map<String, dynamic>> _activity = [];
@@ -27,6 +31,7 @@ class _TrackingScreenState extends State<TrackingScreen>
 
   // Referrals
   String _referralCode = '';
+  String _referralLink = '';
   int? _totalReferrals;
   int? _activeReferrals;
   int? _referralCoins;
@@ -56,14 +61,14 @@ class _TrackingScreenState extends State<TrackingScreen>
         repo.fetchWalletBalance(), // 3 — fresh server wallet
         repo.spinStatus(), // 4 — server-authoritative spin status
       ]);
-      if (results[0] == null || results[1] == null || results[2] == null) {
-        _error = 'Tracking data could not be fetched. Pull to retry.';
-      }
+      _activityFailed = results[0] == null;
+      _withdrawalsFailed = results[1] == null;
+      _referralsFailed = results[2] == null;
 
       // activity
       final act = results[0];
       _activity = act is List
-          ? act.map((e) => Map<String, dynamic>.from(e as Map)).toList()
+          ? act.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
           : [];
 
       // withdrawals
@@ -76,8 +81,8 @@ class _TrackingScreenState extends State<TrackingScreen>
         final items = (d is Map) ? (d['items'] ?? d['withdrawals']) : null;
         wList = items is List ? items : (d is List ? d : []);
       }
-      _withdrawals = wList
-          .map((e) => Map<String, dynamic>.from(e as Map))
+      _withdrawals = wList.whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
           .toList();
 
       // referrals
@@ -85,6 +90,7 @@ class _TrackingScreenState extends State<TrackingScreen>
       if (r is Map) {
         final d = r['data'] is Map ? r['data'] as Map : r;
         _referralCode = d['referralCode']?.toString() ?? '';
+        _referralLink = d['referralLink']?.toString() ?? '';
         final total = d['totalReferrals'];
         final active = d['activeReferrals'];
         final referralCoins = d['totalCoinsEarned'];
@@ -93,7 +99,7 @@ class _TrackingScreenState extends State<TrackingScreen>
         _referralCoins = referralCoins is num ? referralCoins.toInt() : null;
         final rl = d['referrals'];
         _referralList = rl is List
-            ? rl.map((e) => Map<String, dynamic>.from(e as Map)).toList()
+            ? rl.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
             : [];
       }
 
@@ -140,19 +146,26 @@ class _TrackingScreenState extends State<TrackingScreen>
                           child: TabBarView(
                             controller: _tabs,
                             children: [
-                              _ActivityTab(
-                                activity: _activity,
-                                coins: _coins,
-                                spins: _spins,
-                              ),
-                              _WithdrawalsTab(withdrawals: _withdrawals),
-                              _ReferralsTab(
-                                code: _referralCode,
-                                total: _totalReferrals,
-                                active: _activeReferrals,
-                                coins: _referralCoins,
-                                list: _referralList,
-                              ),
+                              _activityFailed
+                                  ? _ErrorView(error: 'Activity could not be loaded.', onRetry: _loadAll)
+                                  : _ActivityTab(
+                                      activity: _activity,
+                                      coins: _coins,
+                                      spins: _spins,
+                                    ),
+                              _withdrawalsFailed
+                                  ? _ErrorView(error: 'Withdrawals could not be loaded.', onRetry: _loadAll)
+                                  : _WithdrawalsTab(withdrawals: _withdrawals),
+                              _referralsFailed
+                                  ? _ErrorView(error: 'Referrals could not be loaded.', onRetry: _loadAll)
+                                  : _ReferralsTab(
+                                      code: _referralCode,
+                                      referralLink: _referralLink,
+                                      total: _totalReferrals,
+                                      active: _activeReferrals,
+                                      coins: _referralCoins,
+                                      list: _referralList,
+                                    ),
                             ],
                           ),
                         ),
@@ -859,10 +872,12 @@ class _Timeline extends StatelessWidget {
 // =================== REFERRALS TAB ===================
 class _ReferralsTab extends StatelessWidget {
   final String code;
+  final String referralLink;
   final int? total, active, coins;
   final List<Map<String, dynamic>> list;
   const _ReferralsTab({
     required this.code,
+    required this.referralLink,
     required this.total,
     required this.active,
     required this.coins,
@@ -871,9 +886,7 @@ class _ReferralsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final link = code.isNotEmpty
-        ? 'https://coinvault.app/?ref=$code'
-        : 'https://coinvault.app';
+    final link = referralLink.trim();
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
       children: [
@@ -924,24 +937,33 @@ class _ReferralsTab extends StatelessWidget {
                 child: Row(
                   children: [
                     Expanded(
-                      child: Text(link,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 12)),
-                    ),
-                    InkWell(
-                      onTap: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content: Text('Referral link copied')),
-                        );
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.all(4),
-                        child: Icon(Icons.copy_rounded,
-                            color: Colors.white, size: 18),
+                      child: Text(
+                        link.isEmpty ? 'Referral link unavailable' : link,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 12),
                       ),
+                    ),
+                    IconButton(
+                      tooltip: 'Copy referral link',
+                      style: IconButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        disabledForegroundColor: Colors.white54,
+                      ),
+                      onPressed: link.isEmpty
+                          ? null
+                          : () async {
+                              await Clipboard.setData(
+                                  ClipboardData(text: link));
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                    content: Text('Referral link copied')),
+                              );
+                            },
+                      icon: const Icon(Icons.copy_rounded,
+                          color: Colors.white, size: 18),
                     ),
                   ],
                 ),

@@ -10,9 +10,8 @@ import '../widgets/state_views.dart';
 import '../widgets/cv_header.dart';
 
 /// Surveys screen — light/white premium design.
-/// Header (title + subtitle + bell + avatar) → compact balance → search →
-/// filter chips → "Available Surveys" section → vertical survey cards
-/// (provider logo, reward when supplied, server metadata, divider, Start Survey button).
+/// Shared header, provider filters and server-backed survey cards. Cards show
+/// instructions/metadata rather than speculative rewards or balances.
 /// Data from GET /api/surveys; start via the authenticated startSurvey endpoint.
 class SurveysScreen extends StatefulWidget {
   final String? initialProvider;
@@ -57,6 +56,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
         _failed = true;
       } else {
         _surveys = data;
+        if (_filter != 'All' && !_providers.contains(_filter)) _filter = 'All';
       }
     });
   }
@@ -133,7 +133,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              const SliverToBoxAdapter(child: CvHeader()),
+              SliverToBoxAdapter(child: CvHeader(showBack: Navigator.of(context).canPop())),
               const SliverToBoxAdapter(child: SizedBox(height: 12)),
               SliverToBoxAdapter(child: _filterChips()),
               const SliverToBoxAdapter(child: SizedBox(height: 6)),
@@ -200,24 +200,16 @@ class _SurveysScreenState extends State<SurveysScreen> {
         itemBuilder: (_, i) {
           final c = chips[i];
           final active = _filter == c;
-          return GestureDetector(
-            onTap: () => setState(() => _filter = c),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: active ? _orange : _card,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                    color: active ? _orange : _border, width: 1),
-              ),
-              child: Text(c,
-                  style: TextStyle(
-                    color: active ? Colors.white : _primaryText,
-                    fontSize: 12.5,
-                    fontWeight: FontWeight.w600,
-                  )),
-            ),
+          return ChoiceChip(
+            label: Text(c),
+            selected: active,
+            showCheckmark: false,
+            onSelected: (_) => setState(() => _filter = c),
+            selectedColor: _orange,
+            backgroundColor: _card,
+            side: BorderSide(color: active ? _orange : _border),
+            labelStyle: TextStyle(color: active ? Colors.white : _primaryText,
+              fontSize: 12.5, fontWeight: FontWeight.w700),
           );
         },
       ),
@@ -237,7 +229,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
                   fontSize: 16,
                   fontWeight: FontWeight.w800)),
           SizedBox(height: 2),
-          Text('Earn coins by completing surveys',
+          Text('Choose a survey currently listed by the server',
               style: TextStyle(color: _secondaryText, fontSize: 12)),
         ],
       ),
@@ -272,7 +264,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Top row: provider and server reward when supplied
+                // Provider identity from the survey catalogue.
                 Row(
                   children: [
                     AppLogo(
@@ -319,9 +311,13 @@ class _SurveysScreenState extends State<SurveysScreen> {
                         const Icon(Icons.access_time_rounded,
                             color: _secondaryText, size: 14),
                         const SizedBox(width: 4),
-                        Text(duration,
-                            style: const TextStyle(
-                                color: _secondaryText, fontSize: 12)),
+                        Flexible(
+                          child: Text(duration,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                  color: _secondaryText, fontSize: 12)),
+                        ),
                       ],
                       if (difficulty.isNotEmpty) ...[
                         const SizedBox(width: 12),
@@ -348,7 +344,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
                 const SizedBox(height: 10),
                 const Divider(height: 1, thickness: 1, color: _border),
                 const SizedBox(height: 10),
-                // Bottom row: server reward (when supplied) + Start button
+                // Only the start action is shown; the server owns any outcome.
                 Row(
                   children: [
 

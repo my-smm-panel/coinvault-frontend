@@ -16,6 +16,7 @@ class PaymentwallDetailScreen extends StatelessWidget {
   final List<String>? goals;
   final List<String>? rules;
   final bool? isVariable;
+  final Future<String?> Function()? startOfferOverride;
 
   const PaymentwallDetailScreen({
     super.key,
@@ -29,6 +30,7 @@ class PaymentwallDetailScreen extends StatelessWidget {
     this.goals,
     this.rules,
     this.isVariable,
+    this.startOfferOverride,
   });
 
   @override
@@ -44,6 +46,7 @@ class PaymentwallDetailScreen extends StatelessWidget {
       goals: goals,
       rules: rules,
       isVariable: isVariable,
+      startOfferOverride: startOfferOverride,
     );
   }
 }

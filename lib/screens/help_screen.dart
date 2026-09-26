@@ -10,7 +10,7 @@ class HelpScreen extends StatelessWidget {
   static const _faqs = [
     {
       'q': 'How do I earn coins?',
-      'a': 'Open the relevant earning screen and follow the activities currently returned by the server. Reward details are shown there when available.'
+      'a': 'Open Explore activities and follow the instructions for a currently available task, survey or offer. The server determines completion and any earned amount.'
     },
     {
       'q': 'How do I withdraw?',
@@ -18,7 +18,7 @@ class HelpScreen extends StatelessWidget {
     },
     {
       'q': 'Where can I check reward values?',
-      'a': 'Reward values are supplied by the backend and are displayed on each available survey, offer, task, or other earning screen.'
+      'a': 'The backend determines rewards. Check your Wallet or History for confirmed amounts; activity cards do not promise a payout.'
     },
     {
       'q': 'How many spins can I use?',
@@ -26,7 +26,7 @@ class HelpScreen extends StatelessWidget {
     },
     {
       'q': 'My withdrawal is pending. What now?',
-      'a': 'Check Wallet or History for the latest server-provided status. If the status needs attention, use the in-app support flow.'
+      'a': 'Check Wallet or History for the latest server-provided status. Do not submit a duplicate request until you know its status.'
     },
     {
       'q': 'How do referrals work?',

@@ -19,6 +19,7 @@ class OfferDetailScreen extends StatefulWidget {
   final List<String>? goals;
   final List<String>? rules;
   final bool? isVariable;
+  final Future<String?> Function()? startOfferOverride;
 
   const OfferDetailScreen({
     super.key,
@@ -32,6 +33,7 @@ class OfferDetailScreen extends StatefulWidget {
     this.goals,
     this.rules,
     this.isVariable,
+    this.startOfferOverride,
   });
 
   @override
@@ -41,41 +43,73 @@ class OfferDetailScreen extends StatefulWidget {
 class _OfferDetailScreenState extends State<OfferDetailScreen> {
   bool _started = false;
   bool _starting = false;
+  Uri? _trackingUri;
 
   bool get _hasOfferId => widget.offerId.trim().isNotEmpty;
 
   Future<void> _startOffer() async {
-    if (!_hasOfferId || _started || _starting) return;
+    if (_starting || !_hasOfferId) return;
+    final existingLink = _trackingUri;
+    if (_started && existingLink != null) {
+      await _openTrackingLink(existingLink);
+      return;
+    }
+    if (_started) return;
+
     setState(() => _starting = true);
     try {
-      final result = await AppRepository.instance.startOffer(widget.offerId.trim());
+      String rawUrl;
+      if (widget.startOfferOverride != null) {
+        rawUrl = (await widget.startOfferOverride!() ?? '').trim();
+      } else {
+        final result = await AppRepository.instance.startOffer(widget.offerId.trim());
+        rawUrl = (result['trackingUrl'] ??
+                result['clickUrl'] ??
+                result['externalUrl'] ??
+                result['redirectUrl'] ??
+                result['url'] ??
+                '')
+            .toString()
+            .trim();
+      }
       if (!mounted) return;
+      final uri = Uri.tryParse(rawUrl);
+      if (uri == null || uri.scheme.toLowerCase() != 'https' || uri.host.isEmpty) {
+        setState(() => _starting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('A secure offer link is not available right now.')),
+        );
+        return;
+      }
       setState(() {
         _starting = false;
         _started = true;
+        _trackingUri = uri;
       });
-      final rawUrl = (result['trackingUrl'] ??
-              result['clickUrl'] ??
-              result['externalUrl'] ??
-              result['redirectUrl'] ??
-              result['url'] ??
-              '')
-          .toString()
-          .trim();
-      final uri = Uri.tryParse(rawUrl);
-      if (uri != null && await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Offer started; no tracking link was provided')),
-        );
-      }
+      await _openTrackingLink(uri);
     } catch (_) {
       if (!mounted) return;
       setState(() => _starting = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not start this offer')),
+        const SnackBar(content: Text('Could not start this offer. Please try again.')),
       );
+    }
+  }
+
+  Future<void> _openTrackingLink(Uri uri) async {
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Offer is ready, but the link could not be opened. Tap Open offer to retry.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Offer is ready, but the link could not be opened. Tap Open offer to retry.')),
+        );
+      }
     }
   }
 
@@ -184,9 +218,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                 style: const TextStyle(
                     color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
           ],
-          if (widget.isVariable == true) ...[
+          if (widget.duration?.trim().isNotEmpty ?? false) ...[
             const SizedBox(height: 10),
-            _statusChip('Variable reward', Icons.trending_up_rounded, color),
+            _statusChip(widget.duration!.trim(), Icons.schedule_rounded, color),
           ],
           if (requirements.isNotEmpty) ...[
             const SizedBox(height: 20),
@@ -309,7 +343,8 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
   }
 
   Widget _bottomCta(Color color) {
-    final enabled = _hasOfferId && !_started && !_starting;
+    final enabled = _hasOfferId && !_starting &&
+        (!_started || _trackingUri != null);
     return Container(
       padding: EdgeInsets.fromLTRB(
           16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
@@ -326,7 +361,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
             onPressed: enabled ? _startOffer : null,
             style: ElevatedButton.styleFrom(
               backgroundColor: enabled ? color : const Color(0xFFE8E8E8),
-              foregroundColor: enabled ? Colors.white : AppColors.textSecondary,
+              foregroundColor: enabled
+                  ? (color.computeLuminance() < 0.36 ? Colors.white : AppColors.textPrimary)
+                  : AppColors.textSecondary,
               disabledBackgroundColor: const Color(0xFFE8E8E8),
               disabledForegroundColor: AppColors.textSecondary,
               elevation: 0,
@@ -334,10 +371,10 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                   borderRadius: BorderRadius.circular(26)),
             ),
             child: Text(
-              _started
-                  ? 'Started'
-                  : _starting
-                      ? 'Starting…'
+              _starting
+                  ? 'Starting…'
+                  : _started
+                      ? 'Open offer'
                       : _hasOfferId
                           ? 'Start Offer'
                           : 'Start unavailable',

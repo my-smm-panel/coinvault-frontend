@@ -14,6 +14,9 @@ import '../screens/profile_screen.dart';
 class CvHeader extends StatelessWidget {
   final bool showBellDot;
 
+  /// Show a back affordance on screens pushed above the main tabs.
+  final bool showBack;
+
   /// Show the bear profile avatar (Home only).
   final bool showProfile;
 
@@ -32,6 +35,7 @@ class CvHeader extends StatelessWidget {
   const CvHeader({
     super.key,
     this.showBellDot = false,
+    this.showBack = false,
     this.showProfile = false,
     this.profileLeft = false,
     this.showMoney = false,
@@ -51,6 +55,7 @@ class CvHeader extends StatelessWidget {
     final avatar = _avatar(context);
     final bell = _IconBtn(
       icon: Icons.notifications_none_rounded,
+      label: 'Notifications',
       onTap: () => _goNotifications(context),
       dot: showBellDot,
     );
@@ -92,6 +97,16 @@ class CvHeader extends StatelessWidget {
                   const Spacer(),
                   if (showWordmark) wordmark,
                 ] else ...[
+                  if (showBack) ...[
+                    IconButton(
+                      tooltip: 'Back',
+                      onPressed: () => Navigator.of(context).maybePop(),
+                      icon: const Icon(Icons.arrow_back_rounded,
+                          color: AppColors.textPrimary),
+                      constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+                    ),
+                    const SizedBox(width: 4),
+                  ],
                   if (showWordmark) wordmark,
                   const Spacer(),
                   bell,
@@ -109,9 +124,12 @@ class CvHeader extends StatelessWidget {
   }
 
   Widget _avatar(BuildContext context) {
-    return GestureDetector(
-      onTap: () => _goProfile(context),
-      child: Container(
+    return IconButton(
+      tooltip: 'Profile',
+      onPressed: () => _goProfile(context),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+      icon: Container(
         width: 36,
         height: 36,
         decoration: BoxDecoration(
@@ -125,6 +143,8 @@ class CvHeader extends StatelessWidget {
             fit: BoxFit.cover,
             width: 36,
             height: 36,
+            errorBuilder: (_, __, ___) => const Icon(
+              Icons.person_rounded, color: AppColors.primary, size: 24),
           ),
         ),
       ),
@@ -132,32 +152,29 @@ class CvHeader extends StatelessWidget {
   }
 
   Widget _moneyPill(int coins) {
-    return GestureDetector(
-      onTap: () {},
-      child: Container(
-        height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 10),
-        decoration: BoxDecoration(
-          color: _surface,
-          borderRadius: BorderRadius.circular(17),
-          border: Border.all(color: _border, width: 1),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.monetization_on_rounded,
-                color: _orange, size: 16),
-            const SizedBox(width: 5),
-            Text(
-              _fmt(coins),
-              style: const TextStyle(
-                color: _primaryText,
-                fontSize: 13,
-                fontWeight: FontWeight.w800,
-              ),
+    return Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 10),
+      decoration: BoxDecoration(
+        color: _surface,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: _border, width: 1),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.monetization_on_rounded,
+              color: _orange, size: 16),
+          const SizedBox(width: 5),
+          Text(
+            _fmt(coins),
+            style: const TextStyle(
+              color: _primaryText,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -190,16 +207,24 @@ class CvHeader extends StatelessWidget {
 
 class _IconBtn extends StatelessWidget {
   final IconData icon;
+  final String label;
   final VoidCallback onTap;
   final bool dot;
-  const _IconBtn({required this.icon, required this.onTap, this.dot = false});
+  const _IconBtn({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.dot = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Container(
+    return IconButton(
+      tooltip: label,
+      onPressed: onTap,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 44, height: 44),
+      icon: Container(
         width: 38,
         height: 38,
         decoration: BoxDecoration(

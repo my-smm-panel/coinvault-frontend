@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,7 +12,8 @@ import 'services/auth_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase init must NEVER block runApp - white screen fix
+  // Initialize Firebase before mounting screens that depend on Auth; keep
+  // subsequent backend session restoration asynchronous after the first frame.
   bool firebaseReady = false;
   try {
     await Firebase.initializeApp(
@@ -29,15 +32,14 @@ void main() async {
     }
   }
 
-  // Auth init must not crash app even if Firebase failed
-  try {
-    await AuthService().initialize();
-  } catch (e) {
-    debugPrint('AuthService init failed: $e');
-  }
-
   debugPrint('Launching app firebaseReady=$firebaseReady');
   runApp(const CoinVaultApp());
+
+  // Restore the signed-in session after the first frame. Backend profile and
+  // wallet calls must never hold the user on a blank startup screen.
+  unawaited(AuthService().initialize().catchError((Object error) {
+    debugPrint('AuthService init failed: $error');
+  }));
 }
 
 class CoinVaultApp extends StatelessWidget {

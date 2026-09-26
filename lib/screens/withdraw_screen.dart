@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../core/app_theme.dart';
 import '../models/app_models.dart';
 import '../services/api_client.dart';
 import '../services/app_repository.dart';
 import '../services/auth_service.dart';
-import '../services/balance_stream.dart';
 import '../widgets/cv_header.dart';
+import 'redeem_screen.dart';
 
 /// Withdrawal screen backed by the authenticated wallet and methods APIs.
 /// Only methods returned by the server are shown; no local balance mutation is
@@ -149,7 +150,9 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         details: details,
       );
       if (!mounted) return;
-      await AppRepository.instance.fetchWalletBalance();
+      final freshBalance = await AppRepository.instance.fetchWalletBalance();
+      if (!mounted) return;
+      setState(() => _balance = freshBalance);
       await _loadRecent();
       _amountController.clear();
       _showSuccessDialog(amount);
@@ -211,18 +214,47 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(18, 6, 18, 28),
             children: [
-              const CvHeader(),
+              CvHeader(showBack: Navigator.of(context).canPop()),
               const SizedBox(height: 10),
               const Text('Withdraw', style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
               const SizedBox(height: 4),
               const Text('Choose a payout method and review your request before submitting.', style: TextStyle(fontSize: 12.5, height: 1.35, color: AppColors.textSecondary)),
               const SizedBox(height: 14),
               _balanceCard(),
+              const SizedBox(height: 12),
+              Material(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+                child: InkWell(
+                  onTap: () async {
+                    await Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const RedeemScreen()));
+                    if (mounted) await _load();
+                  },
+                  borderRadius: BorderRadius.circular(AppRadius.lg),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(border: Border.all(color: AppColors.border),
+                      borderRadius: BorderRadius.circular(AppRadius.lg)),
+                    child: const Row(children: [
+                      Icon(Icons.card_giftcard_rounded, color: AppColors.primary),
+                      SizedBox(width: 12),
+                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Gift cards', style: TextStyle(fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary, fontSize: 14)),
+                        Text('Browse available cards', style: TextStyle(
+                          color: AppColors.textSecondary, fontSize: 12)),
+                      ])),
+                      Icon(Icons.chevron_right_rounded, color: AppColors.primary),
+                    ]),
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
               if (_loading)
                 const Center(child: Padding(padding: EdgeInsets.all(28), child: CircularProgressIndicator(color: AppColors.primary)))
               else if (_methodsFailed || (_error != null && _methods.isEmpty))
-                _empty(_error ?? 'Withdrawal methods are unavailable.')
+                _empty(_error ?? 'Withdrawal methods are unavailable.', retry: true)
               else if (_methods.isEmpty)
                 _empty('No supported withdrawal methods are available.')
               else ...[
@@ -293,7 +325,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   }
 
   Widget _balanceCard() {
-    final balance = BalanceStream.instance.value ?? _balance;
+    final balance = _balance;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
@@ -362,6 +394,8 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     return TextField(
       controller: _amountController,
       keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      textInputAction: TextInputAction.done,
       onChanged: (_) => setState(() {}),
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w800),
       decoration: InputDecoration(
@@ -375,7 +409,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
   }
 
   Widget _recentList() {
-    if (_historyFailed) return _empty('Withdrawal history could not be fetched.');
+    if (_historyFailed) return _empty('Withdrawal history could not be fetched.', retry: true);
     if (_recent.isEmpty) return _empty('No withdrawal history');
     return Container(
       decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: AppColors.border)),
@@ -413,10 +447,21 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     );
   }
 
-  Widget _empty(String message) => Container(
+  Widget _empty(String message, {bool retry = false}) => Container(
         width: double.infinity,
         padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: AppColors.border)),
-        child: Text(message, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+        decoration: BoxDecoration(color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: AppColors.border)),
+        child: Column(children: [
+          Text(message, textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          if (retry) ...[
+            const SizedBox(height: 10),
+            TextButton.icon(onPressed: _load,
+                icon: const Icon(Icons.refresh_rounded),
+                label: const Text('Try again')),
+          ],
+        ]),
       );
 }

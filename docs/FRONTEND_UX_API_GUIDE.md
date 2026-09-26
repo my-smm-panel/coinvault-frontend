@@ -18,11 +18,11 @@ The Android app is a client of the CoinVault API hosted on Render. The backend/P
 
 The mobile app sends requests to the Render API base URL configured in `lib/core/api_config.dart`. `ApiClient` encodes JSON, sets `Accept: application/json`, and applies a 15-second timeout. For protected requests it adds `Authorization: Bearer <backend-JWT>`. Public catalog/health requests explicitly disable auth where needed. A resource ID is URL-encoded before it is added to the offer-start path. The UI treats a valid successful empty list as empty; a failed or malformed response is unavailable and should show an error/retry state, not a fake zero or mock record.
 
-The Earn screen loads surveys, general offers, activity, wallet balance, Offerwall.GG offers, and Paymentwall offers. Its categories are navigation/filter controls only; they do not decide eligibility or rewards. Selecting a general offer opens its detail and calls the backend start route only when the user chooses to start. Provider offers route into the corresponding provider catalog, where its server-returned start URL is used.
+The Earn screen loads surveys, general offers, activity, Offerwall.GG offers, and Paymentwall offers. It shows activity counts, not an estimated balance or promised rewards on offer cards. The Home and Wallet screens fetch the authenticated wallet balance. Earn categories are navigation/filter controls only; they do not decide eligibility or rewards. Selecting a general offer opens its detail and calls the backend start route only when the user chooses to start. Provider offers route into the corresponding provider catalog, where its server-returned start URL is used.
 
 | UX area | Read/API call | User action |
 | --- | --- | --- |
-| Home wallet | `GET /api/wallet/balances` (auth); `GET /api/users/activity` (auth) | Today’s earned total is derived only from dated, completed server activity. |
+| Home wallet | `GET /api/wallet/balances` (auth) | Shows only the authenticated available balance; no locally calculated earned total. |
 | Offers/tasks | `GET /api/offers` (public catalogue) | `POST /api/offers/:id/start` (auth); server supplies any tracking destination/reward data. |
 | Offerwall.GG | `GET /api/offerwall-gg` (auth) | `POST /api/offerwall-gg/:id/start` (auth). |
 | Paymentwall offers | `GET /api/offers`, filtered to records whose backend provider is Paymentwall | Uses the verified generic `POST /api/offers/:id/start`; no unsupported `/api/paymentwall` catalogue is called by the app. |
@@ -41,4 +41,4 @@ Screens should start with a loading state, then show only API-provided data. A l
 
 ## Release and verification status
 
-This guide describes the frontend request flow and the changes proposed for review. It is **not a claim of Play Store or production readiness**: Flutter SDK/analyzer/build and signed AAB are not available in this work environment, and authenticated end-to-end tests still need a real user session. Changes are to be reviewed in a frontend PR first. No merge, Render deploy, Firestore migration, or balance change is included.
+This guide describes the frontend request flow and the changes proposed for review. It is **not a claim of Play Store or production readiness**: Flutter SDK/analyzer/build and signed AAB are not available in this work environment, and authenticated end-to-end tests still need a real user session. Changes require review and a real Flutter build/test before release. This local snapshot does not include a PR, merge, Render deploy, Firestore migration, or balance change.

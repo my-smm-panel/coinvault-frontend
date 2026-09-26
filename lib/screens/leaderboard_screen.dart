@@ -93,7 +93,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const CvHeader(),
+            CvHeader(showBack: Navigator.of(context).canPop()),
             _segmented(),
             Expanded(
               child: _loading
@@ -208,9 +208,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _podiumSlot(second, 2, false, height: 96),
-          _podiumSlot(first, 1, true, height: 116),
-          _podiumSlot(third, 3, false, height: 96),
+          Expanded(child: _podiumSlot(second, 2, false, height: 96)),
+          Expanded(child: _podiumSlot(first, 1, true, height: 116)),
+          Expanded(child: _podiumSlot(third, 3, false, height: 96)),
         ],
       ),
     );
@@ -254,7 +254,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             style: const TextStyle(
                 color: _primaryText, fontSize: 12.5, fontWeight: FontWeight.w700)),
         const SizedBox(height: 2),
-        Text(coins == null ? 'Coins unavailable' : '${_fmt(coins)} Coins',
+        Text(
+            coins == null ? 'Coins unavailable' : '${_fmt(coins)} Coins',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: TextStyle(
                 color: gold ? _brown : _secondaryText,
                 fontSize: 11.5,

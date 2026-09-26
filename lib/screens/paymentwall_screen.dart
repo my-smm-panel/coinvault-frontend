@@ -13,7 +13,7 @@ import 'paymentwall_detail_screen.dart';
 /// Paymentwall offers screen — light/white premium design.
 /// Header (title + subtitle + bell + avatar) → filter chips →
 /// "Available Offers" section → vertical offer cards
-/// (provider logo, title, provider name, short requirement, reward, time, Start button).
+/// (provider logo, title, short requirement, server-provided time, Start button).
 /// Data is filtered from the backend's GET /api/offers catalogue; start via its authenticated offer route.
 class PaymentwallScreen extends StatefulWidget {
   const PaymentwallScreen({super.key});
@@ -122,6 +122,14 @@ class _PaymentwallScreenState extends State<PaymentwallScreen> {
           provider: offer.provider,
           title: offer.title,
           coins: null,
+          description: offer.description ?? offer.shortRequirement,
+          duration: offer.estimatedTime,
+          requirements: offer.requirements,
+          goals: offer.goals,
+          rules: offer.rules,
+          isVariable: offer.isVariable,
+          startOfferOverride: () =>
+              PaymentwallService.instance.startOffer(offer.id),
         ),
       ),
     );
@@ -140,7 +148,7 @@ class _PaymentwallScreenState extends State<PaymentwallScreen> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              const SliverToBoxAdapter(child: CvHeader()),
+              SliverToBoxAdapter(child: CvHeader(showBack: Navigator.of(context).canPop())),
               const SliverToBoxAdapter(child: SizedBox(height: 12)),
               SliverToBoxAdapter(child: _filterChips()),
               const SliverToBoxAdapter(child: SizedBox(height: 6)),
@@ -242,7 +250,7 @@ class _PaymentwallScreenState extends State<PaymentwallScreen> {
                   fontSize: 16,
                   fontWeight: FontWeight.w800)),
           SizedBox(height: 2),
-          Text('Complete offers to earn coins',
+          Text('Browse offers returned by Paymentwall',
               style: TextStyle(color: _secondaryText, fontSize: 12)),
         ],
       ),
@@ -274,7 +282,7 @@ class _PaymentwallScreenState extends State<PaymentwallScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top row: provider logo + name + reward
+              // Top row: provider logo and name.
               Row(
                 children: [
                   AppLogo(
@@ -322,15 +330,27 @@ class _PaymentwallScreenState extends State<PaymentwallScreen> {
               // Meta row
               Row(
                 children: [
-                  if (estimatedTime.isNotEmpty) ...[
-                    const Icon(Icons.access_time_rounded,
-                        color: _secondaryText, size: 14),
-                    const SizedBox(width: 4),
-                    Text(estimatedTime,
-                        style: const TextStyle(
-                            color: _secondaryText, fontSize: 12)),
-                  ],
-                  const Spacer(),
+                  if (estimatedTime.isNotEmpty)
+                    Expanded(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.access_time_rounded,
+                              color: _secondaryText, size: 14),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(estimatedTime,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: _secondaryText, fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    const Spacer(),
+                  const SizedBox(width: 8),
                   // Start Offer button
                   SizedBox(
                     height: 42,

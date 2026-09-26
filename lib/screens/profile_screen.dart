@@ -4,7 +4,7 @@ import '../core/app_theme.dart';
 import '../models/app_models.dart';
 import '../services/app_repository.dart';
 import '../services/auth_service.dart';
-import '../services/balance_stream.dart';
+import 'redeem_screen.dart';
 import '../widgets/state_views.dart';
 import 'earn_screen.dart';
 import 'help_screen.dart';
@@ -24,6 +24,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   UserModel? _user;
+  int? _balance;
   bool _loading = true;
 
   static const _bg = AppColors.background;
@@ -40,26 +41,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUser() async {
     final auth = AuthService();
-    if (auth.isLoggedIn) {
-      setState(() {
-        _user = auth.userModel;
-        _loading = false;
-      });
-      // Wallet balance must come from a fresh authenticated response.
-      await AppRepository.instance.fetchWalletBalance();
-      if (mounted) setState(() {});
-    } else {
-      setState(() => _loading = false);
+    if (!auth.isLoggedIn) {
+      if (mounted) setState(() { _user = null; _balance = null; _loading = false; });
+      return;
     }
-    // Refresh server-authoritative remaining spins so the "Spins left"
-    // tile matches what the spin screen enforces.
-    try {
-      final status = await AppRepository.instance.spinStatus();
-      final limit = status?['dailyLimit'];
-      final used = status?['spinsUsed'];
-      if (!mounted || limit is! num || used is! num) return;
-      setState(() => _spinsLeft = (limit.toInt() - used.toInt()).clamp(0, limit.toInt()).toInt());
-    } catch (_) {}
+    final user = auth.userModel;
+    final results = await Future.wait<dynamic>([
+      AppRepository.instance.fetchWalletBalance(),
+      AppRepository.instance.spinStatus(),
+    ]);
+    if (!mounted) return;
+    final status = results[1];
+    final limit = status is Map ? status['dailyLimit'] : null;
+    final used = status is Map ? status['spinsUsed'] : null;
+    setState(() {
+      _user = user;
+      // Never present an older balance as a successful fresh request.
+      _balance = results[0] as int?;
+      _spinsLeft = limit is num && used is num
+          ? (limit.toInt() - used.toInt()).clamp(0, limit.toInt()).toInt()
+          : null;
+      _loading = false;
+    });
   }
 
   int? _spinsLeft;
@@ -102,8 +105,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (ok == true) await _signOut();
   }
 
-  void _push(Widget page) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  Future<void> _push(Widget page) async {
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+    if (mounted) await _loadUser();
   }
 
   static String _fmt(int n) {
@@ -144,28 +148,38 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     final user = _user!;
-    final balance = BalanceStream.instance.value;
+    final balance = _balance;
     final spinsLeft = _spinsLeft?.toString() ?? '—';
     final name = user.displayName.isEmpty ? 'User' : user.displayName;
 
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
-        child: SingleChildScrollView(
+        child: RefreshIndicator(
+          onRefresh: _loadUser,
+          child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(18, 6, 18, 28),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // ── Title ──
-              const Text(
-                'My Profile',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.w800,
-                  color: _textPrimary,
-                  height: 1.2,
+              Row(children: [
+                IconButton(
+                  tooltip: 'Back to Home',
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: const Icon(Icons.arrow_back_rounded, color: _textPrimary),
                 ),
-              ),
+                const SizedBox(width: 4),
+                const Expanded(child: Text('My Profile',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800,
+                    color: _textPrimary, height: 1.2))),
+                IconButton(
+                  tooltip: 'Refresh profile',
+                  onPressed: _loadUser,
+                  icon: const Icon(Icons.refresh_rounded, color: AppColors.primary),
+                ),
+              ]),
               const SizedBox(height: 4),
               const Text(
                 'Manage your account & rewards',
@@ -215,13 +229,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 16),
 
-              Center(
-                child: const Text('CoinVault v1.0.0',
-                    style:
-                        TextStyle(color: AppColors.textTertiary, fontSize: 11)),
+              const Center(
+                child: Text('Account details and balances come from CoinVault.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: AppColors.textTertiary, fontSize: 11)),
               ),
             ],
           ),
+        ),
         ),
       ),
     );
@@ -322,8 +337,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
             AppColors.primary),
         _stat('Spins Left', spinsLeft, Icons.donut_large_rounded,
             AppColors.primary),
-        _stat('Wallet status', balance == null ? 'Unknown' : 'Fresh', Icons.account_balance_wallet_rounded,
-            const Color(0xFF16A34A)),
+        _stat('Gift cards', 'Browse', Icons.card_giftcard_rounded,
+            AppColors.primary, onTap: () => _push(const RedeemScreen())),
         _stat('Payouts', 'View', Icons.currency_rupee_rounded,
             const Color(0xFF3B82F6), onTap: () => _push(const HistoryScreen(initialTab: 'Payouts'))),
       ],
@@ -399,6 +414,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const Color(0xFF3B82F6), const EarnScreen()],
       ['Withdraw', 'Request payout', Icons.account_balance_wallet_rounded,
           AppColors.primary, const WithdrawScreen()],
+      ['Gift cards', 'Browse available cards', Icons.card_giftcard_rounded,
+          AppColors.primary, const RedeemScreen()],
       ['Notifications', 'Alerts & updates', Icons.notifications_rounded,
           AppColors.primary, const NotificationsScreen()],
       ['Help & Support', 'FAQs and contact', Icons.help_outline_rounded,

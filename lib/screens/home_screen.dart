@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
 import '../services/balance_stream.dart';
@@ -46,7 +44,7 @@ class _HomeScreenState extends State<HomeScreen> {
         height: 72,
         backgroundColor: AppColors.surface,
         indicatorColor: AppColors.primaryContainer,
-        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
@@ -95,9 +93,6 @@ class _HomeTabState extends State<HomeTab> {
   bool _loading = true;
   bool _offersUnavailable = false;
   bool _surveysUnavailable = false;
-  bool _popupReady = false;
-  bool _hideFeaturedPopup = true;
-  String? _featuredPopupKey;
 
   @override
   void initState() {
@@ -132,15 +127,9 @@ class _HomeTabState extends State<HomeTab> {
           : null;
       _loading = false;
     });
-    await _restorePopupState();
   }
 
   Future<void> _refreshHome() => _loadHome();
-
-  String _dayKey() {
-    final now = DateTime.now();
-    return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
-  }
 
   String _offerId(Map<String, dynamic> offer) =>
       (offer['id'] ?? offer['_id'] ?? offer['offerId'] ??
@@ -157,54 +146,29 @@ class _HomeTabState extends State<HomeTab> {
     return null;
   }
 
-  Map<String, dynamic>? _dailyFeaturedOffer() {
+  bool _isOfferAvailable(Map<String, dynamic> offer) {
+    final status = (offer['status'] ?? '').toString().trim().toLowerCase();
+    if (offer['isActive'] == false ||
+        offer['active'] == false ||
+        offer['isExpired'] == true ||
+        status == 'inactive' ||
+        status == 'expired' ||
+        status == 'disabled') {
+      return false;
+    }
     final now = DateTime.now();
-    final day = DateTime(now.year, now.month, now.day);
-    for (final offer in _offers) {
-      if (offer['isFeatured'] != true || offer['isActive'] == false) continue;
-      if ((offer['title'] ?? '').toString().trim().isEmpty) continue;
-      final start = _dateValue(offer['startDate']);
-      final end = _dateValue(offer['endDate']);
-      if (start != null && day.isBefore(DateTime(start.year, start.month, start.day))) continue;
-      if (end != null && day.isAfter(DateTime(end.year, end.month, end.day))) continue;
-      return offer;
+    final start = _dateValue(offer['startDate']);
+    final end = _dateValue(offer['endDate']);
+    if (start != null && now.isBefore(start)) return false;
+    if (end != null) {
+      final rawEnd = offer['endDate'];
+      // Date-only server values remain available through their stated day.
+      final effectiveEnd = rawEnd is String && rawEnd.trim().length <= 10
+          ? DateTime(end.year, end.month, end.day, 23, 59, 59, 999)
+          : end;
+      if (now.isAfter(effectiveEnd)) return false;
     }
-    return null;
-  }
-
-  Future<void> _restorePopupState() async {
-    final offer = _dailyFeaturedOffer();
-    if (offer == null) {
-      if (mounted) {
-        setState(() {
-          _featuredPopupKey = null;
-          _hideFeaturedPopup = true;
-          _popupReady = true;
-        });
-      }
-      return;
-    }
-
-    final id = _offerId(offer).isEmpty
-        ? (offer['title'] ?? 'featured').toString()
-        : _offerId(offer);
-    final key = 'featured_popup_${_dayKey()}_$id';
-    final preferences = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _featuredPopupKey = key;
-      _hideFeaturedPopup = preferences.getBool(key) ?? false;
-      _popupReady = true;
-    });
-  }
-
-  Future<void> _dismissFeaturedPopup() async {
-    final key = _featuredPopupKey;
-    if (mounted) setState(() => _hideFeaturedPopup = true);
-    if (key != null) {
-      final preferences = await SharedPreferences.getInstance();
-      await preferences.setBool(key, true);
-    }
+    return true;
   }
 
   List<Map<String, dynamic>> _serverTasks() {
@@ -212,19 +176,20 @@ class _HomeTabState extends State<HomeTab> {
       final type = (offer['type'] ?? offer['category'] ?? '')
           .toString()
           .toUpperCase();
-      return (type.contains('TASK') || type.startsWith('INSTALL') ||
+      return _isOfferAvailable(offer) &&
+          (type.contains('TASK') || type.startsWith('INSTALL') ||
               type.contains('GAME') || type.contains('MULTI')) &&
           (offer['title'] ?? '').toString().trim().isNotEmpty &&
           _offerId(offer).isNotEmpty;
     }).toList();
 
-    int priority(Map<String, dynamic> task) =>
-        task['isTaskOfDay'] == true ||
-                task['isDaily'] == true ||
-                task['isFeatured'] == true ||
-                task['featured'] == true
-            ? 1
-            : 0;
+    int priority(Map<String, dynamic> task) {
+      if (task['isTaskOfDay'] == true || task['isDaily'] == true) return 3;
+      final type = (task['type'] ?? task['category'] ?? '').toString().toUpperCase();
+      if (type.contains('TASK')) return 2;
+      if (type.contains('GAME') || type.contains('MULTI')) return 1;
+      return 0;
+    }
     tasks.sort((a, b) => priority(b).compareTo(priority(a)));
     return tasks;
   }
@@ -239,7 +204,8 @@ class _HomeTabState extends State<HomeTab> {
       final steps = offer['instructions'];
       final hasSeveralSteps = steps is List && steps.length > 1;
       final id = _offerId(offer);
-      return id != highlightedId &&
+      return _isOfferAvailable(offer) &&
+          id != highlightedId &&
           (type.contains('GAME') || type.contains('MULTI') || hasSeveralSteps) &&
           (offer['title'] ?? '').toString().trim().isNotEmpty &&
           id.isNotEmpty;
@@ -251,7 +217,8 @@ class _HomeTabState extends State<HomeTab> {
       final type = (offer['type'] ?? offer['category'] ?? '')
           .toString()
           .toUpperCase();
-      return (offer['title'] ?? '').toString().trim().isNotEmpty &&
+      return _isOfferAvailable(offer) &&
+          (offer['title'] ?? '').toString().trim().isNotEmpty &&
           _offerId(offer).isNotEmpty &&
           !type.contains('TASK') &&
           !type.contains('SURVEY') &&
@@ -294,11 +261,9 @@ class _HomeTabState extends State<HomeTab> {
           backgroundColor: AppColors.background,
           body: Column(
             children: [
-              CvHeader(
+              const CvHeader(
                 showProfile: true,
                 profileLeft: true,
-                showMoney: false,
-                showWordmark: false,
               ),
               Expanded(
                 child: RefreshIndicator(
@@ -310,36 +275,36 @@ class _HomeTabState extends State<HomeTab> {
                     padding: const EdgeInsets.fromLTRB(16, 6, 16, 28),
                     children: [
                       _sectionHeader('Task of the Day',
-                          subtitle: 'Your top available task from the server'),
+                          subtitle: 'A task currently available to you'),
                       const SizedBox(height: 10),
                       _taskOfDay(),
-                      if (_popupReady && !_hideFeaturedPopup) ...[
-                        const SizedBox(height: 14),
-                        _featuredPopup(),
-                      ],
                       const SizedBox(height: 14),
                       _walletSummary(balance),
                       const SizedBox(height: 24),
                       _sectionHeader('Surveys',
-                          subtitle: 'Survey opportunities available to you',
+                          subtitle: 'Available survey opportunities',
                           action: 'View all',
                           onAction: () => _push(const SurveysScreen())),
                       const SizedBox(height: 10),
                       _surveyList(),
-                      const SizedBox(height: 24),
-                      _sectionHeader('Games & multi-step tasks',
-                          subtitle: 'Explore server-published activities',
-                          action: 'All tasks',
-                          onAction: () => _push(const EarnScreen())),
-                      const SizedBox(height: 10),
-                      _multiStepList(),
-                      const SizedBox(height: 24),
-                      _sectionHeader('More tasks',
-                          subtitle: 'Browse other available activities',
-                          action: 'View all',
-                          onAction: () => _push(const EarnScreen())),
-                      const SizedBox(height: 10),
-                      _otherTaskList(),
+                      if (_loading || _multiStepContent().isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        _sectionHeader('Games & multi-step tasks',
+                            subtitle: 'Activities with more to explore',
+                            action: 'View all',
+                            onAction: () => _push(const EarnScreen())),
+                        const SizedBox(height: 10),
+                        _multiStepList(),
+                      ],
+                      if (_loading || _remainingTasks().isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        _sectionHeader('More tasks',
+                            subtitle: 'Explore available activities',
+                            action: 'View all',
+                            onAction: () => _push(const EarnScreen())),
+                        const SizedBox(height: 10),
+                        _otherTaskList(),
+                      ],
                       if (_otherOffers().isNotEmpty) ...[
                         const SizedBox(height: 24),
                         _sectionHeader('More offers',
@@ -511,71 +476,6 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _featuredPopup() {
-    final offer = _dailyFeaturedOffer();
-    if (offer == null) return const SizedBox.shrink();
-    final description = (offer['shortDesc'] ?? offer['description'] ?? '')
-        .toString()
-        .trim();
-    return Container(
-      padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF173B34),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.campaign_rounded,
-              color: Colors.white, size: 21),
-          const SizedBox(width: 10),
-          Expanded(
-            child: InkWell(
-              onTap: () => _openOffer(offer),
-              borderRadius: BorderRadius.circular(8),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('FEATURED BY COINVAULT',
-                        style: TextStyle(
-                            color: Color(0xFFD8F2E5),
-                            fontSize: 9,
-                            letterSpacing: .7,
-                            fontWeight: FontWeight.w800)),
-                    const SizedBox(height: 3),
-                    Text((offer['title'] ?? '').toString(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800)),
-                    if (description.isNotEmpty) ...[
-                      const SizedBox(height: 2),
-                      Text(description,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              color: Color(0xFFE4F2EC), fontSize: 11)),
-                    ],
-                  ],
-                ),
-              ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Hide this featured item for today',
-            onPressed: _dismissFeaturedPopup,
-            icon: const Icon(Icons.close_rounded,
-                color: Colors.white, size: 19),
-            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _walletSummary(int? balance) {
     return Container(
       padding: const EdgeInsets.fromLTRB(15, 13, 12, 13),
@@ -606,7 +506,7 @@ class _HomeTabState extends State<HomeTab> {
                     style: TextStyle(
                         color: AppColors.textSecondary, fontSize: 11)),
                 const SizedBox(height: 2),
-                Text(balance == null ? '—' : '${_formatNumber(balance)} coins',
+                Text(balance == null ? 'Balance unavailable' : '${_formatNumber(balance)} coins',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.titleMedium.copyWith(
@@ -635,7 +535,7 @@ class _HomeTabState extends State<HomeTab> {
     if (_loading) return _listSkeleton();
     final surveys = _surveys.whereType<Map>().where((survey) {
       return (survey['title'] ?? '').toString().trim().isNotEmpty;
-    }).take(3).toList();
+    }).take(5).toList();
     if (surveys.isEmpty) {
       return _emptyCard(
         icon: Icons.poll_rounded,
@@ -668,7 +568,7 @@ class _HomeTabState extends State<HomeTab> {
 
   Widget _multiStepList() {
     if (_loading) return _listSkeleton();
-    final items = _multiStepContent().take(3).toList();
+    final items = _multiStepContent().take(6).toList();
     if (items.isEmpty) {
       return _emptyCard(
         icon: Icons.sports_esports_rounded,
@@ -694,16 +594,17 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
+  List<Map<String, dynamic>> _remainingTasks() {
+    final all = _serverTasks();
+    final highlightedId = all.isEmpty ? '' : _offerId(all.first);
+    final multiStepIds = _multiStepContent().map(_offerId).toSet();
+    return all.where((task) => _offerId(task) != highlightedId &&
+        !multiStepIds.contains(_offerId(task))).toList();
+  }
+
   Widget _otherTaskList() {
     if (_loading) return _listSkeleton();
-    final all = _serverTasks();
-    final featuredId = all.isEmpty ? '' : _offerId(all.first);
-    final multiStepIds = _multiStepContent().map(_offerId).toSet();
-    final remaining = all
-        .where((task) => _offerId(task) != featuredId &&
-            !multiStepIds.contains(_offerId(task)))
-        .take(3)
-        .toList();
+    final remaining = _remainingTasks().take(8).toList();
     if (remaining.isEmpty) {
       return _emptyCard(
         icon: Icons.checklist_rounded,

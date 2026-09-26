@@ -4,9 +4,9 @@ import 'package:google_fonts/google_fonts.dart';
 /// App color palette - CoinVault light theme (per design sheet)
 class AppColors {
   // Unified CoinVault orange/gold palette from the supplied UI reference.
-  static const Color primary = Color(0xFFF29A18);
+  static const Color primary = Color(0xFFA84D00);
   static const Color primaryLight = Color(0xFFFBBF24);
-  static const Color primaryDark = Color(0xFFC86F08);
+  static const Color primaryDark = Color(0xFF8C4000);
   static const Color primaryContainer = Color(0xFFFFF4E2);
 
   // Accent - the same warm gold used for coin rewards.
@@ -41,7 +41,7 @@ class AppColors {
 
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [primary, primaryLight],
+    colors: [primaryDark, primary],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

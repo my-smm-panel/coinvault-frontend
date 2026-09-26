@@ -4,9 +4,8 @@ import '../core/app_theme.dart';
 import '../services/app_repository.dart';
 import '../widgets/state_views.dart';
 
-/// History - own CoinVault style (NOT ProRewards):
-/// orange header, orange segment control, filter chips,
-/// dark cards with gold coin figures and status dots.
+/// Server-backed task and payout history with independent retry states,
+/// accessible status indicators and CoinVault's light card style.
 class HistoryScreen extends StatefulWidget {
   final String initialTab; // 'Tasks' or 'Payouts'
   const HistoryScreen({super.key, this.initialTab = 'Tasks'});
@@ -21,7 +20,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<dynamic> _withdrawals = [];
   List<dynamic> _tasks = [];
   bool _loading = true;
-  bool _failed = false;
+  bool _withdrawalsFailed = false;
+  bool _tasksFailed = false;
 
   static const _bg = AppColors.background;
   static const _card = AppColors.surface;
@@ -46,7 +46,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
   Future<void> _load() async {
     setState(() {
       _loading = true;
-      _failed = false;
+      _withdrawalsFailed = false;
+      _tasksFailed = false;
     });
     final repo = AppRepository.instance;
     final w = await repo.fetchWithdrawalHistory('');
@@ -55,14 +56,16 @@ class _HistoryScreenState extends State<HistoryScreen> {
     setState(() {
       _withdrawals = w ?? [];
       _tasks = t ?? [];
-      _failed = w == null || t == null;
+      _withdrawalsFailed = w == null;
+      _tasksFailed = t == null;
       _loading = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final total = _loading ? null : _withdrawals.length + _tasks.length;
+    final total = _loading || _withdrawalsFailed || _tasksFailed
+        ? null : _withdrawals.length + _tasks.length;
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
@@ -77,7 +80,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       rows: 6,
                       padding: EdgeInsets.fromLTRB(14, 10, 14, 20),
                     )
-                  : _failed
+                  : (_tab == 'Payouts' ? _withdrawalsFailed : _tasksFailed)
                       ? ErrorState(
                           message: 'History could not be fetched. Try again.',
                           onRetry: _load,
@@ -115,13 +118,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.arrow_back_rounded,
-                  color: AppColors.textPrimary, size: 20),
+                  color: Colors.white, size: 20),
             ),
           ),
           const SizedBox(width: 12),
           const Text('History',
               style: TextStyle(
-                  color: AppColors.textPrimary,
+                  color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.w800)),
           const Spacer(),
@@ -134,13 +137,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.monetization_on_rounded,
-                    color: AppColors.goldLight, size: 16),
-                const SizedBox(width: 4),
-                Text(total?.toString() ?? '—',
+                const Icon(Icons.receipt_long_rounded,
+                    color: Colors.white, size: 16),
+                const SizedBox(width: 5),
+                Text('${total?.toString() ?? '—'} records',
                     style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 13,
+                        color: Colors.white,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800)),
               ],
             ),
@@ -295,7 +298,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _tasksList() {
     final items = _tasks
-        .map((e) => Map<String, dynamic>.from(e as Map))
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
         .where((m) => _pass(_taskBucket(
             (m['status'] ?? '').toString())))
         .toList();
@@ -327,7 +331,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _payoutsList() {
     final items = _withdrawals
-        .map((e) => Map<String, dynamic>.from(e as Map))
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
         .where((m) => _pass(_payoutBucket(
             (m['status'] ?? 'PENDING').toString())))
         .toList();

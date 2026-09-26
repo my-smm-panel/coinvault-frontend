@@ -60,7 +60,9 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
               .map((e) => e.toString().trim())
               .toList()
           : <String>[];
-      final id = (raw['id'] ?? raw['offerId'] ?? '').toString().trim();
+      final id = (raw['id'] ?? raw['offerId'] ?? raw['providerOfferId'] ?? '')
+          .toString()
+          .trim();
       return <String, dynamic>{
         'id': id.isEmpty ? null : id,
         'title': (raw['title'] ?? raw['name'] ?? '').toString().trim(),
