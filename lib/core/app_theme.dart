@@ -4,10 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 /// App color palette - CoinVault light theme (per design sheet)
 class AppColors {
   // Unified CoinVault orange/gold palette from the supplied UI reference.
-  static const Color primary = Color(0xFFF59E0B);
+  static const Color primary = Color(0xFFA84D00);
   static const Color primaryLight = Color(0xFFFBBF24);
-  static const Color primaryDark = Color(0xFFD97706);
-  static const Color primaryContainer = Color(0xFFFFF4E5);
+  static const Color primaryDark = Color(0xFF8C4000);
+  static const Color primaryContainer = Color(0xFFFFF4E2);
 
   // Accent - the same warm gold used for coin rewards.
   static const Color gold = Color(0xFFF59E0B);
@@ -16,14 +16,14 @@ class AppColors {
 
   // Soft neutral surfaces keep the reward cards clear and readable.
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF5F6F8);
-  static const Color background = Color(0xFFFAFAF8);
+  static const Color surfaceVariant = Color(0xFFF1F4F8);
+  static const Color background = Color(0xFFF5F7FA);
   static const Color cardBackground = Color(0xFFFFFFFF);
 
   // Text colors (light theme)
-  static const Color textPrimary = Color(0xFF171717);
-  static const Color textSecondary = Color(0xFF6B7280);
-  static const Color textTertiary = Color(0xFF9B9BAB);
+  static const Color textPrimary = Color(0xFF172033);
+  static const Color textSecondary = Color(0xFF647084);
+  static const Color textTertiary = Color(0xFF8993A3);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
 
   // Status colors
@@ -36,12 +36,12 @@ class AppColors {
   static const Color spinCard = Color(0xFFFFFFFF);
 
   // Border/divider (light theme)
-  static const Color divider = Color(0xFFE8E8EE);
-  static const Color border = Color(0xFFE2E2EA);
+  static const Color divider = Color(0xFFE8EDF3);
+  static const Color border = Color(0xFFE2E8F0);
 
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [primary, primaryLight],
+    colors: [primaryDark, primary],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );

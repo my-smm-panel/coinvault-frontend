@@ -1,27 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
+import '../services/app_repository.dart';
 import '../widgets/app_logo.dart';
-import '../services/offerwall_service.dart';
-import '../widgets/state_views.dart';
 
-/// Full offer detail page — opened from OfferwallScreen.
-/// Shows big header (provider brand), coins banner, requirements,
-/// multi-step goals (numbered list), rules, and a Start button
-/// that opens the clickUrl in the external browser.
+/// Detail page for a server-provided offer. Optional content is rendered only
+/// when it was supplied by the caller from the backend offer payload.
 class OfferDetailScreen extends StatefulWidget {
   final String offerId;
   final String provider;
   final String title;
-  final int coins;
+  final int? coins;
+  final String? description;
+  final String? duration;
+  final List<String>? requirements;
+  final List<String>? goals;
+  final List<String>? rules;
+  final bool? isVariable;
+  final Future<String?> Function()? startOfferOverride;
 
   const OfferDetailScreen({
     super.key,
     required this.offerId,
     required this.provider,
     required this.title,
-    required this.coins,
+    this.coins,
+    this.description,
+    this.duration,
+    this.requirements,
+    this.goals,
+    this.rules,
+    this.isVariable,
+    this.startOfferOverride,
   });
 
   @override
@@ -29,57 +41,74 @@ class OfferDetailScreen extends StatefulWidget {
 }
 
 class _OfferDetailScreenState extends State<OfferDetailScreen> {
-  OfferwallOffer? _detail;
-  bool _loading = true;
-  bool _failed = false;
   bool _started = false;
+  bool _starting = false;
+  Uri? _trackingUri;
 
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _failed = false;
-    });
-    final data = await OfferwallService.instance.fetchOfferDetail(widget.offerId);
-    if (!mounted) return;
-    setState(() {
-      _loading = false;
-      if (data == null) {
-        _failed = true;
-      } else {
-        _detail = data;
-      }
-    });
-  }
+  bool get _hasOfferId => widget.offerId.trim().isNotEmpty;
 
   Future<void> _startOffer() async {
+    if (_starting || !_hasOfferId) return;
+    final existingLink = _trackingUri;
+    if (_started && existingLink != null) {
+      await _openTrackingLink(existingLink);
+      return;
+    }
     if (_started) return;
-    setState(() => _started = true);
-    final clickUrl = await OfferwallService.instance.startOffer(widget.offerId);
-    if (!mounted) return;
-    if (clickUrl != null && clickUrl.isNotEmpty) {
-      final uri = Uri.tryParse(clickUrl);
-      if (uri != null && await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
+
+    setState(() => _starting = true);
+    try {
+      String rawUrl;
+      if (widget.startOfferOverride != null) {
+        rawUrl = (await widget.startOfferOverride!() ?? '').trim();
       } else {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Could not open offer link')),
-          );
-          setState(() => _started = false);
-        }
+        final result = await AppRepository.instance.startOffer(widget.offerId.trim());
+        rawUrl = (result['trackingUrl'] ??
+                result['clickUrl'] ??
+                result['externalUrl'] ??
+                result['redirectUrl'] ??
+                result['url'] ??
+                '')
+            .toString()
+            .trim();
       }
-    } else {
+      if (!mounted) return;
+      final uri = Uri.tryParse(rawUrl);
+      if (uri == null || uri.scheme.toLowerCase() != 'https' || uri.host.isEmpty) {
+        setState(() => _starting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('A secure offer link is not available right now.')),
+        );
+        return;
+      }
+      setState(() {
+        _starting = false;
+        _started = true;
+        _trackingUri = uri;
+      });
+      await _openTrackingLink(uri);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _starting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not start this offer. Please try again.')),
+      );
+    }
+  }
+
+  Future<void> _openTrackingLink(Uri uri) async {
+    try {
+      final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!opened && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Offer is ready, but the link could not be opened. Tap Open offer to retry.')),
+        );
+      }
+    } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not start offer. Please try again.')),
+          const SnackBar(content: Text('Offer is ready, but the link could not be opened. Tap Open offer to retry.')),
         );
-        setState(() => _started = false);
       }
     }
   }
@@ -87,514 +116,280 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final color = ProviderLogos.colorFor(widget.provider);
-    final minutes = (widget.coins ~/ 20).clamp(1, 60);
-
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAF8),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
-            // ===== Header =====
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [color, color.withOpacity(0.85)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius:
-                    const BorderRadius.vertical(bottom: Radius.circular(20)),
-              ),
-              child: Row(
-                children: [
-                  InkWell(
-                    onTap: () => Navigator.pop(context),
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.25),
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.arrow_back_rounded,
-                          color: Colors.white, size: 20),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: AppLogo(
-                      provider: widget.provider,
-                      title: widget.title,
-                      size: 44,
-                      radius: 10,
-                      fallbackIcon: Icons.local_offer_rounded,
-                      fallbackColor: color,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          widget.provider.isEmpty ? 'Offerwall.GG' : widget.provider,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        Text('Official offer partner',
-                            style: TextStyle(
-                                color: Colors.white.withOpacity(0.85),
-                                fontSize: 11)),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // ===== Content =====
-            Expanded(
-              child: _loading
-                  ? const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: ShimmerCardList(rows: 4, padding: EdgeInsets.zero),
-                    )
-                  : _failed
-                      ? ErrorState(
-                          message: 'Unable to load offer details',
-                          onRetry: _load,
-                        )
-                      : _content(color, minutes),
-            ),
-
-            // ===== Bottom CTA =====
-            if (!_loading && !_failed)
-              Container(
-                padding: EdgeInsets.fromLTRB(
-                    16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFAFAF8),
-                  border: Border(
-                      top: BorderSide(
-                          color: const Color(0xFF171717).withOpacity(0.06))),
-                ),
-                child: SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: _started ? null : _startOffer,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _started ? const Color(0xFFE8F0FF) : color,
-                      foregroundColor: Colors.white,
-                      disabledBackgroundColor: const Color(0xFFE8F0FF),
-                      disabledForegroundColor: const Color(0xFF6B7280),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(26),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _started
-                              ? Icons.hourglass_top_rounded
-                              : Icons.play_arrow_rounded,
-                          size: 22,
-                          color: _started
-                              ? const Color(0xFF6B7280)
-                              : Colors.white,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          _started ? 'Opening…' : 'Start Offer',
-                          style: TextStyle(
-                            color: _started
-                                ? const Color(0xFF6B7280)
-                                : Colors.white,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 15,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+            _header(color),
+            Expanded(child: _content(color)),
+            _bottomCta(color),
           ],
         ),
       ),
     );
   }
 
-  Widget _content(Color color, int minutes) {
-    final d = _detail!;
-    final requirements = d.requirements;
-    final goals = d.goals;
-    final rules = d.rules;
-    final isVariable = false;
-    final description = d.description ?? '';
-    // Use coinReward from backend detail (may have more accurate value)
-    final reward = d.coinReward > 0 ? d.coinReward : widget.coins;
-    final inr = (reward / 10).toStringAsFixed(0);
+  Widget _header(Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [color, color.withOpacity(0.85)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: () => Navigator.pop(context),
+            borderRadius: BorderRadius.circular(10),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.25),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.arrow_back_rounded,
+                  color: Colors.white, size: 20),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: AppLogo(
+              provider: widget.provider,
+              title: widget.title,
+              size: 44,
+              radius: 10,
+              fallbackIcon: Icons.local_offer_rounded,
+              fallbackColor: color,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.provider,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis),
+                if (widget.provider.trim().isNotEmpty)
+                  Text('Offer details',
+                      style: TextStyle(
+                          color: Colors.white.withOpacity(0.85), fontSize: 11)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _content(Color color) {
+    final description = widget.description?.trim() ?? '';
+    final requirements = widget.requirements ?? const <String>[];
+    final goals = widget.goals ?? const <String>[];
+    final rules = widget.rules ?? const <String>[];
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ===== Reward banner =====
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFFF59E0B), Color(0xFFFBBF24)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFFF59E0B).withOpacity(0.35),
-                  blurRadius: 24,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.monetization_on_rounded,
-                    color: Color(0xFF5A3825), size: 44),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '+${_fmt(reward)} coins',
-                        style: const TextStyle(
-                          color: Color(0xFF5A3825),
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      Text(
-                        '≈ ₹$inr',
-                        style: TextStyle(
-                            color: const Color(0xFF5A3825).withOpacity(0.8),
-                            fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.25),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.schedule_rounded,
-                          color: Colors.white, size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        '$minutes min',
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-
-          const SizedBox(height: 20),
-
-          // ===== Title + description =====
-          Text(
-            widget.title,
-            style: const TextStyle(
-                color: Color(0xFF171717),
-                fontSize: 19,
-                fontWeight: FontWeight.w800),
-          ),
+          Text(widget.title,
+              style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 19,
+                  fontWeight: FontWeight.w800)),
           if (description.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(
-              description,
-              style: const TextStyle(
-                  color: Color(0xFF6B7280), fontSize: 13, height: 1.5),
-            ),
+            Text(description,
+                style: const TextStyle(
+                    color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
           ],
-
-          const SizedBox(height: 20),
-
-          // ===== Requirements =====
+          if (widget.duration?.trim().isNotEmpty ?? false) ...[
+            const SizedBox(height: 10),
+            _statusChip(widget.duration!.trim(), Icons.schedule_rounded, color),
+          ],
           if (requirements.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: color.withOpacity(0.35)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.checklist_rounded, color: color, size: 20),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Requirements',
-                        style: TextStyle(
-                            color: Color(0xFF171717),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  ...requirements.asMap().entries.map(
-                        (e) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 26,
-                                height: 26,
-                                decoration: BoxDecoration(
-                                  color: color.withOpacity(0.15),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: color.withOpacity(0.5)),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '${e.key + 1}',
-                                    style: TextStyle(
-                                        color: color,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    e.value,
-                                    style: const TextStyle(
-                                        color: Color(0xFF171717),
-                                        fontSize: 13,
-                                        height: 1.4),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                ],
-              ),
-            ),
             const SizedBox(height: 20),
+            _numberedCard('Requirements', Icons.checklist_rounded,
+                requirements, color),
           ],
-
-          // ===== Goals (multi-step) =====
           if (goals.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: color.withOpacity(0.35)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.flag_rounded, color: color, size: 20),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Goals',
-                        style: TextStyle(
-                            color: Color(0xFF171717),
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  ...goals.asMap().entries.map(
-                        (e) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                width: 26,
-                                height: 26,
-                                decoration: BoxDecoration(
-                                  color: color.withOpacity(0.15),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                      color: color.withOpacity(0.5)),
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    '${e.key + 1}',
-                                    style: TextStyle(
-                                        color: color,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w800),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    e.value,
-                                    style: const TextStyle(
-                                        color: Color(0xFF171717),
-                                        fontSize: 13,
-                                        height: 1.4),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                ],
-              ),
-            ),
             const SizedBox(height: 20),
+            _numberedCard('Goals', Icons.flag_rounded, goals, color),
           ],
-
-          // ===== Rules =====
           if (rules.isNotEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: const Color(0xFF171717).withOpacity(0.06)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Rules',
-                    style: TextStyle(
-                        color: Color(0xFF171717),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 10),
-                  ...rules.map(
-                    (r) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Icon(Icons.info_outline_rounded,
-                              size: 14, color: Color(0xFF6B7280)),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              r,
-                              style: const TextStyle(
-                                  color: Color(0xFF6B7280),
-                                  fontSize: 12,
-                                  height: 1.4),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+            _rulesCard(rules),
           ],
-
-          // Fallback rules if none from API
-          if (rules.isEmpty && requirements.isEmpty && goals.isEmpty) ...[
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFFFFF),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                    color: const Color(0xFF171717).withOpacity(0.06)),
-              ),
-              child: Column(
-                children: [
-                  _rule('Coins credit after verification'),
-                  _rule('One attempt per user per offer'),
-                  _rule('Use real details — fake info = no payout'),
-                  _rule('Keep the app installed until verified'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
+          const SizedBox(height: 24),
         ],
       ),
     );
   }
 
-  Widget _rule(String text) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 5),
-      child: Row(
-        children: [
-          const Icon(Icons.info_outline_rounded,
-              size: 14, color: Color(0xFF6B7280)),
+  Widget _statusChip(String text, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.35)),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, color: color, size: 14),
+        const SizedBox(width: 4),
+        Text(text,
+            style: TextStyle(
+                color: color, fontSize: 11, fontWeight: FontWeight.w700)),
+      ]),
+    );
+  }
+
+  Widget _numberedCard(
+      String heading, IconData icon, List<String> values, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: color.withOpacity(0.35))),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          Icon(icon, color: color, size: 20),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
+          Text(heading,
               style: const TextStyle(
-                  color: Color(0xFF6B7280), fontSize: 12),
+                  color: AppColors.textPrimary,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800)),
+        ]),
+        const SizedBox(height: 14),
+        ...values.asMap().entries.map((e) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Container(
+                  width: 26,
+                  height: 26,
+                  decoration: BoxDecoration(
+                      color: color.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                      border: Border.all(color: color.withOpacity(0.5))),
+                  child: Center(
+                      child: Text('${e.key + 1}',
+                          style: TextStyle(
+                              color: color,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800))),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(e.value,
+                            style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 13,
+                                height: 1.4)))),
+              ]),
+            )),
+      ]),
+    );
+  }
+
+  Widget _rulesCard(List<String> rules) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+          color: AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.border)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        const Text('Rules',
+            style: TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.w800)),
+        const SizedBox(height: 10),
+        ...rules.map((rule) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Icon(Icons.info_outline_rounded,
+                    size: 14, color: AppColors.textSecondary),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Text(rule,
+                        style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                            height: 1.4))),
+              ]),
+            )),
+      ]),
+    );
+  }
+
+  Widget _bottomCta(Color color) {
+    final enabled = _hasOfferId && !_starting &&
+        (!_started || _trackingUri != null);
+    return Container(
+      padding: EdgeInsets.fromLTRB(
+          16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
+      decoration: BoxDecoration(
+          color: AppColors.background,
+          border: Border(
+              top: BorderSide(
+                  color: AppColors.border))),
+      child: Column(children: [
+        SizedBox(
+          width: double.infinity,
+          height: 52,
+          child: ElevatedButton(
+            onPressed: enabled ? _startOffer : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: enabled ? color : const Color(0xFFE8E8E8),
+              foregroundColor: enabled
+                  ? (color.computeLuminance() < 0.36 ? Colors.white : AppColors.textPrimary)
+                  : AppColors.textSecondary,
+              disabledBackgroundColor: const Color(0xFFE8E8E8),
+              disabledForegroundColor: AppColors.textSecondary,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(26)),
+            ),
+            child: Text(
+              _starting
+                  ? 'Starting…'
+                  : _started
+                      ? 'Open offer'
+                      : _hasOfferId
+                          ? 'Start Offer'
+                          : 'Start unavailable',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
             ),
           ),
-        ],
-      ),
+        ),
+        if (!_hasOfferId)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: Text('This offer has no valid backend offer ID.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+          ),
+      ]),
     );
   }
 
-  String _fmt(int n) {
-    final str = n.abs().toString();
-    final sb = StringBuffer();
-    for (var i = 0; i < str.length; i++) {
-      if (i > 0 && (str.length - i) % 3 == 0) sb.write(',');
-      sb.write(str[i]);
-    }
-    return n.isNegative ? '-$sb' : sb.toString();
-  }
 }

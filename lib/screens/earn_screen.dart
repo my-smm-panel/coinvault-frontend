@@ -1,29 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
-import '../core/provider_logos.dart';
-import '../widgets/app_logo.dart';
 import '../services/app_repository.dart';
 import '../services/offerwall_service.dart';
 import '../services/paymentwall_service.dart';
-import '../services/auth_service.dart';
 import '../widgets/cv_header.dart';
-import '../widgets/state_views.dart';
-import 'quiz_screen.dart';
+import 'offerwall_screen.dart';
+import 'paymentwall_screen.dart';
 import 'surveys_screen.dart';
 import 'task_detail_screen.dart';
-import 'offerwall_screen.dart';
-import 'offer_detail_screen.dart';
-import 'paymentwall_screen.dart';
-import 'paymentwall_detail_screen.dart';
 import 'tracking_screen.dart';
 
-/// CoinVault — Earn tab (light design sheet).
-///
-/// Global header (wordmark + bell + bear avatar) → page title + balance pill
-/// → search → category tabs → earn-more-today summary → featured carousel →
-/// surveys → tasks → offers → quizzes → quick earn → high reward → new today
-/// → recommended → earning tips. Vertically scrollable, content-rich.
+/// Earn tab. Every offer, reward, and status shown here comes from an API
+/// response; no local reward policy or duration estimate is added.
 class EarnScreen extends StatefulWidget {
   const EarnScreen({super.key});
 
@@ -32,30 +21,25 @@ class EarnScreen extends StatefulWidget {
 }
 
 class _EarnScreenState extends State<EarnScreen> {
-  // Shared CoinVault design tokens keep the Earn tab aligned with other screens.
-  static const Color _bg = AppColors.background;
-  static const Color _card = AppColors.surface;
-  static const Color _border = AppColors.border;
-  static const Color _primary = AppColors.primary;
-  static const Color _text = AppColors.textPrimary;
-  static const Color _sub = AppColors.textSecondary;
-  static const Color _success = AppColors.success;
-  static const Color _warn = AppColors.warning;
-
-  // ── data ────────────────────────────────────────────────────────────────
   List<dynamic> _surveys = [];
   List<dynamic> _offers = [];
+  List<dynamic> _activity = [];
   List<OfferwallOffer> _offerwallOffers = [];
   List<PaymentwallOffer> _paymentwallOffers = [];
+  bool _activityFailed = false;
+  bool _surveysFailed = false;
+  bool _offersFailed = false;
+  bool _offerwallFailed = false;
+  bool _paymentwallFailed = false;
   bool _loading = true;
-  bool _failed = false;
-  int _today = 0;
-  int _pending = 0;
-  int _completed = 0;
   String _category = 'All';
 
-  static const List<String> _cats = [
-    'All', 'Surveys', 'Tasks', 'Offers', 'Quizzes', 'Quick Earn',
+  static const _categories = [
+    'All',
+    'Surveys',
+    'Offers',
+    'Offerwall',
+    'Paymentwall',
   ];
 
   @override
@@ -67,1300 +51,319 @@ class _EarnScreenState extends State<EarnScreen> {
   Future<void> _load() async {
     setState(() {
       _loading = true;
-      _failed = false;
     });
-    final repo = AppRepository.instance;
-    final results = await Future.wait([
-      repo.fetchSurveys(),
-      repo.fetchOffers(),
-      repo.fetchActivity(),
+    final results = await Future.wait<dynamic>([
+      AppRepository.instance.fetchSurveys(),
+      AppRepository.instance.fetchOffers(),
+      AppRepository.instance.fetchActivity(),
+      OfferwallService.instance.fetchOffers(),
+      PaymentwallService.instance.fetchOffers(),
     ]);
-    // Offerwall.GG — best-effort, may fail gracefully
-    final offerwallResult = await OfferwallService.instance.fetchOffers();
-    // Paymentwall — best-effort, may fail gracefully
-    final paymentwallResult = await PaymentwallService.instance.fetchOffers();
     if (!mounted) return;
-
-    final surveys = results[0];
-    final offers = results[1];
-    final activity = results[2] as List;
-
-    // fetchSurveys returns null on network failure => show error state
-    final failed = surveys == null || offers == null;
-
-    int today = 0;
-    final now = DateTime.now();
-    for (final raw in activity) {
-      final m = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
-      final coins = (m['coins'] as num?)?.toInt() ?? 0;
-      if (coins > 0) {
-        final ts = m['timestamp'] ?? m['createdAt'] ?? m['date'];
-        DateTime? dt;
-        if (ts is num) {
-          dt = DateTime.fromMillisecondsSinceEpoch(ts > 1e12 ? ts.toInt() : ts.toInt() * 1000);
-        } else if (ts is String) {
-          dt = DateTime.tryParse(ts);
-        }
-        if (dt != null && now.difference(dt).inHours < 24) today += coins;
-      }
-    }
-
     setState(() {
-      _surveys = surveys ?? <dynamic>[];
-      _offers = offers ?? <dynamic>[];
-      _offerwallOffers = offerwallResult ?? <OfferwallOffer>[];
-      _paymentwallOffers = paymentwallResult ?? <PaymentwallOffer>[];
-      _failed = failed;
-      _today = today;
-      _pending = offers
-          ?.where((o) => ((o as Map)['status'] ?? '').toString() == 'PENDING')
-          .fold<int>(0, (s, o) => s + (((o['coins'] ?? 0) as num).toInt())) ??
-          0;
-      _completed = activity
-          .where((raw) => raw is Map && (raw['status'] ?? '') == 'COMPLETED')
-          .length;
+      _surveys = (results[0] as List<dynamic>?) ?? [];
+      _offers = (results[1] as List<dynamic>?) ?? [];
+      _activity = (results[2] as List<dynamic>?) ?? [];
+      _activityFailed = results[2] == null;
+      _surveysFailed = results[0] == null;
+      _offersFailed = results[1] == null;
+      _offerwallOffers = (results[3] as List<OfferwallOffer>?) ?? [];
+      _paymentwallOffers = (results[4] as List<PaymentwallOffer>?) ?? [];
+      _offerwallFailed = results[3] == null;
+      _paymentwallFailed = results[4] == null;
       _loading = false;
     });
   }
 
-  String _fmt(int n) {
-    final s = n.abs().toString();
-    final sb = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) sb.write(',');
-      sb.write(s[i]);
-    }
-    return n.isNegative ? '-$sb' : sb.toString();
-  }
-
-  void _push(Widget page) =>
-      Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-
+  void _push(Widget page) => Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  String _title(Map m) => (m['title'] ?? m['name'] ?? '').toString().trim();
+  String _description(Map m) => (m['shortDesc'] ?? m['description'] ?? m['provider'] ?? '').toString().trim();
+  String _id(Map m) => (m['id'] ?? m['offerId'] ?? m['providerOfferId'] ?? '')
+      .toString()
+      .trim();
   @override
   Widget build(BuildContext context) {
-    final coins = AuthService().userModel?.coins ?? 0;
     return Scaffold(
-      backgroundColor: _bg,
-      body: SafeArea(
-        child: RefreshIndicator(
-          color: _primary,
-          backgroundColor: _card,
-          onRefresh: _load,
-          child: CustomScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            slivers: [
-              const SliverToBoxAdapter(child: CvHeader()),
-
-              // title (no balance pill, no search bar — per spec)
-              SliverToBoxAdapter(child: _titleRow()),
-              const SliverToBoxAdapter(child: SizedBox(height: 14)),
-
-              // category tabs
-              SliverToBoxAdapter(child: _categoryTabs()),
-              const SliverToBoxAdapter(child: SizedBox(height: 16)),
-
-              // earn-more-today
-              if (_loading)
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 16),
-                    child: ShimmerCardList(
-                        rows: 3, padding: EdgeInsets.zero),
-                  ),
-                )
-              else if (_failed)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: ErrorState(
-                    message: 'Unable to load activities',
-                    onRetry: _load,
-                  ),
-                )
-              else ...[
-                SliverToBoxAdapter(child: _summaryCard(coins)),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // surveys
-                _section('Surveys',
-                    action: 'View All',
-                    onAction: () => _push(const SurveysScreen())),
-                SliverToBoxAdapter(child: _surveysSection()),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // tasks
-                _section('Tasks'),
-                SliverToBoxAdapter(child: _tasksCarousel()),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // offers
-                _section('Offers'),
-                SliverToBoxAdapter(child: _offersSection()),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // offerwall
-                _section('Offerwall',
-                    action: 'View All',
-                    onAction: () => _push(const OfferwallScreen())),
-                SliverToBoxAdapter(child: _offerwallSection()),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // paymentwall
-                _section('Paymentwall',
-                    action: 'View All',
-                    onAction: () => _push(const PaymentwallScreen())),
-                SliverToBoxAdapter(child: _paymentwallSection()),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // high reward
-                _section('High Reward Opportunities'),
-                SliverToBoxAdapter(child: _highRewardSection()),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // new today
-                _section('New Today'),
-                SliverToBoxAdapter(child: _newTodayCarousel()),
-                const SliverToBoxAdapter(child: SizedBox(height: 20)),
-
-                // recommended
-                _section('Recommended for You'),
-                SliverToBoxAdapter(child: _recommendedSection()),
-                const SliverToBoxAdapter(child: SizedBox(height: 28)),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ───────────────────────── title + balance ─────────────────────────────
-  Widget _titleRow() {
-    return const Padding(
-      padding: EdgeInsets.fromLTRB(16, 4, 16, 0),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Earn Coins',
-                style: TextStyle(
-                    fontSize: 24, fontWeight: FontWeight.w800, color: _text)),
-            SizedBox(height: 2),
-            Text('Choose an activity and start earning',
-                style: TextStyle(fontSize: 13, color: _sub)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ───────────────────────── category tabs ────────────────────────────────
-  Widget _categoryTabs() {
-    return SizedBox(
-      height: 36,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: _cats.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (_, i) {
-          final c = _cats[i];
-          final on = _category == c;
-          return GestureDetector(
-            onTap: () => setState(() => _category = c),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: on ? _primary : _card,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: on ? _primary : _border),
-              ),
-              child: Text(c,
-                  style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: FontWeight.w700,
-                      color: on ? Colors.white : _sub)),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // ───────────────────────── summary card ─────────────────────────────────
-  Widget _summaryCard(int coins) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 14, 14, 14),
-        decoration: _cardDec(),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                const Text('Earn More Today',
-                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _text)),
-                const Spacer(),
-                GestureDetector(
-                  onTap: () => _push(const TrackingScreen()),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Text('View Activity',
-                          style: TextStyle(
-                              fontSize: 12, fontWeight: FontWeight.w700, color: _primary)),
-                      Icon(Icons.arrow_forward_rounded, size: 14, color: _primary),
+          backgroundColor: AppColors.background,
+          body: SafeArea(
+            child: RefreshIndicator(
+              color: AppColors.primary,
+              onRefresh: _load,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(0, 0, 0, 28),
+                children: [
+                  CvHeader(showBack: Navigator.of(context).canPop()),
+                  Padding(padding: const EdgeInsets.fromLTRB(16, 8, 16, 0), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Text('Explore activities', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                    const SizedBox(height: 3),
+                    const Text('Tasks, surveys and offers currently available', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                    const SizedBox(height: 16),
+                    if (!_loading) _summary(),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton.icon(
+                        onPressed: () => _push(const TrackingScreen()),
+                        icon: const Icon(Icons.history_rounded, size: 16),
+                        label: const Text('View activity'),
+                      ),
+                    ),
+                  ])),
+                  const SizedBox(height: 16),
+                  _categoryTabs(),
+                  const SizedBox(height: 16),
+                  if (_loading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 36),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          Text(
+                            'Loading activities…',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  else ...[
+                    if (_category == 'All' || _category == 'Surveys') ...[
+                      _heading('Surveys', () => _push(const SurveysScreen())),
+                      _surveyList(),
+                      const SizedBox(height: 20),
                     ],
-                  ),
-                ),
-              ],
+                    if (_category == 'All' || _category == 'Offers') ...[
+                      _heading('Offers', null),
+                      _offerList(),
+                      const SizedBox(height: 20),
+                    ],
+                    if (_category == 'All' || _category == 'Offerwall') ...[
+                      _heading(
+                        'Offerwall.GG',
+                        () => _push(const OfferwallScreen()),
+                      ),
+                      _offerwallList(),
+                      const SizedBox(height: 20),
+                    ],
+                    if (_category == 'All' || _category == 'Paymentwall') ...[
+                      _heading(
+                        'Paymentwall',
+                        () => _push(const PaymentwallScreen()),
+                      ),
+                      _paymentwallList(),
+                    ],
+                  ],
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(child: _stat('Today', '$_today', 'Coins')),
-                Container(width: 1, height: 34, color: _border),
-                Expanded(child: _stat('Pending', _fmt(_pending), 'Coins')),
-                Container(width: 1, height: 34, color: _border),
-                Expanded(child: _stat('Completed', '$_completed', 'Tasks')),
-              ],
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 
-  Widget _stat(String label, String value, String unit) {
-    return Column(
+  Widget _summary() {
+    final completed = _activity
+        .where((e) =>
+            e is Map &&
+            (e['status'] ?? '').toString().toUpperCase() == 'COMPLETED')
+        .length;
+    return Row(
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: _sub)),
-        const SizedBox(height: 3),
-        RichText(
-          textAlign: TextAlign.center,
-          text: TextSpan(
-            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: _text),
-            children: [
-              TextSpan(text: value),
-              TextSpan(text: ' $unit', style: const TextStyle(fontSize: 10, color: _sub, fontWeight: FontWeight.w600)),
-            ],
-          ),
+        Expanded(
+          child: _stat('Surveys', _surveysFailed ? '—' : '${_surveys.length}'),
+        ),
+        Expanded(
+          child: _stat('Offers', _offersFailed ? '—' : '${_offers.length}'),
+        ),
+        Expanded(
+          child: _stat('Completed', _activityFailed ? '—' : '$completed'),
         ),
       ],
     );
   }
 
-  // ───────────────────────── featured carousel ────────────────────────────
-  Widget _featuredCarousel() {
-    return const SizedBox(height: 0);
-  }
+  Widget _stat(String label, String value) => Container(margin: const EdgeInsets.only(right: 8), padding: const EdgeInsets.symmetric(vertical: 11), decoration: _cardDec(), child: Column(children: [Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)), const SizedBox(height: 2), Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary))]));
 
-  Widget _badge(String text) {
-    Color c = _primary;
-    if (text == 'New') c = _success;
-    if (text == 'High Reward') c = _warn;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        color: c.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: c.withOpacity(0.35)),
-      ),
-      child: Text(text,
-          style: TextStyle(fontSize: 9.5, fontWeight: FontWeight.w800, color: c)),
-    );
-  }
-
-  // ───────────────────────── surveys ──────────────────────────────────────
-  Widget _surveysSection() {
-    if (_loading) return _skeletonH(170);
-    final list = _filteredSurveys();
-    if (list.isEmpty) return _emptyStrip('No surveys available right now');
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+  Widget _categoryTabs() => SizedBox(
+    height: 48,
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: list.length > 4 ? 4 : list.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (_, i) => _surveyCard(list[i] as Map),
-    );
-  }
-
-  List<dynamic> _filteredSurveys() {
-    // Filter by real provider identifier (not visual hiding).
-    if (_category == 'Surveys') return List.of(_surveys);
-    if (_category == 'Tasks' || _category == 'Offers' || _category == 'Quick Earn') {
-      return _surveys
-          .where((raw) => (raw as Map)['type']?.toString() == _category.toUpperCase())
-          .toList();
-    }
-    return _surveys;
-  }
-
-  Widget _surveyCard(Map raw) {
-    final s = Map<String, dynamic>.from(raw);
-    final provider = (s['provider'] ?? 'Survey').toString();
-    final coins = ((s['rewardCoins'] ?? s['coins'] ?? 0) as num).toInt();
-    final min = int.tryParse((s['durationMinutes'] ?? s['duration'] ?? 5).toString()) ?? 5;
-    final color = ProviderLogos.colorFor(provider);
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: _cardDec(),
-      child: Row(
-        children: [
-                    // ONE resolver: provider logo → app logo from title → icon
-                    AppLogo(
-                      provider: provider,
-                      title: (s['title'] ?? '').toString(),
-                      size: 44,
-                      radius: 12,
-                      fallbackIcon: Icons.poll_rounded,
-                      fallbackColor: color,
-                    ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(provider,
-                    style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: color),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text((s['title'] ?? 'Survey').toString(),
-                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, color: _text),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(Icons.schedule_rounded, size: 11, color: _sub),
-                    const SizedBox(width: 3),
-                    Text('$min min', style: const TextStyle(fontSize: 10.5, color: _sub)),
-                    const SizedBox(width: 8),
-                    Icon(Icons.signal_cellular_alt_rounded, size: 11, color: _sub),
-                    const SizedBox(width: 3),
-                    Text(_difficulty(min), style: const TextStyle(fontSize: 10.5, color: _sub)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text('+$coins',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: _primary)),
-              const Text('Coins', style: TextStyle(fontSize: 9, color: _sub, fontWeight: FontWeight.w600)),
-              const SizedBox(height: 5),
-              GestureDetector(
-                onTap: () => _push(SurveysScreen(initialProvider: provider)),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: _primary,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Start',
-                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
-                      Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _difficulty(int min) => min <= 5 ? 'Easy' : (min <= 12 ? 'Medium' : 'High');
-
-  // ───────────────────────── tasks carousel ───────────────────────────────
-  Widget _tasksCarousel() {
-    final tasks = <Map<String, dynamic>>[
-      ..._offers
-          .where((o) => ((o as Map)['type'] ?? '').toString().startsWith('INSTALL'))
-          .take(3)
-          .map((o) => <String, dynamic>{
-                'title': (o['title'] ?? 'Task').toString(),
-                'coins': ((o['coins'] ?? 0) as num).toInt(),
-                'min': (((o['coins'] ?? 0) as num).toInt() ~/ 20).clamp(3, 30),
-                'req': 'Install + complete',
-                'icon': Icons.download_rounded,
-                'color': ProviderLogos.colorFor((o['provider'] ?? '').toString()),
-              }),
-    ];
-    if (tasks.isEmpty) return _emptyStrip('No tasks right now');
-    return SizedBox(
-      height: 176,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        physics: const BouncingScrollPhysics(),
-        itemCount: tasks.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (_, i) {
-          final t = tasks[i];
-          return Container(
-            width: 200,
-            padding: const EdgeInsets.all(13),
-            decoration: _cardDec(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    AppLogo(
-                      title: t['title'] as String,
-                      provider: (t['provider'] as String?) ?? '',
-                      size: 36,
-                      radius: 10,
-                      fallbackIcon: t['icon'] as IconData,
-                      fallbackColor: t['color'] as Color,
-                    ),
-                    const Spacer(),
-                    Text('+${t['coins']}',
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: _primary)),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(t['title'] as String,
-                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: _text),
-                    maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Text(t['req'] as String,
-                    style: const TextStyle(fontSize: 11, color: _sub),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                const Spacer(),
-                Row(
-                  children: [
-                    Icon(Icons.schedule_rounded, size: 11, color: _sub),
-                    const SizedBox(width: 3),
-                    Text('~${t['min']} min', style: const TextStyle(fontSize: 10.5, color: _sub)),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => _push(TaskDetailScreen(
-                        provider: 'CoinVault Partner',
-                        title: t['title'] as String,
-                        desc: t['req'] as String,
-                        coins: t['coins'] as int,
-                        steps: const ['Open the offer', 'Follow instructions', 'Complete activity', 'Coins credited'],
-                      )),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: _primary,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text('View Task',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // ───────────────────────── offerwall ────────────────────────────────────
-  Widget _offerwallSection() {
-    final offerwallOffers = <Map<String, dynamic>>[
-      ..._offerwallOffers.map((o) => <String, dynamic>{
-            'title': o.title,
-            'provider': o.provider.isEmpty ? 'Offerwall.GG' : o.provider,
-            'coins': o.coinReward,
-            'offerId': o.id,
-            'color': ProviderLogos.colorFor(o.provider),
-          }),
-    ];
-    if (offerwallOffers.isEmpty) {
-      // Show a placeholder card for Offerwall.GG when no offers loaded yet
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: GestureDetector(
-          onTap: () => _push(const OfferwallScreen()),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: _cardDec(),
-            child: Row(
-              children: [
-                AppLogo(
-                  provider: 'gg',
-                  title: 'Offerwall',
-                  size: 46,
-                  radius: 12,
-                  fallbackIcon: Icons.local_offer_rounded,
-                  fallbackColor: ProviderLogos.colorFor('gg'),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text('Offerwall.GG',
-                          style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w800, color: _text)),
-                      SizedBox(height: 3),
-                      Text('Complete tasks, surveys & installs to earn coins',
-                          style: TextStyle(fontSize: 11.5, color: _sub)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: _primary,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Open',
-                          style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white)),
-                      Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.white),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: offerwallOffers.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      itemCount: _categories.length,
+      separatorBuilder: (_, __) => const SizedBox(width: 8),
       itemBuilder: (_, i) {
-        final o = offerwallOffers[i];
-        final coins = o['coins'] as int;
-        final color = o['color'] as Color;
-        return GestureDetector(
-          onTap: () => _push(OfferDetailScreen(
-            offerId: o['offerId'] as String,
-            provider: o['provider'] as String,
-            title: o['title'] as String,
-            coins: coins,
-          )),
-          child: Container(
-            padding: const EdgeInsets.all(13),
-            decoration: _cardDec(),
-            child: Row(
-              children: [
-                AppLogo(
-                  provider: (o['provider'] as String).trim(),
-                  title: o['title'] as String,
-                  size: 44,
-                  radius: 12,
-                  fallbackIcon: Icons.local_offer_rounded,
-                  fallbackColor: color,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(o['title'] as String,
-                          style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: _text),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text('+${_fmt(coins)} Coins',
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: _primary)),
-                          const SizedBox(width: 4),
-                          Text('≈ ₹${(coins / 10).toStringAsFixed(0)}',
-                              style: const TextStyle(fontSize: 10.5, color: _sub)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: () => _push(OfferDetailScreen(
-                    offerId: o['offerId'] as String,
-                    provider: o['provider'] as String,
-                    title: o['title'] as String,
-                    coins: coins,
-                  )),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _primary,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Start',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white)),
-                        Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
+        final category = _categories[i];
+        return ChoiceChip(
+          label: Text(category),
+          selected: _category == category,
+          showCheckmark: false,
+          onSelected: (_) => setState(() => _category = category),
+          selectedColor: AppColors.primary,
+          backgroundColor: AppColors.surface,
+          side: BorderSide(color: _category == category ? AppColors.primary : AppColors.border),
+          labelStyle: TextStyle(
+            color: _category == category ? Colors.white : AppColors.textPrimary,
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
           ),
         );
       },
-    );
+    ),
+  );
+
+  Widget _heading(String title, VoidCallback? onTap) => Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 10), child: Row(children: [Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)), const Spacer(), if (onTap != null) TextButton(onPressed: onTap, child: const Text('View all'))]));
+
+  Widget _surveyList() {
+    if (_surveysFailed) return _empty('Surveys could not be loaded.', retry: true);
+    final list = _surveys.whereType<Map>().where((m) => _title(m).isNotEmpty).take(10).toList();
+    if (list.isEmpty) return _empty('No surveys available right now');
+    return Column(children: list.map((m) {
+      return _item(title: _title(m), description: _description(m), icon: Icons.poll_rounded, action: () => _push(const SurveysScreen()));
+    }).toList());
   }
 
-  // ───────────────────────── paymentwall ────────────────────────────────────
-  Widget _paymentwallSection() {
-    final paymentwallOffers = <Map<String, dynamic>>[
-      ..._paymentwallOffers.map((o) => <String, dynamic>{
-            'title': o.title,
-            'provider': o.provider.isEmpty ? 'Paymentwall' : o.provider,
-            'coins': o.coinReward,
-            'offerId': o.id,
-            'color': ProviderLogos.colorFor(o.provider),
-          }),
-    ];
-    if (paymentwallOffers.isEmpty) {
-      // Show a placeholder card for Paymentwall when no offers loaded yet
-      return Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: GestureDetector(
-          onTap: () => _push(const PaymentwallScreen()),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: _cardDec(),
-            child: Row(
-              children: [
-                AppLogo(
-                  provider: 'paymentwall',
-                  title: 'Paymentwall',
-                  size: 46,
-                  radius: 12,
-                  fallbackIcon: Icons.local_offer_rounded,
-                  fallbackColor: ProviderLogos.colorFor('paymentwall'),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text('Paymentwall',
-                          style: TextStyle(
-                              fontSize: 14, fontWeight: FontWeight.w800, color: _text)),
-                      SizedBox(height: 3),
-                      Text('Complete tasks, surveys & installs to earn coins',
-                          style: TextStyle(fontSize: 11.5, color: _sub)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: _primary,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('Open',
-                          style: TextStyle(
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white)),
-                      Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.white),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: paymentwallOffers.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (_, i) {
-        final o = paymentwallOffers[i];
-        final coins = o['coins'] as int;
-        final color = o['color'] as Color;
-        return GestureDetector(
-          onTap: () => _push(PaymentwallDetailScreen(
-            offerId: o['offerId'] as String,
-            provider: o['provider'] as String,
-            title: o['title'] as String,
-            coins: coins,
+  Widget _offerList() {
+    if (_offersFailed) return _empty('Offers could not be loaded.', retry: true);
+    final list = _offers
+        .whereType<Map>()
+        .where((m) => _title(m).isNotEmpty && _id(m).isNotEmpty)
+        .toList();
+    if (list.isEmpty) return _empty('No offers available right now');
+    return Column(
+      children: list.map((m) {
+        final instructions = m['instructions'];
+        // Keep list cards concise; the full server-provided instructions are
+        // passed to the detail page below.
+        final desc = _description(m);
+        final steps = instructions is List
+            ? instructions
+                .where((e) => e != null && e.toString().trim().isNotEmpty)
+                .map((e) => e.toString())
+                .toList()
+            : null;
+        return _item(
+          title: _title(m),
+          description: desc,
+          icon: Icons.local_offer_rounded,
+          action: () => _push(TaskDetailScreen(
+            provider: (m['provider'] ?? m['providerName'] ?? '').toString(),
+            title: _title(m),
+            desc: desc,
+            coins: null,
+            steps: steps,
+            offerId: _id(m),
           )),
-          child: Container(
-            padding: const EdgeInsets.all(13),
-            decoration: _cardDec(),
-            child: Row(
-              children: [
-                AppLogo(
-                  provider: (o['provider'] as String).trim(),
-                  title: o['title'] as String,
-                  size: 44,
-                  radius: 12,
-                  fallbackIcon: Icons.local_offer_rounded,
-                  fallbackColor: color,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(o['title'] as String,
-                          style: const TextStyle(
-                              fontSize: 13.5,
-                              fontWeight: FontWeight.w700,
-                              color: _text),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis),
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Text('+${_fmt(coins)} Coins',
-                              style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w800,
-                                  color: _primary)),
-                          const SizedBox(width: 4),
-                          Text('≈ ₹${(coins / 10).toStringAsFixed(0)}',
-                              style: const TextStyle(fontSize: 10.5, color: _sub)),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 10),
-                GestureDetector(
-                  onTap: () => _push(PaymentwallDetailScreen(
-                    offerId: o['offerId'] as String,
-                    provider: o['provider'] as String,
-                    title: o['title'] as String,
-                    coins: coins,
-                  )),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _primary,
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('Start',
-                            style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: Colors.white)),
-                        Icon(Icons.arrow_forward_rounded, size: 12, color: Colors.white),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
         );
-      },
+      }).toList(),
     );
   }
 
-  // ───────────────────────── offers ───────────────────────────────────────
-  Widget _offersSection() {
-    final offers = <Map<String, dynamic>>[
-      ..._offers
-          .where((o) => ((o as Map)['coins'] ?? 0) as num >= 1000)
-          .take(2)
-          .map((o) => <String, dynamic>{
-                'title': (o['title'] ?? 'Offer').toString(),
-                'provider': (o['provider'] ?? 'Partner').toString(),
-                'coins': ((o['coins'] ?? 0) as num).toInt(),
-                'min': 25,
-                'milestones': 4,
-                'done': 0,
-              }),
-    ];
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: offers.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
-      itemBuilder: (_, i) {
-        final o = offers[i];
-        final steps = ['Install', 'Register', 'Complete Activity', 'Final Reward'];
-        final done = (o['done'] as int).clamp(0, 4).toInt();
-        final total = (o['milestones'] as int).clamp(1, 4).toInt();
-        return Container(
+  Widget _offerwallList() {
+    if (_offerwallFailed) return _empty('Offerwall offers could not be fetched.', retry: true);
+    if (_offerwallOffers.isEmpty) return _empty('No Offerwall.GG offers available right now');
+    return Column(
+      children: _offerwallOffers.take(5).map((offer) => _item(
+        title: offer.title,
+        description: offer.shortRequirement ?? offer.description ?? '',
+        icon: Icons.local_offer_rounded,
+        action: () => _push(const OfferwallScreen()),
+      )).toList(),
+    );
+  }
+
+  Widget _paymentwallList() {
+    if (_paymentwallFailed) return _empty('Paymentwall offers could not be fetched.', retry: true);
+    if (_paymentwallOffers.isEmpty) return _empty('No Paymentwall offers available right now');
+    return Column(
+      children: _paymentwallOffers.take(5).map((offer) => _item(
+        title: offer.title,
+        description: offer.shortRequirement ?? offer.description ?? '',
+        icon: Icons.local_offer_rounded,
+        action: () => _push(const PaymentwallScreen()),
+      )).toList(),
+    );
+  }
+
+  Widget _item({required String title, required String description,
+      required IconData icon, required VoidCallback action}) => Padding(
+    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+    child: Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        onTap: action,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 72),
           padding: const EdgeInsets.all(14),
-          decoration: _cardDec(),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(o['title'] as String,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: _text),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ),
-                  Text('Up to +${o['coins']}',
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w900, color: _primary)),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text('Complete $total milestones  •  ~${o['min']} min  •  ${o['provider']}',
-                  style: const TextStyle(fontSize: 11.5, color: _sub)),
-              const SizedBox(height: 12),
-              // progress
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: total == 0 ? 0 : done / total,
-                  minHeight: 6,
-                  backgroundColor: const Color(0xFFEFEFEF),
-                  color: _primary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text('$done/$total completed',
-                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: _sub)),
-              const SizedBox(height: 12),
-              // milestone preview
-              Row(
-                children: List.generate(total, (mi) {
-                  final reached = mi < done;
-                  return Expanded(
-                    child: Row(
-                      children: [
-                        Column(
-                          children: [
-                            Container(
-                              width: 22,
-                              height: 22,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: reached ? _primary : _card,
-                                border: Border.all(
-                                    color: reached ? _primary : _border, width: 1.5),
-                              ),
-                              child: reached
-                                  ? const Icon(Icons.check_rounded, size: 13, color: Colors.white)
-                                  : const SizedBox(),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(steps[mi],
-                                style: TextStyle(
-                                    fontSize: 8.5,
-                                    fontWeight: reached ? FontWeight.w800 : FontWeight.w600,
-                                    color: reached ? _primary : _sub)),
-                          ],
-                        ),
-                        if (mi != total - 1)
-                          Expanded(
-                            child: Container(
-                              height: 1.5,
-                              color: mi < done ? _primary : _border,
-                              margin: const EdgeInsets.only(bottom: 16),
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(Icons.info_outline_rounded, size: 12, color: _sub),
-                  const SizedBox(width: 5),
-                  Expanded(
-                    child: Text('Coins credited after verification',
-                        style: const TextStyle(fontSize: 10.5, color: _sub)),
-                  ),
-                  GestureDetector(
-                    onTap: () => _push(TaskDetailScreen(
-                      provider: o['provider'] as String,
-                      title: o['title'] as String,
-                      desc: 'Complete ${o['milestones']} milestones to earn up to ${o['coins']} coins.',
-                      coins: o['coins'] as int,
-                      steps: steps,
-                    )),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: _primary,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text('View Offer',
-                              style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800, color: Colors.white)),
-                          Icon(Icons.arrow_forward_rounded, size: 13, color: Colors.white),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // ───────────────────────── quizzes ──────────────────────────────────────
-  Widget _quizzesCarousel() {
-    return const SizedBox(height: 0);
-  }
-
-  // ───────────────────────── quick earn grid ──────────────────────────────
-  Widget _quickEarnGrid() {
-    return const SizedBox(height: 0);
-  }
-
-  // ───────────────────────── high reward ──────────────────────────────────
-  Widget _highRewardSection() {
-    final high = <Map<String, dynamic>>[
-      ..._offers
-          .where((o) => ((o as Map)['coins'] ?? 0) as num >= 800)
-          .take(3)
-          .map((o) => <String, dynamic>{
-                'title': (o['title'] ?? 'Offer').toString(),
-                'provider': (o['provider'] ?? 'Partner').toString(),
-                'coins': ((o['coins'] ?? 0) as num).toInt(),
-                'min': (((o['coins'] ?? 0) as num).toInt() ~/ 40).clamp(5, 40),
-                'badge': 'High Reward',
-              }),
-    ];
-    if (high.isEmpty) return const SizedBox.shrink();
-    return ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: high.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 10),
-      itemBuilder: (_, i) {
-        final h = high[i];
-        final color = ProviderLogos.colorFor((h['provider'] as String).trim());
-        return Container(
-          padding: const EdgeInsets.all(13),
           decoration: BoxDecoration(
-            color: _card,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: _primary.withOpacity(0.25), width: 1.2),
-            boxShadow: const [
-              BoxShadow(color: Color(0x12000000), blurRadius: 10, offset: Offset(0, 3)),
-            ],
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(AppRadius.lg),
           ),
-          child: Row(
-            children: [
-              AppLogo(
-                provider: (h['provider'] as String).trim(),
-                title: h['title'] as String,
-                size: 46,
-                radius: 12,
-                fallbackIcon: Icons.local_fire_department_rounded,
-                fallbackColor: color,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _badge(h['badge'] as String),
-                    const SizedBox(height: 4),
-                    Text(h['title'] as String,
-                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: _text),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 3),
-                    Text('${h['provider']}  •  ~${h['min']} min',
-                        style: const TextStyle(fontSize: 10.5, color: _sub),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text('+${h['coins']}',
-                      style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: _primary)),
-                  const Text('Coins', style: TextStyle(fontSize: 9, color: _sub, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 5),
-                  GestureDetector(
-                    onTap: () => _push(TaskDetailScreen(
-                      provider: h['provider'] as String,
-                      title: h['title'] as String,
-                      desc: 'High reward opportunity. Complete all requirements to earn ${h['coins']} coins.',
-                      coins: h['coins'] as int,
-                      steps: const ['Open the offer', 'Follow instructions', 'Complete activity', 'Coins credited'],
-                    )),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('View Details',
-                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _primary)),
-                        Icon(Icons.arrow_forward_rounded, size: 12, color: _primary),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  // ───────────────────────── new today ────────────────────────────────────
-  Widget _newTodayCarousel() {
-    final fresh = <Map<String, dynamic>>[
-      ..._surveys.take(2).map((s) => <String, dynamic>{
-            'title': (s['provider'] as String?) ?? 'Survey',
-            'sub': (s['title'] ?? '').toString(),
-            'coins': ((s['rewardCoins'] ?? s['coins'] ?? 0) as num).toInt(),
-            'min': int.tryParse((s['durationMinutes'] ?? 5).toString()) ?? 5,
-          }),
-    ];
-    if (fresh.isEmpty) return _emptyStrip('Nothing new today');
-    return SizedBox(
-      height: 120,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        physics: const BouncingScrollPhysics(),
-        itemCount: fresh.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (_, i) {
-          final n = fresh[i];
-          return Container(
-            width: 210,
-            padding: const EdgeInsets.all(12),
-            decoration: _cardDec(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    _badge('New'),
-                    const Spacer(),
-                    Text('+${n['coins']}',
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: _primary)),
-                  ],
-                ),
-                const SizedBox(height: 7),
-                Text(n['title'] as String,
-                    style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: _text),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Text((n['sub'] as String?) ?? '',
-                    style: const TextStyle(fontSize: 10.5, color: _sub),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                const Spacer(),
-                Row(
-                  children: [
-                    Icon(Icons.schedule_rounded, size: 11, color: _sub),
-                    const SizedBox(width: 3),
-                    Text('${n['min']} min', style: const TextStyle(fontSize: 10.5, color: _sub)),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => _push(const SurveysScreen()),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: _primary,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text('Start',
-                            style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: Colors.white)),
-                      ),
-                    ),
-                  ],
-                ),
+          child: Row(children: [
+            Container(width: 42, height: 42,
+              decoration: BoxDecoration(color: AppColors.primaryContainer,
+                borderRadius: BorderRadius.circular(11)),
+              child: Icon(icon, color: AppColors.primary)),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary)),
+              if (description.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(description, maxLines: 2, overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // ───────────────────────── recommended ──────────────────────────────────
-  Widget _recommendedSection() {
-    // Built from REAL offers — no hardcoded rewards or tasks.
-    final rec = <Map<String, dynamic>>[];
-    for (final o in _offers.take(4)) {
-      final coins = ((o['coins'] ?? 0) as num).toInt();
-      rec.add({
-        'title': (o['title'] ?? 'Offer').toString(),
-        'coins': coins,
-        'min': (coins ~/ 40).clamp(3, 40),
-        'icon': Icons.local_offer_rounded,
-        'color': _primary,
-        'page': TaskDetailScreen(
-          provider: (o['provider'] ?? 'Partner').toString(),
-          title: (o['title'] ?? 'Offer').toString(),
-          desc: (o['shortDesc'] ?? o['description'] ?? 'Complete this offer to earn coins.').toString(),
-          coins: coins,
-          steps: ((o['instructions'] ?? []) as List).map((e) => e.toString()).toList(),
+            ])),
+            const SizedBox(width: 8),
+            const Icon(Icons.chevron_right_rounded, color: AppColors.primary),
+          ]),
         ),
-      });
-    }
-    if (rec.isEmpty) return const SizedBox.shrink();
-    return SizedBox(
-      height: 140,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        physics: const BouncingScrollPhysics(),
-        itemCount: rec.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
-        itemBuilder: (_, i) {
-          final r = rec[i];
-          return GestureDetector(
-            onTap: () => _push(r['page'] as Widget),
-            child: Container(
-              width: 176,
-              padding: const EdgeInsets.all(13),
-              decoration: _cardDec(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: (r['color'] as Color).withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Icon(r['icon'] as IconData, size: 18, color: r['color'] as Color),
-                  ),
-                  const SizedBox(height: 9),
-                  Text(r['title'] as String,
-                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: _text),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 3),
-                  Text('+${r['coins']} coins  •  ${r['min']} min',
-                      style: const TextStyle(fontSize: 10.5, color: _sub)),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _primary,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text('Start',
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: Colors.white)),
-                  ),
-                ],
+      ),
+    ),
+  );
+
+  Widget _empty(String text, {bool retry = false}) => Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+        decoration: _cardDec(),
+        child: Column(
+          children: [
+            Icon(
+              retry ? Icons.cloud_off_rounded : Icons.inbox_outlined,
+              color: AppColors.textTertiary,
+              size: 28,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                height: 1.4,
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  // ───────────────────────── tips ─────────────────────────────────────────
-  Widget _tipsSection() {
-    return const SizedBox(height: 0);
-  }
-
-  // ───────────────────────── shared bits ──────────────────────────────────
-  BoxDecoration _cardDec() => BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: _border, width: 1),
-        boxShadow: const [
-          BoxShadow(color: Color(0x10000000), blurRadius: 8, offset: Offset(0, 2)),
-        ],
-      );
-
-  Widget _section(String title, {String? action, VoidCallback? onAction}) {
-    return SliverToBoxAdapter(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-        child: Row(
-          children: [
-            Text(title,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _text)),
-            const Spacer(),
-            if (action != null && onAction != null)
-              GestureDetector(
-                onTap: onAction,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(action,
-                        style: const TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w700, color: _primary)),
-                    const Icon(Icons.arrow_forward_rounded, size: 14, color: _primary),
-                  ],
-                ),
+            if (retry) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _load,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Try again'),
               ),
+            ],
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _skeletonH(double h) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: const ShimmerCardList(rows: 3),
-    );
-  }
-
-  Widget _emptyStrip(String msg) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 14),
-      decoration: _cardDec(),
-      child: Row(
-        children: [
-          Image.asset('assets/bear_avatar.png',
-              width: 40, height: 40, errorBuilder: (_, __, ___) => const Icon(Icons.task_alt_rounded, color: _primary, size: 28)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(msg,
-                style: const TextStyle(fontSize: 12.5, color: _sub, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    );
-  }
+      );
+  BoxDecoration _cardDec() => BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: AppColors.border), boxShadow: AppShadows.card);
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
 
 /// ONE consistent logo resolver for every task / survey / offer card
@@ -26,7 +27,7 @@ class AppLogo extends StatelessWidget {
     this.size = 44,
     this.radius = 12,
     this.fallbackIcon = Icons.task_alt_rounded,
-    this.fallbackColor = const Color(0xFFF59E0B),
+    this.fallbackColor = AppColors.primary,
   });
 
   /// Resolves to a real image asset path when one exists, else null.
@@ -55,7 +56,7 @@ class AppLogo extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(radius),
           border: Border.all(
-              color: const Color(0xFFE7E7E7), width: 1),
+              color: AppColors.border, width: 1),
         ),
         clipBehavior: Clip.antiAlias,
         child: Image.asset(

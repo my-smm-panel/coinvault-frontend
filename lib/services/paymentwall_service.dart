@@ -5,7 +5,7 @@ class PaymentwallOffer {
   final String id;
   final String title;
   final String provider;
-  final int coinReward;
+  final int? coinReward;
   final String? shortRequirement;
   final String? estimatedTime;
   final String? description;
@@ -19,7 +19,7 @@ class PaymentwallOffer {
     required this.id,
     required this.title,
     required this.provider,
-    required this.coinReward,
+    this.coinReward,
     this.shortRequirement,
     this.estimatedTime,
     this.description,
@@ -33,9 +33,9 @@ class PaymentwallOffer {
   factory PaymentwallOffer.fromApi(Map<String, dynamic> m) {
     return PaymentwallOffer(
       id: (m['id'] ?? m['providerOfferId'] ?? '').toString(),
-      title: (m['title'] ?? m['name'] ?? 'Offer').toString(),
+      title: (m['title'] ?? m['name'] ?? '').toString().trim(),
       provider: (m['provider'] ?? m['providerName'] ?? 'Paymentwall').toString(),
-      coinReward: ((m['coinReward'] ?? m['coins'] ?? m['reward'] ?? 0) as num).toInt(),
+      coinReward: _readReward(m['coinReward'] ?? m['coins'] ?? m['reward']),
       shortRequirement: (m['shortRequirement'] ?? m['shortDesc'] ?? m['description'])?.toString(),
       estimatedTime: (m['estimatedTime'] ?? m['duration'])?.toString(),
       description: (m['description'] ?? m['desc'])?.toString(),
@@ -43,9 +43,11 @@ class PaymentwallOffer {
       goals: _parseList(m['goals'] ?? m['goal'] ?? m['milestones']),
       requirements: _parseList(m['requirements'] ?? m['requirement']),
       rules: _parseList(m['rules'] ?? m['rule']),
-      isVariable: (m['isVariable'] ?? m['variable'] ?? false) as bool,
+      isVariable: m['isVariable'] == true || m['variable'] == true,
     );
   }
+
+  static int? _readReward(dynamic value) => value is num && value >= 0 ? value.toInt() : null;
 
   static List<String> _parseList(dynamic data) {
     if (data is List) return data.map((e) => e.toString()).toList();
@@ -81,39 +83,35 @@ class PaymentwallService {
 
   final ApiClient _api = ApiClient.instance;
 
-  /// Fetch the Paymentwall offer list.
-  /// Calls GET /api/paymentwall (authenticated).
-  /// Returns parsed offers on success, null on network/server error.
+  /// Paymentwall offers are read from the backend's verified public catalogue
+  /// and filtered by provider. The app does not call an unimplemented
+  /// /api/paymentwall route or invent offers locally.
   Future<List<PaymentwallOffer>?> fetchOffers() async {
     try {
-      final res = await _api.get('/api/paymentwall');
-      if (res is Map) {
-        final data = res['data'];
-        List<dynamic> items;
-        if (data is Map) {
-          items = (data['items'] ?? data['offers'] ?? []) as List? ?? [];
-        } else if (data is List) {
-          items = data;
-        } else {
-          items = (res['items'] ?? res['offers'] ?? []) as List? ?? [];
-        }
-        return items
-            .whereType<Map>()
-            .map((m) => PaymentwallOffer.fromApi(Map<String, dynamic>.from(m)))
-            .toList();
-      }
-      return null;
+      final res = await _api.get('/api/offers', auth: false);
+      if (res is! Map || res['success'] != true) return null;
+      final data = res['data'];
+      final dynamic rawItems = data is Map ? data['items'] : data;
+      if (rawItems is! List) return null;
+      return rawItems.whereType<Map>().where((m) {
+        final provider = (m['provider'] ?? m['providerName'] ?? '').toString().toLowerCase();
+        final id = (m['id'] ?? m['providerOfferId'] ?? '').toString().trim();
+        final title = (m['title'] ?? m['name'] ?? '').toString().trim();
+        final isPaymentwall = provider == 'paymentwall' ||
+            provider == 'payment_wall' ||
+            provider == 'payment wall';
+        return isPaymentwall && id.isNotEmpty && title.isNotEmpty;
+      }).map((m) => PaymentwallOffer.fromApi(Map<String, dynamic>.from(m))).toList();
     } catch (_) {
       return null;
     }
   }
 
-  /// Start an offer — gets the clickUrl for redirect.
-  /// Calls POST /api/paymentwall/:id/start (authenticated).
-  /// Returns the redirectUrl string on success, null on error.
+  /// Starts a Paymentwall offer through the backend's generic offer route.
   Future<String?> startOffer(String offerId) async {
     try {
-      final res = await _api.post('/api/paymentwall/$offerId/start', {});
+      final id = Uri.encodeComponent(offerId);
+      final res = await _api.post('/api/offers/$id/start', {});
       if (res is Map && res['success'] == true) {
         final data = res['data'] as Map<String, dynamic>?;
         if (data != null) {
@@ -128,21 +126,13 @@ class PaymentwallService {
     }
   }
 
-  /// Fetch full details for a single offer.
-  /// Calls GET /api/paymentwall/:id (authenticated).
-  /// Returns null on error.
+  /// Resolves details only from an item returned by the backend catalogue.
   Future<PaymentwallOffer?> fetchOfferDetail(String id) async {
-    try {
-      final res = await _api.get('/api/paymentwall/$id');
-      if (res is Map) {
-        final data = res['data'];
-        if (data is Map) {
-          return PaymentwallOffer.fromApi(Map<String, dynamic>.from(data));
-        }
-      }
-      return null;
-    } catch (_) {
-      return null;
+    final offers = await fetchOffers();
+    if (offers == null) return null;
+    for (final offer in offers) {
+      if (offer.id == id) return offer;
     }
+    return null;
   }
 }

@@ -79,37 +79,41 @@ class ShimmerCardList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.builder(
-      physics: const NeverScrollableScrollPhysics(),
-      padding: padding,
-      itemCount: rows,
-      itemBuilder: (_, i) => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: const Color(0xFFFFFFFF),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: Row(
-          children: const [
-            AppShimmer(width: 46, height: 46, radius: 12),
-            SizedBox(width: 12),
-            Expanded(
-              child: Column(
+    // In a sliver the height is unbounded: avoid a nested ListView there.
+    // In a full-screen loading state, allow rows to scroll on small devices.
+    return LayoutBuilder(builder: (context, constraints) {
+      final content = Padding(
+        padding: padding,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(rows, (_) => Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: const Row(children: [
+              AppShimmer(width: 46, height: 46, radius: 12),
+              SizedBox(width: 12),
+              Expanded(child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   AppShimmer(width: 90, height: 12),
                   SizedBox(height: 8),
                   AppShimmer(width: 160, height: 10),
                 ],
-              ),
-            ),
-            AppShimmer(width: 38, height: 38, radius: 10),
-          ],
+              )),
+              AppShimmer(width: 38, height: 38, radius: 10),
+            ]),
+          )),
         ),
-      ),
-    );
+      );
+      return constraints.hasBoundedHeight
+          ? SingleChildScrollView(child: content)
+          : content;
+    });
   }
 }
 

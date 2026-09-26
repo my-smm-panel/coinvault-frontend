@@ -3,15 +3,13 @@ import 'package:flutter/material.dart';
 import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
 import '../services/app_repository.dart';
+import '../widgets/app_logo.dart';
 import '../widgets/state_views.dart';
 import 'task_detail_screen.dart';
-import '../widgets/app_logo.dart';
 
-/// One provider's available tasks on its own page.
-/// Header shows the company logo big; below, only its tasks.
-/// Tasks come from the real backend (GET /api/offers) — starter
-/// tasks are shown per provider until the backend exposes per-provider
-/// task listings (the offer schema has no provider field yet).
+/// Offers returned for one provider. An offer is shown here only when the
+/// backend identifies it with the requested provider; no local starter tasks
+/// or reward/instruction defaults are created.
 class ProviderTasksScreen extends StatefulWidget {
   final String provider;
   const ProviderTasksScreen({super.key, required this.provider});
@@ -31,6 +29,8 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
     _load();
   }
 
+  String get provider => widget.provider;
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -45,37 +45,43 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
       });
       return;
     }
-    final mapped = offers
-        .where((o) =>
-            ((o as Map)['type'] ?? '').toString().startsWith('INSTALL'))
-        .take(6)
-        .map((o) {
-      final m = o as Map;
-      final steps = (m['instructions'] is List)
-          ? (m['instructions'] as List).map((e) => e.toString()).toList()
+
+    final mapped = offers.whereType<Map>().where((raw) {
+      final type = (raw['type'] ?? '').toString().toUpperCase();
+      final source = (raw['provider'] ?? '').toString().trim();
+      return type.startsWith('INSTALL') &&
+          source.isNotEmpty &&
+          source.toLowerCase() == provider.trim().toLowerCase();
+    }).map<Map<String, dynamic>>((raw) {
+      final instructions = raw['instructions'];
+      final steps = instructions is List
+          ? instructions
+              .where((e) => e != null && e.toString().trim().isNotEmpty)
+              .map((e) => e.toString().trim())
+              .toList()
           : <String>[];
+      final id = (raw['id'] ?? raw['offerId'] ?? raw['providerOfferId'] ?? '')
+          .toString()
+          .trim();
       return <String, dynamic>{
-        'title': (m['title'] ?? '').toString(),
-        'desc': (m['shortDesc'] ?? '').toString(),
-        'coins': ((m['coins'] ?? 0) as num).toInt(),
-        'steps': steps.isEmpty
-            ? <String>['Tap Start', 'Complete the task', 'Coins credited']
-            : steps,
+        'id': id.isEmpty ? null : id,
+        'title': (raw['title'] ?? raw['name'] ?? '').toString().trim(),
+        'desc': (raw['shortDesc'] ?? raw['description'] ?? '').toString().trim(),
+        'steps': steps,
       };
-    }).toList();
+    }).where((task) => (task['title'] as String).isNotEmpty).toList();
+
     setState(() {
       _tasks = mapped;
       _loading = false;
     });
   }
 
-  String get provider => widget.provider;
-
   @override
   Widget build(BuildContext context) {
     final color = ProviderLogos.colorFor(provider);
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -94,15 +100,15 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
                               icon: Icons.task_outlined,
                               title: 'No tasks right now',
                               subtitle:
-                                  'New tasks are added daily — check back soon.',
+                                  'New tasks are added when this provider supplies them.',
                             )
                           : RefreshIndicator(
                               color: AppColors.primary,
-                              backgroundColor: const Color(0xFFFFFFFF),
+                              backgroundColor: AppColors.cardBackground,
                               onRefresh: _load,
                               child: ListView.builder(
                                 padding:
-                                    const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                                    const EdgeInsets.fromLTRB(16, 8, 16, 24),
                                 itemCount: _tasks.length,
                                 itemBuilder: (_, i) =>
                                     _taskCard(_tasks[i], color),
@@ -128,7 +134,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
             onTap: () => Navigator.pop(context),
             borderRadius: BorderRadius.circular(10),
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.25),
                 borderRadius: BorderRadius.circular(10),
@@ -141,7 +147,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(12),
             ),
             child: AppLogo(
@@ -154,35 +160,30 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(provider,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis),
-                Text('Official partner tasks',
-                    style: TextStyle(
-                        color: Colors.white.withOpacity(0.85), fontSize: 11)),
-              ],
-            ),
+            child: Text(provider,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis),
           ),
         ],
       ),
     );
   }
 
-  Widget _taskCard(Map<String, dynamic> t, Color color) {
-    final coins = t['coins'] as int;
-    final steps = (t['steps'] as List).cast<String>();
+  Widget _taskCard(Map<String, dynamic> task, Color color) {
+    final steps = (task['steps'] as List).cast<String>();
+    final offerId = task['id'] as String?;
+    final title = task['title'] as String;
+    final desc = task['desc'] as String;
+
     return Container(
       margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFFFF),
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.35)),
       ),
@@ -195,72 +196,30 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(t['title'] as String,
+                    Text(title,
                         style: const TextStyle(
                             color: AppColors.textPrimary,
                             fontSize: 14,
                             fontWeight: FontWeight.w800),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 2),
-                    Text(t['desc'] as String,
-                        style: const TextStyle(
-                            color: AppColors.textSecondary, fontSize: 11),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis),
+                    if (desc.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(desc,
+                          style: const TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              height: 1.4),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis),
+                    ],
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  gradient: AppColors.goldGradient,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text('+$coins',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w900)),
-              ),
+
             ],
           ),
-          const SizedBox(height: 10),
-          ...steps.asMap().entries.map((e) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      width: 22,
-                      height: 22,
-                      decoration: BoxDecoration(
-                        color: color.withOpacity(0.15),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text('${e.key + 1}',
-                            style: TextStyle(
-                                color: color,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800)),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 2),
-                        child: Text(e.value,
-                            style: const TextStyle(
-                                color: AppColors.textPrimary, fontSize: 12)),
-                      ),
-                    ),
-                  ],
-                ),
-              )),
-          const SizedBox(height: 6),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             height: 42,
@@ -270,45 +229,26 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
                 MaterialPageRoute(
                   builder: (_) => TaskDetailScreen(
                     provider: provider,
-                    title: t['title'] as String,
-                    desc: t['desc'] as String,
-                    coins: coins,
-                    steps: steps,
+                    title: title,
+                    desc: desc,
+                    coins: null,
+                    steps: steps.isEmpty ? null : steps,
+                    offerId: offerId,
                   ),
                 ),
               ),
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: color.withOpacity(0.5)),
-                foregroundColor: Colors.white,
+                foregroundColor: color,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('View Details',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-            ),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            height: 42,
-            child: ElevatedButton(
-              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                    content: Text(
-                        'Task started! Complete the steps to earn coins.')),
+              child: Text(
+                offerId == null ? 'View Details (start unavailable)' : 'View Details',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w700, fontSize: 13),
               ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: color,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Start Task',
-                  style:
-                      TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
             ),
           ),
         ],

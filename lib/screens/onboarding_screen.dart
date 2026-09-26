@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/app_theme.dart';
 import 'auth_screen.dart';
 
 /// 3-screen onboarding: Earn Coins → Complete Tasks → Redeem Rewards.
@@ -14,10 +15,10 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   int _page = 0;
 
-  static const Color _bg = Color(0xFFFAFAF8);
-  static const Color _primaryText = Color(0xFF171717);
-  static const Color _secondaryText = Color(0xFF6B7280);
-  static const Color _orange = Color(0xFFF59E0B);
+  static const Color _bg = AppColors.background;
+  static const Color _primaryText = AppColors.textPrimary;
+  static const Color _secondaryText = AppColors.textSecondary;
+  static const Color _orange = AppColors.gold;
 
   static const _headings = [
     'Earn Coins',

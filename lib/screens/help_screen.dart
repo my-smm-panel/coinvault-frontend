@@ -2,34 +2,35 @@ import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
 
-/// Help Center (kit screen 23): FAQs + support note.
+/// Help Center: guidance stays neutral when values are configured by the
+/// backend and may change over time.
 class HelpScreen extends StatelessWidget {
   const HelpScreen({super.key});
 
   static const _faqs = [
     {
       'q': 'How do I earn coins?',
-      'a': 'Complete tasks, install apps, finish surveys, spin the daily wheel and refer friends. Every reward is credited by our server to your balance.'
+      'a': 'Open Explore activities and follow the instructions for a currently available task, survey or offer. The server determines completion and any earned amount.'
     },
     {
       'q': 'How do I withdraw?',
-      'a': 'Go to Wallet, enter coins (min 1000 for UPI, 2000 for Bank) with your UPI ID or bank details. Requests are paid manually within 24 hours.'
+      'a': 'Open Wallet and choose one of the withdrawal methods currently provided by the server. Enter the requested details and review the values shown before submitting.'
     },
     {
-      'q': '100 coins = how many rupees?',
-      'a': '100 coins = ₹10. Withdrawals must be in multiples of 100 coins.'
+      'q': 'Where can I check reward values?',
+      'a': 'The backend determines rewards. Check your Wallet or History for confirmed amounts; activity cards do not promise a payout.'
     },
     {
-      'q': 'How many spins per day?',
-      'a': 'You get 2 free spins every day. Spins reset at midnight.'
+      'q': 'How many spins can I use?',
+      'a': 'Open the Spin screen to see the current server-provided availability and any limits for your account.'
     },
     {
       'q': 'My withdrawal is pending. What now?',
-      'a': 'Pending means our team is processing it. UPI/Bank payouts complete within 24 hours. Check History for the live status.'
+      'a': 'Check Wallet or History for the latest server-provided status. Do not submit a duplicate request until you know its status.'
     },
     {
       'q': 'How do referrals work?',
-      'a': 'Share your referral code from Refer & Earn. When a friend signs up with it, both of you get bonus coins.'
+      'a': 'Open Refer & Earn to view the current referral instructions and any values configured for your account.'
     },
   ];
 
@@ -72,7 +73,7 @@ class HelpScreen extends StatelessWidget {
                           style: AppTextStyles.titleMedium
                               .copyWith(color: Colors.white)),
                       Text(
-                        'Popular questions answered below. For account issues, reply in the app chat.',
+                        'Find general guidance below. For account-specific values, use the relevant screen.',
                         style: AppTextStyles.bodySmall.copyWith(
                           color: Colors.white.withOpacity(0.85),
                         ),

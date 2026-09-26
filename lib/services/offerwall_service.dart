@@ -5,7 +5,7 @@ class OfferwallOffer {
   final String id;
   final String title;
   final String provider;
-  final int coinReward;
+  final int? coinReward;
   final String? shortRequirement;
   final String? estimatedTime;
   final String? description;
@@ -18,7 +18,7 @@ class OfferwallOffer {
     required this.id,
     required this.title,
     required this.provider,
-    required this.coinReward,
+    this.coinReward,
     this.shortRequirement,
     this.estimatedTime,
     this.description,
@@ -31,9 +31,9 @@ class OfferwallOffer {
   factory OfferwallOffer.fromApi(Map<String, dynamic> m) {
     return OfferwallOffer(
       id: (m['id'] ?? m['providerOfferId'] ?? '').toString(),
-      title: (m['title'] ?? m['name'] ?? 'Offer').toString(),
+      title: (m['title'] ?? m['name'] ?? '').toString().trim(),
       provider: (m['provider'] ?? m['providerName'] ?? 'Offerwall.GG').toString(),
-      coinReward: ((m['coinReward'] ?? m['coins'] ?? m['reward'] ?? 0) as num).toInt(),
+      coinReward: _readReward(m['coinReward'] ?? m['coins'] ?? m['reward']),
       shortRequirement: (m['shortRequirement'] ?? m['shortDesc'] ?? m['description'])?.toString(),
       estimatedTime: (m['estimatedTime'] ?? m['duration'])?.toString(),
       description: (m['description'] ?? m['desc'])?.toString(),
@@ -43,6 +43,8 @@ class OfferwallOffer {
       rules: _parseList(m['rules'] ?? m['rule']),
     );
   }
+
+  static int? _readReward(dynamic value) => value is num && value >= 0 ? value.toInt() : null;
 
   static List<String> _parseList(dynamic data) {
     if (data is List) return data.map((e) => e.toString()).toList();
@@ -83,18 +85,19 @@ class OfferwallService {
   Future<List<OfferwallOffer>?> fetchOffers() async {
     try {
       final res = await _api.get('/api/offerwall-gg');
-      if (res is Map) {
+      if (res is Map && res['success'] == true) {
         final data = res['data'];
-        List<dynamic> items;
-        if (data is Map) {
-          items = (data['items'] ?? data['offers'] ?? []) as List? ?? [];
-        } else if (data is List) {
-          items = data;
-        } else {
-          items = (res['items'] ?? res['offers'] ?? []) as List? ?? [];
-        }
-        return items
+        final dynamic rawItems = data is Map
+            ? (data['items'] ?? data['offers'])
+            : (data is List ? data : (res['items'] ?? res['offers']));
+        if (rawItems is! List) return null;
+        return rawItems
             .whereType<Map>()
+            .where((m) {
+              final id = (m['id'] ?? m['providerOfferId'] ?? '').toString().trim();
+              final title = (m['title'] ?? m['name'] ?? '').toString().trim();
+              return id.isNotEmpty && title.isNotEmpty;
+            })
             .map((m) => OfferwallOffer.fromApi(Map<String, dynamic>.from(m)))
             .toList();
       }
@@ -109,7 +112,8 @@ class OfferwallService {
   /// Returns the redirectUrl string on success, null on error.
   Future<String?> startOffer(String offerId) async {
     try {
-      final res = await _api.post('/api/offerwall-gg/$offerId/start', {});
+      final id = Uri.encodeComponent(offerId);
+      final res = await _api.post('/api/offerwall-gg/$id/start', {});
       if (res is Map && res['success'] == true) {
         final data = res['data'] as Map<String, dynamic>?;
         if (data != null) {
@@ -124,21 +128,13 @@ class OfferwallService {
     }
   }
 
-  /// Fetch full details for a single offer.
-  /// Calls GET /api/offerwall-gg/:id (authenticated).
-  /// Returns null on error.
+  /// Resolve details only from an offer returned by the verified list route.
   Future<OfferwallOffer?> fetchOfferDetail(String id) async {
-    try {
-      final res = await _api.get('/api/offerwall-gg/$id');
-      if (res is Map) {
-        final data = res['data'];
-        if (data is Map) {
-          return OfferwallOffer.fromApi(Map<String, dynamic>.from(data));
-        }
-      }
-      return null;
-    } catch (_) {
-      return null;
+    final offers = await fetchOffers();
+    if (offers == null) return null;
+    for (final offer in offers) {
+      if (offer.id == id) return offer;
     }
+    return null;
   }
 }

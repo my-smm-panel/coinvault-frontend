@@ -4,9 +4,8 @@ import '../core/app_theme.dart';
 import '../services/app_repository.dart';
 import '../widgets/state_views.dart';
 
-/// History - own CoinVault style (NOT ProRewards):
-/// orange header, orange segment control, filter chips,
-/// dark cards with gold coin figures and status dots.
+/// Server-backed task and payout history with independent retry states,
+/// accessible status indicators and CoinVault's light card style.
 class HistoryScreen extends StatefulWidget {
   final String initialTab; // 'Tasks' or 'Payouts'
   const HistoryScreen({super.key, this.initialTab = 'Tasks'});
@@ -21,16 +20,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
   List<dynamic> _withdrawals = [];
   List<dynamic> _tasks = [];
   bool _loading = true;
+  bool _withdrawalsFailed = false;
+  bool _tasksFailed = false;
 
-  static const _bg = Color(0xFFF7F8FA);
-  static const _card = Color(0xFFFFFFFF);
+  static const _bg = AppColors.background;
+  static const _card = AppColors.surface;
   static const _border = AppColors.border;
 
   static const _tileColors = [
     Color(0xFFF66B06),
     Color(0xFFF59E0B),
     Color(0xFF3B82F6),
-    Color(0xFF16A34A),
+    AppColors.success,
     Color(0xFFEC4899),
     Color(0xFF14B8A6),
   ];
@@ -43,21 +44,28 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _withdrawalsFailed = false;
+      _tasksFailed = false;
+    });
     final repo = AppRepository.instance;
     final w = await repo.fetchWithdrawalHistory('');
     final t = await repo.taskHistoryList();
     if (!mounted) return;
     setState(() {
-      _withdrawals = w;
-      _tasks = t;
+      _withdrawals = w ?? [];
+      _tasks = t ?? [];
+      _withdrawalsFailed = w == null;
+      _tasksFailed = t == null;
       _loading = false;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final total = _withdrawals.length + _tasks.length;
+    final total = _loading || _withdrawalsFailed || _tasksFailed
+        ? null : _withdrawals.length + _tasks.length;
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
@@ -72,14 +80,19 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       rows: 6,
                       padding: EdgeInsets.fromLTRB(14, 10, 14, 20),
                     )
-                  : RefreshIndicator(
-                      color: AppColors.primary,
-                      backgroundColor: _card,
-                      onRefresh: _load,
-                      child: _tab == 'Payouts'
-                          ? _payoutsList()
-                          : _tasksList(),
-                    ),
+                  : (_tab == 'Payouts' ? _withdrawalsFailed : _tasksFailed)
+                      ? ErrorState(
+                          message: 'History could not be fetched. Try again.',
+                          onRetry: _load,
+                        )
+                      : RefreshIndicator(
+                          color: AppColors.primary,
+                          backgroundColor: _card,
+                          onRefresh: _load,
+                          child: _tab == 'Payouts'
+                              ? _payoutsList()
+                              : _tasksList(),
+                        ),
             ),
           ],
         ),
@@ -87,7 +100,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _header(int total) {
+  Widget _header(int? total) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: const BoxDecoration(
@@ -105,13 +118,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.arrow_back_rounded,
-                  color: AppColors.textPrimary, size: 20),
+                  color: Colors.white, size: 20),
             ),
           ),
           const SizedBox(width: 12),
           const Text('History',
               style: TextStyle(
-                  color: AppColors.textPrimary,
+                  color: Colors.white,
                   fontSize: 20,
                   fontWeight: FontWeight.w800)),
           const Spacer(),
@@ -124,13 +137,13 @@ class _HistoryScreenState extends State<HistoryScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.monetization_on_rounded,
-                    color: AppColors.goldLight, size: 16),
-                const SizedBox(width: 4),
-                Text('$total',
+                const Icon(Icons.receipt_long_rounded,
+                    color: Colors.white, size: 16),
+                const SizedBox(width: 5),
+                Text('${total?.toString() ?? '—'} records',
                     style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 13,
+                        color: Colors.white,
+                        fontSize: 12,
                         fontWeight: FontWeight.w800)),
               ],
             ),
@@ -285,7 +298,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _tasksList() {
     final items = _tasks
-        .map((e) => Map<String, dynamic>.from(e as Map))
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
         .where((m) => _pass(_taskBucket(
             (m['status'] ?? '').toString())))
         .toList();
@@ -301,12 +315,12 @@ class _HistoryScreenState extends State<HistoryScreen> {
             : 'Task';
         final status = (m['status'] ?? '').toString();
         final bucket = _taskBucket(status);
-        final coins = ((m['coinsEarned'] ?? 0) as num).toInt();
+        final coins = m['coinsEarned'];
         final date = _date(m);
         return _darkTile(
           title: title,
           sub: date.isEmpty ? bucket : '$bucket • $date',
-          coinsText: '+$coins',
+          coinsText: coins is num ? '+${coins.toInt()}' : 'Coins unavailable',
           bucket: bucket,
           icon: Icons.task_alt_rounded,
           color: _tileColors[title.hashCode.abs() % _tileColors.length],
@@ -317,7 +331,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   Widget _payoutsList() {
     final items = _withdrawals
-        .map((e) => Map<String, dynamic>.from(e as Map))
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
         .where((m) => _pass(_payoutBucket(
             (m['status'] ?? 'PENDING').toString())))
         .toList();
@@ -330,17 +345,24 @@ class _HistoryScreenState extends State<HistoryScreen> {
         final status =
             (m['status'] ?? 'PENDING').toString();
         final bucket = _payoutBucket(status);
-        final amount = (m['amount'] ?? 0).toString();
-        final rupees = (m['rupeeAmount'] ?? 0).toString();
+        final amount = m['amount'];
+        final rupees = m['rupeeAmount'];
         final method =
             (m['method'] ?? '').toString().replaceAll('_', ' ');
         final date = _date(m);
+        final amountText = amount is num
+            ? '${amount.toInt()} coins'
+            : 'Amount unavailable';
+        final rupeesText = rupees is num ? '  →  ₹${rupees.toString()}' : '';
+        final amountBadge = rupees is num
+            ? '₹${rupees.toString()}'
+            : (amount is num ? '${amount.toInt()} coins' : '—');
         final sub =
             '${method.isEmpty ? 'Withdrawal' : method}${date.isEmpty ? '' : ' • $date'}';
         return _darkTile(
-          title: '$amount coins  →  ₹$rupees',
+          title: '$amountText$rupeesText',
           sub: '$bucket • $sub',
-          coinsText: '₹$rupees',
+          coinsText: amountBadge,
           bucket: bucket,
           icon: Icons.payments_rounded,
           color: AppColors.primary,
@@ -361,17 +383,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }) {
     final ok = bucket == 'Completed';
     final dot = ok
-        ? const Color(0xFF16A34A)
+        ? AppColors.success
         : bucket == 'Ongoing'
             ? AppColors.primary
-            : const Color(0xFFEF4444);
+            : AppColors.error;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [

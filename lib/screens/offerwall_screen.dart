@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../core/app_theme.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/provider_logos.dart';
@@ -11,7 +13,7 @@ import 'offer_detail_screen.dart';
 /// Offerwall.GG offers screen — light/white premium design.
 /// Header (title + subtitle + bell + avatar) → filter chips →
 /// "Available Offers" section → vertical offer cards
-/// (provider logo, title, provider name, short requirement, reward, time, Start button).
+/// (provider logo, title, short requirement, server-provided time, Start button).
 /// Data from GET /api/offerwall-gg (authenticated); start via startOffer().
 class OfferwallScreen extends StatefulWidget {
   const OfferwallScreen({super.key});
@@ -26,12 +28,12 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
   bool _loading = true;
   bool _failed = false;
 
-  static const Color _bg = Color(0xFFFAFAF8);
-  static const Color _card = Color(0xFFFFFFFF);
-  static const Color _border = Color(0xFFE7E7E7);
-  static const Color _primaryText = Color(0xFF171717);
-  static const Color _secondaryText = Color(0xFF6B7280);
-  static const Color _orange = Color(0xFFF59E0B);
+  static const Color _bg = AppColors.background;
+  static const Color _card = AppColors.surface;
+  static const Color _border = AppColors.border;
+  static const Color _primaryText = AppColors.textPrimary;
+  static const Color _secondaryText = AppColors.textSecondary;
+  static const Color _orange = AppColors.primary;
 
   @override
   void initState() {
@@ -121,7 +123,14 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
           offerId: offer.id,
           provider: offer.provider,
           title: offer.title,
-          coins: offer.coinReward,
+          coins: null,
+          description: offer.description ?? offer.shortRequirement,
+          duration: offer.estimatedTime,
+          requirements: offer.requirements,
+          goals: offer.goals,
+          rules: offer.rules,
+          startOfferOverride: () =>
+              OfferwallService.instance.startOffer(offer.id),
         ),
       ),
     );
@@ -140,7 +149,7 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              const SliverToBoxAdapter(child: CvHeader()),
+              SliverToBoxAdapter(child: CvHeader(showBack: Navigator.of(context).canPop())),
               const SliverToBoxAdapter(child: SizedBox(height: 12)),
               SliverToBoxAdapter(child: _filterChips()),
               const SliverToBoxAdapter(child: SizedBox(height: 6)),
@@ -166,7 +175,7 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
                     title: 'No offers available',
                     subtitle: _filter != 'All Providers'
                         ? 'For $_filter right now.'
-                        : 'New offers are added regularly — check back soon.',
+                        : 'No offers are currently returned by the provider.'
                   ),
                 )
               else
@@ -196,7 +205,7 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
           p.toLowerCase() != 'offerwallgg'),
     ];
     return SizedBox(
-      height: 36,
+      height: 44,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -242,7 +251,7 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
                   fontSize: 16,
                   fontWeight: FontWeight.w800)),
           SizedBox(height: 2),
-          Text('Complete offers to earn coins',
+          Text('Browse offers returned by Offerwall.GG',
               style: TextStyle(color: _secondaryText, fontSize: 12)),
         ],
       ),
@@ -251,18 +260,16 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
 
   // ─────────────────────────── OFFER CARD ───────────────────────────
   Widget _offerCard(OfferwallOffer offer) {
-    final title = offer.title.isEmpty ? 'Offer' : offer.title;
-    final coins = offer.coinReward;
+    final title = offer.title;
     final provider = offer.provider.isEmpty ? 'Offerwall.GG' : offer.provider;
     final shortReq = offer.shortRequirement ?? '';
     final estimatedTime = offer.estimatedTime ?? '';
     final color = ProviderLogos.colorFor(provider);
-    final inr = (coins / 10).toStringAsFixed(0);
 
     return GestureDetector(
       onTap: () => _openDetail(offer),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12, top: 4),
+        margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
         decoration: BoxDecoration(
           color: _card,
           borderRadius: BorderRadius.circular(16),
@@ -276,7 +283,7 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top row: provider logo + name + reward
+              // Top row: provider logo and name.
               Row(
                 children: [
                   AppLogo(
@@ -300,20 +307,6 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
                     ),
                   ),
                   const Spacer(),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('+${_fmt(coins)} Coins',
-                          style: const TextStyle(
-                              color: Color(0xFF5A3825),
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800)),
-                      Text('≈ ₹$inr',
-                          style: const TextStyle(
-                              color: _secondaryText,
-                              fontSize: 10)),
-                    ],
-                  ),
                 ],
               ),
               const SizedBox(height: 10),
@@ -338,18 +331,30 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
               // Meta row
               Row(
                 children: [
-                  if (estimatedTime.isNotEmpty) ...[
-                    const Icon(Icons.access_time_rounded,
-                        color: _secondaryText, size: 14),
-                    const SizedBox(width: 4),
-                    Text(estimatedTime,
-                        style: const TextStyle(
-                            color: _secondaryText, fontSize: 12)),
-                  ],
-                  const Spacer(),
+                  if (estimatedTime.isNotEmpty)
+                    Expanded(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.access_time_rounded,
+                              color: _secondaryText, size: 14),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(estimatedTime,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: _secondaryText, fontSize: 12)),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    const Spacer(),
+                  const SizedBox(width: 8),
                   // Start Offer button
                   SizedBox(
-                    height: 34,
+                    height: 42,
                     child: ElevatedButton(
                       onPressed: () => _startOffer(offer),
                       style: ElevatedButton.styleFrom(
@@ -374,13 +379,4 @@ class _OfferwallScreenState extends State<OfferwallScreen> {
     );
   }
 
-  String _fmt(int n) {
-    final str = n.abs().toString();
-    final sb = StringBuffer();
-    for (var i = 0; i < str.length; i++) {
-      if (i > 0 && (str.length - i) % 3 == 0) sb.write(',');
-      sb.write(str[i]);
-    }
-    return n.isNegative ? '-$sb' : sb.toString();
-  }
 }

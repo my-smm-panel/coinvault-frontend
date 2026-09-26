@@ -21,15 +21,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   List<Map<String, dynamic>> _top = [];
   Map<String, dynamic> _mine = {};
   bool _loading = true;
+  bool _failed = false;
 
-  static const Color _bg = Color(0xFFFAFAF8);
-  static const Color _card = Color(0xFFFFFFFF);
-  static const Color _border = Color(0xFFE7E7E7);
-  static const Color _primaryText = Color(0xFF171717);
-  static const Color _secondaryText = Color(0xFF6B7280);
-  static const Color _orange = Color(0xFFF59E0B);
-  static const Color _orange2 = Color(0xFFF7A928);
-  static const Color _brown = Color(0xFF5A3825);
+  static const Color _bg = AppColors.background;
+  static const Color _card = AppColors.surface;
+  static const Color _border = AppColors.border;
+  static const Color _primaryText = AppColors.textPrimary;
+  static const Color _secondaryText = AppColors.textSecondary;
+  static const Color _orange = AppColors.primary;
+  static const Color _brown = AppColors.primaryDark;
 
   @override
   void initState() {
@@ -38,17 +38,21 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _failed = false;
+    });
     final data = await AppRepository.instance.fetchLeaderboard(_period);
     if (!mounted) return;
     setState(() {
       _loading = false;
-      final top = data['top'];
+      _failed = data == null;
+      final top = data?['top'];
       _top = top is List
-          ? top.map((e) => Map<String, dynamic>.from(e as Map)).toList()
+          ? top.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
           : [];
-      _mine = (data['my'] is Map)
-          ? Map<String, dynamic>.from(data['my'] as Map)
+      _mine = (data?['my'] is Map)
+          ? Map<String, dynamic>.from(data!['my'] as Map)
           : {};
     });
   }
@@ -89,14 +93,25 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const CvHeader(),
+            CvHeader(showBack: Navigator.of(context).canPop()),
             _segmented(),
             Expanded(
               child: _loading
                   ? const Center(
                       child: CircularProgressIndicator(
                           color: _orange, strokeWidth: 2.5))
-                  : RefreshIndicator(
+                  : _failed
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text('Leaderboard could not be loaded.'),
+                              const SizedBox(height: 8),
+                              TextButton(onPressed: _load, child: const Text('Retry')),
+                            ],
+                          ),
+                        )
+                      : RefreshIndicator(
                       color: _orange,
                       backgroundColor: _card,
                       onRefresh: _load,
@@ -137,7 +152,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       child: Container(
         height: 40,
         decoration: BoxDecoration(
-          color: const Color(0xFFF1F1F4),
+          color: AppColors.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -193,9 +208,9 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.end,
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _podiumSlot(second, 2, false, height: 96),
-          _podiumSlot(first, 1, true, height: 116),
-          _podiumSlot(third, 3, false, height: 96),
+          Expanded(child: _podiumSlot(second, 2, false, height: 96)),
+          Expanded(child: _podiumSlot(first, 1, true, height: 116)),
+          Expanded(child: _podiumSlot(third, 3, false, height: 96)),
         ],
       ),
     );
@@ -203,7 +218,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   Widget _podiumSlot(Map? e, int rank, bool gold, {required double height}) {
     final name = e != null ? _name(e) : '—';
-    final coins = e != null ? ((e['coinsEarned'] ?? 0) as num).toInt() : 0;
+    final rawCoins = e?['coinsEarned'];
+    final coins = rawCoins is num ? rawCoins.toInt() : null;
     final avatar = e != null ? _avatar(e) : null;
     final d = 52.0 + (gold ? 12 : 0);
     return Column(
@@ -221,7 +237,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           height: d,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: gold ? const Color(0xFFFFF7E6) : const Color(0xFFF1F1F4),
+            color: gold ? AppColors.goldContainer : AppColors.surfaceVariant,
             border: Border.all(
                 color: gold ? _orange : _border, width: gold ? 2.2 : 1),
           ),
@@ -238,7 +254,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             style: const TextStyle(
                 color: _primaryText, fontSize: 12.5, fontWeight: FontWeight.w700)),
         const SizedBox(height: 2),
-        Text('${_fmt(coins)} Coins',
+        Text(
+            coins == null ? 'Coins unavailable' : '${_fmt(coins)} Coins',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
             style: TextStyle(
                 color: gold ? _brown : _secondaryText,
                 fontSize: 11.5,
@@ -250,8 +270,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           width: 64,
           decoration: BoxDecoration(
             color: gold
-                ? const Color(0xFFFDEBC8)
-                : const Color(0xFFF1F1F4),
+                ? AppColors.goldContainer
+                : AppColors.surfaceVariant,
             borderRadius: BorderRadius.circular(8),
           ),
           alignment: Alignment.center,
@@ -283,28 +303,30 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   // ─────────────────────────── MY RANK CARD ───────────────────────────
   Widget _myRankCard() {
     final rank = (_mine['rank'] as num?)?.toInt();
-    final coins = (_mine['coinsEarned'] as num?)?.toInt() ?? 0;
+    final rawCoins = _mine['coinsEarned'];
+    final coins = rawCoins is num ? rawCoins.toInt() : null;
+    final periodCoins = coins == null
+        ? 'Coins unavailable'
+        : '${_fmt(coins)} Coins';
     if (rank == null) {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF7E6),
+          color: AppColors.goldContainer,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFF3E3C2)),
+          border: Border.all(color: AppColors.primaryContainer),
         ),
         child: const Text(
-            'Complete a task to enter the leaderboard.',
+            'No rank is available for this period yet.',
             style: TextStyle(color: _secondaryText, fontSize: 13)),
       );
     }
-    // progress to next rank: rough position indicator (rank vs 100)
-    final pct = (100 - rank).clamp(0, 100) / 100;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7E6),
+        color: AppColors.goldContainer,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF3E3C2)),
+        border: Border.all(color: AppColors.primaryContainer),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -325,21 +347,11 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Text('${_fmt(coins)} Coins ${_periodLabel()}',
+          Text('$periodCoins ${_periodLabel()}',
               style: const TextStyle(
                   color: _primaryText, fontSize: 13, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 9),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: pct,
-              minHeight: 6,
-              backgroundColor: const Color(0xFFEFE4CD),
-              color: _orange,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text('Climbing the ranks — keep earning!',
+          const SizedBox(height: 8),
+          const Text('Rank is based on your coins earned during this period.',
               style: TextStyle(color: _secondaryText, fontSize: 11)),
         ],
       ),
@@ -365,11 +377,17 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         ),
       ];
     }
-    // start list from rank 4 (podium shows 1-3)
-    final rest = _top.where((e) => ((e['rank'] ?? 0) as num).toInt() >= 4).toList();
+    // Start from rank 4 (podium shows 1-3); malformed server rows are omitted.
+    final rest = _top.where((e) {
+      final rank = e['rank'];
+      return rank is num && rank.toInt() >= 4;
+    }).toList();
     return rest.map((e) {
-      final rank = ((e['rank'] ?? 0) as num).toInt();
-      final coins = ((e['coinsEarned'] ?? 0) as num).toInt();
+      final rankValue = e['rank'];
+      if (rankValue is! num) return const SizedBox.shrink();
+      final rank = rankValue.toInt();
+      final rawCoins = e['coinsEarned'];
+      final coins = rawCoins is num ? rawCoins.toInt() : null;
       final name = _name(e);
       final avatar = _avatar(e);
       final isMe = e['userId']?.toString() == uid;
@@ -386,7 +404,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   Widget _rankRow({
     required int rank,
     required String name,
-    required int coins,
+    required int? coins,
     String? avatar,
     bool isMe = false,
   }) {
@@ -394,10 +412,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       margin: const EdgeInsets.only(bottom: 8, top: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: isMe ? const Color(0xFFFFF7E6) : _card,
+        color: isMe ? AppColors.goldContainer : _card,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-            color: isMe ? const Color(0xFFF3D9A8) : _border, width: 1),
+            color: isMe ? AppColors.primaryLight : _border, width: 1),
       ),
       child: Row(
         children: [
@@ -415,7 +433,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F1F4),
+              color: AppColors.surfaceVariant,
               shape: BoxShape.circle,
             ),
             child: avatar != null && avatar.isNotEmpty
@@ -456,7 +474,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               ],
             ),
           ),
-          Text('${_fmt(coins)}',
+          Text(coins == null ? '—' : _fmt(coins),
               style: const TextStyle(
                   color: _brown, fontSize: 13.5, fontWeight: FontWeight.w800)),
           const SizedBox(width: 4),
@@ -469,16 +487,15 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
 
   // ─────────────────────────── YOUR STATS ───────────────────────────
   Widget _statsSection() {
-    final myTasks = _top
-        .where((e) => e['userId']?.toString() == AuthService().userModel?.uid)
-        .fold<int>(0, (a, e) => a + ((e['tasksCompleted'] ?? 0) as num).toInt());
-    final coins = (_mine['coinsEarned'] as num?)?.toInt() ?? 0;
     final uid = AuthService().userModel?.uid;
-    final mine = _top.firstWhere(
-      (e) => e['userId']?.toString() == uid,
-      orElse: () => {},
-    );
-    final surveys = (mine['tasksCompleted'] as num?)?.toInt() ?? 0;
+    final mineRows = _top.where((e) => e['userId']?.toString() == uid).toList();
+    final mineRow = mineRows.isEmpty ? null : mineRows.first;
+    final rawTasks = _mine['tasksCompleted'] ?? mineRow?['tasksCompleted'];
+    final myTasks = rawTasks is num ? rawTasks.toInt() : null;
+    final rawCoins = _mine['coinsEarned'] ?? mineRow?['coinsEarned'];
+    final coins = rawCoins is num ? rawCoins.toInt() : null;
+    final rawSurveys = _mine['surveysCompleted'] ?? mineRow?['surveysCompleted'];
+    final surveys = rawSurveys is num ? rawSurveys.toInt() : null;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -488,13 +505,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         const SizedBox(height: 10),
         Row(
           children: [
-            _statCard('Coins Earned', _fmt(coins), Icons.savings_rounded,
-                const Color(0xFFF59E0B)),
+            _statCard('Coins Earned', coins == null ? '—' : _fmt(coins), Icons.savings_rounded,
+                AppColors.gold),
             const SizedBox(width: 10),
-            _statCard('Tasks Completed', '$myTasks', Icons.task_alt_rounded,
+            _statCard('Tasks Completed', myTasks?.toString() ?? '—', Icons.task_alt_rounded,
                 const Color(0xFF16A34A)),
             const SizedBox(width: 10),
-            _statCard('Surveys', '$surveys', Icons.poll_rounded,
+            _statCard('Surveys', surveys?.toString() ?? '—', Icons.poll_rounded,
                 const Color(0xFF3B82F6)),
           ],
         ),
