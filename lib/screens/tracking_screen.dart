@@ -13,7 +13,7 @@ class TrackingScreen extends StatefulWidget {
 
 class _TrackingScreenState extends State<TrackingScreen>
     with SingleTickerProviderStateMixin {
-  static const _bg = Color(0xFFF7F8FA);
+  static const _bg = AppColors.background;
 
   late final TabController _tabs = TabController(length: 3, vsync: this);
   bool _loading = true;
@@ -110,6 +110,12 @@ class _TrackingScreenState extends State<TrackingScreen>
         setState(() => _loading = false);
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
   }
 
   @override

@@ -163,7 +163,8 @@ class _SpinScreenState extends State<SpinScreen> with SingleTickerProviderStateM
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final wheelSize = (size.width * 0.84).clamp(270.0, 330.0);
+    // Leave room for the wheel's outer padding on compact phone widths.
+    final wheelSize = (size.width * 0.82).clamp(220.0, 330.0);
     return ListenableBuilder(
       listenable: BalanceStream.instance,
       builder: (context, _) {
@@ -182,6 +183,16 @@ class _SpinScreenState extends State<SpinScreen> with SingleTickerProviderStateM
                     _wheelArea(wheelSize),
                     const SizedBox(height: AppSpacing.lg),
                     Text(_statusMessage, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13.5, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: AppSpacing.xs),
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                      child: Text(
+                        'The wheel animation is visual only; the server determines your result and reward.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                            color: AppColors.textTertiary, fontSize: 12, height: 1.4),
+                      ),
+                    ),
                     const SizedBox(height: AppSpacing.lg),
                     _buildHowItWorks(),
                     const SizedBox(height: AppSpacing.lg),
@@ -238,7 +249,7 @@ class _SpinScreenState extends State<SpinScreen> with SingleTickerProviderStateM
     final canSpin = _remainingSpins != null && _remainingSpins! > 0 && !busy;
     return SizedBox(
       height: wheelSize * 1.18,
-      width: wheelSize * 1.2,
+      width: wheelSize + 24,
       child: Stack(alignment: Alignment.topCenter, children: [
         Positioned.fill(child: Align(alignment: Alignment.bottomCenter, child: Container(width: wheelSize, height: wheelSize, decoration: BoxDecoration(shape: BoxShape.circle, color: AppColors.primary.withOpacity(0.06))))),
         Container(margin: const EdgeInsets.only(top: 14), padding: EdgeInsets.all(wheelSize * 0.045), child: AnimatedBuilder(animation: _controller, builder: (context, child) => Transform.rotate(angle: _rotationAnim.value, child: child), child: _wheel(wheelSize))),

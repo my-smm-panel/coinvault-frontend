@@ -14,7 +14,7 @@ class InviteScreen extends StatefulWidget {
 }
 
 class _InviteScreenState extends State<InviteScreen> {
-  static const _bg = Color(0xFFF7F8FA);
+  static const _bg = AppColors.background;
 
   bool _loading = true;
   bool _failed = false;
@@ -81,16 +81,8 @@ class _InviteScreenState extends State<InviteScreen> {
 
   void _share(String channel) {
     // No share plugin in this project — copy the invite text instead.
-    _copy(_shareText, 'Invite message');
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Invite message copied — paste it in $channel'),
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: AppColors.primary,
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
+    // _copy owns the single confirmation so one tap never shows two snackbars.
+    _copy(_shareText, 'Invite message for $channel');
   }
 
   @override
@@ -412,7 +404,7 @@ class _InviteScreenState extends State<InviteScreen> {
             );
           }),
           const SizedBox(height: 12),
-          // share row
+          // Copy-ready text for each channel; no external sharing plugin is used.
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
             decoration: BoxDecoration(
@@ -424,25 +416,25 @@ class _InviteScreenState extends State<InviteScreen> {
               children: [
                 _ShareButton(
                   icon: Icons.facebook_rounded,
-                  label: 'FB',
+                  label: 'Copy FB',
                   color: const Color(0xFF1877F2),
                   onTap: () => _share('Facebook'),
                 ),
                 _ShareButton(
                   icon: Icons.chat_rounded,
-                  label: 'WA',
+                  label: 'Copy WA',
                   color: const Color(0xFF25D366),
                   onTap: () => _share('WhatsApp'),
                 ),
                 _ShareButton(
                   icon: Icons.send_rounded,
-                  label: 'TG',
+                  label: 'Copy TG',
                   color: const Color(0xFF229ED9),
                   onTap: () => _share('Telegram'),
                 ),
                 _ShareButton(
                   icon: Icons.share_rounded,
-                  label: 'Share',
+                  label: 'Copy',
                   color: AppColors.primary,
                   onTap: () => _share('any app'),
                 ),
@@ -496,13 +488,13 @@ class _CopyButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: AppColors.cardBackground,
       borderRadius: BorderRadius.circular(AppRadius.md),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: const [

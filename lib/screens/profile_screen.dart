@@ -26,11 +26,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   UserModel? _user;
   bool _loading = true;
 
-  static const _bg = Color(0xFFFAFAF8);
-  static const _card = Color(0xFFFFFFFF);
-  static const _border = Color(0xFFE7E7E7);
-  static const _textPrimary = Color(0xFF171717);
-  static const _textSecondary = Color(0xFF6B7280);
+  static const _bg = AppColors.background;
+  static const _card = AppColors.surface;
+  static const _border = AppColors.border;
+  static const _textPrimary = AppColors.textPrimary;
+  static const _textSecondary = AppColors.textSecondary;
 
   @override
   void initState() {
@@ -218,7 +218,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               Center(
                 child: const Text('CoinVault v1.0.0',
                     style:
-                        TextStyle(color: Color(0xFFB9BDC4), fontSize: 11)),
+                        TextStyle(color: AppColors.textTertiary, fontSize: 11)),
               ),
             ],
           ),
@@ -254,7 +254,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 errorBuilder: (_, __, ___) => Container(
                   width: 56,
                   height: 56,
-                  color: const Color(0xFFFFF7E6),
+                  color: AppColors.goldContainer,
                   child: const Icon(Icons.person_rounded, size: 28),
                 ),
               ),
@@ -316,22 +316,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       physics: const NeverScrollableScrollPhysics(),
       mainAxisSpacing: 10,
       crossAxisSpacing: 10,
-      childAspectRatio: 2.3,
+      childAspectRatio: 2.05,
       children: [
         _stat('Balance', balance == null ? '—' : _fmt(balance), Icons.payments_rounded,
             AppColors.primary),
         _stat('Spins Left', spinsLeft, Icons.donut_large_rounded,
-            const Color(0xFFF59E0B)),
+            AppColors.primary),
         _stat('Wallet status', balance == null ? 'Unknown' : 'Fresh', Icons.account_balance_wallet_rounded,
             const Color(0xFF16A34A)),
         _stat('Payouts', 'View', Icons.currency_rupee_rounded,
-            const Color(0xFF3B82F6)),
+            const Color(0xFF3B82F6), onTap: () => _push(const HistoryScreen(initialTab: 'Payouts'))),
       ],
     );
   }
 
-  Widget _stat(String label, String value, IconData icon, Color color) {
-    return Container(
+  Widget _stat(String label, String value, IconData icon, Color color,
+      {VoidCallback? onTap}) {
+    final card = Container(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: _card,
@@ -367,7 +368,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+          if (onTap != null)
+            const Icon(Icons.chevron_right_rounded,
+                color: AppColors.textTertiary, size: 18),
         ],
+      ),
+    );
+    if (onTap == null) return card;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: card,
       ),
     );
   }
@@ -379,7 +392,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ['Payouts', 'Withdrawal transactions', Icons.payments_rounded,
           AppColors.primary, const HistoryScreen(initialTab: 'Payouts')],
       ['Ranks', 'Leaderboard standings', Icons.emoji_events_rounded,
-          const Color(0xFFF59E0B), const LeaderboardScreen()],
+          AppColors.primary, const LeaderboardScreen()],
       ['Refer & Earn', 'Referral code and activity', Icons.group_add_rounded,
           const Color(0xFFEC4899), const InviteScreen()],
       ['Earn More', 'Tasks & offers', Icons.task_alt_rounded,
@@ -387,7 +400,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ['Withdraw', 'Request payout', Icons.account_balance_wallet_rounded,
           AppColors.primary, const WithdrawScreen()],
       ['Notifications', 'Alerts & updates', Icons.notifications_rounded,
-          const Color(0xFFF59E0B), const NotificationsScreen()],
+          AppColors.primary, const NotificationsScreen()],
       ['Help & Support', 'FAQs and contact', Icons.help_outline_rounded,
           const Color(0xFF8B5CF6), const HelpScreen()],
     ];
@@ -450,7 +463,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const Icon(Icons.chevron_right_rounded,
-                color: Color(0xFFB9BDC4)),
+                color: AppColors.textTertiary),
           ],
         ),
       ),

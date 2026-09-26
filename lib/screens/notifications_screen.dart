@@ -55,6 +55,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _readAll() async {
+    if (_loading || _failed || !_items.any((item) => item is Map && item['isRead'] != true)) {
+      return;
+    }
     final updated = await AppRepository.instance.notifReadAll();
     if (updated) {
       await _load();
@@ -73,8 +76,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         title: const Text('Notifications'),
         actions: [
           TextButton(
-            onPressed: _readAll,
-            child: const Text('Mark all read',
+            onPressed: _loading ||
+                    _failed ||
+                    !_items.any((item) => item is Map && item['isRead'] != true)
+                ? null
+                : _readAll,
+            child: const Text('Mark all read', 
                 style: TextStyle(color: AppColors.primary)),
           ),
         ],

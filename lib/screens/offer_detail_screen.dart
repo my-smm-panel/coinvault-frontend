@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
 import '../services/app_repository.dart';
 import '../widgets/app_logo.dart';
@@ -82,7 +83,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
   Widget build(BuildContext context) {
     final color = ProviderLogos.colorFor(widget.provider);
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAF8),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -112,7 +113,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
             onTap: () => Navigator.pop(context),
             borderRadius: BorderRadius.circular(10),
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.25),
                 borderRadius: BorderRadius.circular(10),
@@ -125,7 +126,9 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-                color: Colors.white, borderRadius: BorderRadius.circular(12)),
+              color: AppColors.cardBackground,
+              borderRadius: BorderRadius.circular(12),
+            ),
             child: AppLogo(
               provider: widget.provider,
               title: widget.title,
@@ -172,14 +175,14 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
         children: [
           Text(widget.title,
               style: const TextStyle(
-                  color: Color(0xFF171717),
+                  color: AppColors.textPrimary,
                   fontSize: 19,
                   fontWeight: FontWeight.w800)),
           if (description.isNotEmpty) ...[
             const SizedBox(height: 6),
             Text(description,
                 style: const TextStyle(
-                    color: Color(0xFF6B7280), fontSize: 13, height: 1.5)),
+                    color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
           ],
           if (widget.isVariable == true) ...[
             const SizedBox(height: 10),
@@ -227,7 +230,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: color.withOpacity(0.35))),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -236,7 +239,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
           const SizedBox(width: 8),
           Text(heading,
               style: const TextStyle(
-                  color: Color(0xFF171717),
+                  color: AppColors.textPrimary,
                   fontSize: 15,
                   fontWeight: FontWeight.w800)),
         ]),
@@ -264,7 +267,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(e.value,
                             style: const TextStyle(
-                                color: Color(0xFF171717),
+                                color: AppColors.textPrimary,
                                 fontSize: 13,
                                 height: 1.4)))),
               ]),
@@ -277,13 +280,13 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF171717).withOpacity(0.06))),
+          border: Border.all(color: AppColors.border)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         const Text('Rules',
             style: TextStyle(
-                color: Color(0xFF171717),
+                color: AppColors.textPrimary,
                 fontSize: 14,
                 fontWeight: FontWeight.w800)),
         const SizedBox(height: 10),
@@ -291,12 +294,12 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
               padding: const EdgeInsets.only(bottom: 8),
               child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 const Icon(Icons.info_outline_rounded,
-                    size: 14, color: Color(0xFF6B7280)),
+                    size: 14, color: AppColors.textSecondary),
                 const SizedBox(width: 8),
                 Expanded(
                     child: Text(rule,
                         style: const TextStyle(
-                            color: Color(0xFF6B7280),
+                            color: AppColors.textSecondary,
                             fontSize: 12,
                             height: 1.4))),
               ]),
@@ -311,10 +314,10 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
       padding: EdgeInsets.fromLTRB(
           16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
       decoration: BoxDecoration(
-          color: const Color(0xFFFAFAF8),
+          color: AppColors.background,
           border: Border(
               top: BorderSide(
-                  color: const Color(0xFF171717).withOpacity(0.06)))),
+                  color: AppColors.border))),
       child: Column(children: [
         SizedBox(
           width: double.infinity,
@@ -322,10 +325,10 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
           child: ElevatedButton(
             onPressed: enabled ? _startOffer : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: enabled ? color : const Color(0xFFE8F0FF),
-              foregroundColor: enabled ? Colors.white : const Color(0xFF6B7280),
-              disabledBackgroundColor: const Color(0xFFE8F0FF),
-              disabledForegroundColor: const Color(0xFF6B7280),
+              backgroundColor: enabled ? color : const Color(0xFFE8E8E8),
+              foregroundColor: enabled ? Colors.white : AppColors.textSecondary,
+              disabledBackgroundColor: const Color(0xFFE8E8E8),
+              disabledForegroundColor: AppColors.textSecondary,
               elevation: 0,
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(26)),
@@ -346,7 +349,7 @@ class _OfferDetailScreenState extends State<OfferDetailScreen> {
           const Padding(
             padding: EdgeInsets.only(top: 8),
             child: Text('This offer has no valid backend offer ID.',
-                style: TextStyle(color: Color(0xFF6B7280), fontSize: 12)),
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
           ),
       ]),
     );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/app_theme.dart';
 import '../services/auth_service.dart';
 import 'home_screen.dart';
 
@@ -41,13 +42,13 @@ class _AuthScreenState extends State<AuthScreen> {
     }
   }
 
-  static const Color _bg = Color(0xFFFAFAF8);
-  static const Color _surface = Color(0xFFFFFFFF);
-  static const Color _border = Color(0xFFE7E7E7);
-  static const Color _primaryText = Color(0xFF171717);
-  static const Color _secondaryText = Color(0xFF6B7280);
-  static const Color _orange = Color(0xFFF59E0B);
-  static const Color _brown = Color(0xFF5A3825);
+  static const Color _bg = AppColors.background;
+  static const Color _surface = AppColors.surface;
+  static const Color _border = AppColors.border;
+  static const Color _primaryText = AppColors.textPrimary;
+  static const Color _secondaryText = AppColors.textSecondary;
+  static const Color _orange = AppColors.primary;
+  static const Color _brown = AppColors.primaryDark;
 
   Future<void> _signInWithGoogle() async {
     setState(() {
@@ -217,7 +218,7 @@ class _AuthScreenState extends State<AuthScreen> {
               // ── Terms footer ──
               const Text('By continuing, you agree to our Terms & Privacy Policy.',
                   style: TextStyle(
-                      color: Color(0xFF9AA0A6),
+                      color: AppColors.textTertiary,
                       fontSize: 11.5,
                       fontWeight: FontWeight.w500)),
 

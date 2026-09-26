@@ -19,6 +19,7 @@ class _QuizScreenState extends State<QuizScreen> {
   int? _correctCount;
   List<Map<String, dynamic>>? _questions;
   bool _loading = true;
+  bool _loadFailed = false;
   bool _submitting = false;
   bool _done = false;
   bool _alreadyPlayed = false;
@@ -48,6 +49,12 @@ class _QuizScreenState extends State<QuizScreen> {
   }
 
   Future<void> _loadQuiz() async {
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _loadFailed = false;
+      });
+    }
     final data = await AppRepository.instance.fetchQuiz();
     if (!mounted) return;
     if (data != null && data['questions'] is List) {
@@ -59,7 +66,10 @@ class _QuizScreenState extends State<QuizScreen> {
         _answers = List<int?>.filled(_questions!.length, null);
       });
     } else {
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+        _loadFailed = true;
+      });
     }
   }
 
@@ -178,13 +188,13 @@ class _QuizScreenState extends State<QuizScreen> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const Scaffold(
-        backgroundColor: Color(0xFFF7F8FA),
+        backgroundColor: AppColors.background,
         body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       );
     }
     if (_alreadyPlayed && !_done) {
       return Scaffold(
-        backgroundColor: const Color(0xFFF7F8FA),
+        backgroundColor: AppColors.background,
         body: SafeArea(
           child: Center(
             child: Padding(
@@ -210,20 +220,51 @@ class _QuizScreenState extends State<QuizScreen> {
     if (_done) {
       _showResult();
       return const Scaffold(
-        backgroundColor: Color(0xFFF7F8FA),
+        backgroundColor: AppColors.background,
         body: Center(child: Text('Submitting results…')),
       );
     }
     final q = _questions == null || _questions!.isEmpty ? null : _questions![_index];
     if (q == null) {
-      return const Scaffold(
-        backgroundColor: Color(0xFFF7F8FA),
-        body: Center(child: Text('No quiz is available right now.', style: TextStyle(color: AppColors.textSecondary))),
+      return Scaffold(
+        backgroundColor: AppColors.background,
+        body: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _loadFailed ? Icons.cloud_off_rounded : Icons.quiz_rounded,
+                    color: AppColors.textSecondary,
+                    size: 42,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    _loadFailed
+                        ? 'Quiz could not be loaded. Check your connection and retry.'
+                        : 'No quiz is available right now.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                        color: AppColors.textSecondary, fontSize: 14),
+                  ),
+                  const SizedBox(height: 12),
+                  TextButton.icon(
+                    onPressed: _loadQuiz,
+                    icon: const Icon(Icons.refresh_rounded),
+                    label: const Text('Try again'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       );
     }
     final options = (q['options'] is List) ? List<String>.from(q['options'] as List) : <String>[];
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -263,7 +304,7 @@ class _QuizScreenState extends State<QuizScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: selected ? AppColors.primary.withOpacity(0.12) : Colors.white,
+                            color: selected ? AppColors.primary.withOpacity(0.12) : AppColors.cardBackground,
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 2 : 1),
                           ),

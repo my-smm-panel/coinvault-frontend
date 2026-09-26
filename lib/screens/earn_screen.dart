@@ -73,7 +73,7 @@ class _RotatingSpotlightState extends State<_RotatingSpotlight> {
   Widget build(BuildContext context) {
     return Column(children: [
       SizedBox(
-        height: 132,
+        height: 148,
         child: PageView.builder(
           controller: _controller,
           itemCount: widget.items.length,
@@ -281,9 +281,31 @@ class _EarnScreenState extends State<EarnScreen> {
                   _categoryTabs(),
                   const SizedBox(height: 16),
                   if (_loading)
-                    const Padding(padding: EdgeInsets.all(36), child: Center(child: CircularProgressIndicator(color: AppColors.primary)))
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 36),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            width: 28,
+                            height: 28,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.5,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                          SizedBox(height: 10),
+                          Text(
+                            'Loading activities…',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
                   else if (_failed)
-                    _empty('Activities could not be loaded. Pull to retry.')
+                    _empty('Activities could not be loaded.', retry: true)
                   else ...[
                     if (_category == 'All' || _category == 'Surveys') ...[
                       _heading('Surveys', () => _push(const SurveysScreen())),
@@ -345,7 +367,7 @@ class _EarnScreenState extends State<EarnScreen> {
 
   Widget _stat(String label, String value) => Container(margin: const EdgeInsets.only(right: 8), padding: const EdgeInsets.symmetric(vertical: 11), decoration: _cardDec(), child: Column(children: [Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)), const SizedBox(height: 2), Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary))]));
 
-  Widget _categoryTabs() => SizedBox(height: 38, child: ListView.separated(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), itemCount: _categories.length, separatorBuilder: (_, __) => const SizedBox(width: 8), itemBuilder: (_, i) { final category = _categories[i]; final selected = _category == category; return GestureDetector(onTap: () => setState(() => _category = category), child: Container(padding: const EdgeInsets.symmetric(horizontal: 16), alignment: Alignment.center, decoration: BoxDecoration(color: selected ? AppColors.primary : AppColors.cardBackground, borderRadius: BorderRadius.circular(20), border: Border.all(color: selected ? AppColors.primary : AppColors.border)), child: Text(category, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppColors.textSecondary)))); }));
+  Widget _categoryTabs() => SizedBox(height: 44, child: ListView.separated(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 16), itemCount: _categories.length, separatorBuilder: (_, __) => const SizedBox(width: 8), itemBuilder: (_, i) { final category = _categories[i]; final selected = _category == category; return GestureDetector(onTap: () => setState(() => _category = category), child: Container(padding: const EdgeInsets.symmetric(horizontal: 16), alignment: Alignment.center, decoration: BoxDecoration(color: selected ? AppColors.primary : AppColors.cardBackground, borderRadius: BorderRadius.circular(20), border: Border.all(color: selected ? AppColors.primary : AppColors.border)), child: Text(category, style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: selected ? Colors.white : AppColors.textSecondary)))); }));
 
   Widget _heading(String title, VoidCallback? onTap) => Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 10), child: Row(children: [Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)), const Spacer(), if (onTap != null) TextButton(onPressed: onTap, child: const Text('View all'))]));
 
@@ -367,11 +389,9 @@ class _EarnScreenState extends State<EarnScreen> {
     return Column(
       children: list.map((m) {
         final instructions = m['instructions'];
-        final desc = _description(m).isNotEmpty
-            ? _description(m)
-            : instructions is List
-                ? instructions.where((e) => e != null).join(' • ')
-                : '';
+        // Keep list cards concise; the full server-provided instructions are
+        // passed to the detail page below.
+        final desc = _description(m);
         final steps = instructions is List
             ? instructions
                 .where((e) => e != null && e.toString().trim().isNotEmpty)
@@ -423,6 +443,37 @@ class _EarnScreenState extends State<EarnScreen> {
 
   Widget _item({required String title, required String description, required IconData icon, required VoidCallback action}) => Container(margin: const EdgeInsets.fromLTRB(16, 0, 16, 10), padding: const EdgeInsets.all(14), decoration: _cardDec(), child: Row(children: [Container(width: 42, height: 42, decoration: BoxDecoration(color: AppColors.primaryContainer, borderRadius: BorderRadius.circular(11)), child: Icon(icon, color: AppColors.primary)), const SizedBox(width: 12), Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.textPrimary)), if (description.isNotEmpty) ...[const SizedBox(height: 4), Text(description, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary))]])), IconButton(onPressed: action, icon: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.primary))]));
 
-  Widget _empty(String text) => Container(margin: const EdgeInsets.symmetric(horizontal: 16), padding: const EdgeInsets.all(20), decoration: _cardDec(), child: Text(text, textAlign: TextAlign.center, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)));
+  Widget _empty(String text, {bool retry = false}) => Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+        decoration: _cardDec(),
+        child: Column(
+          children: [
+            Icon(
+              retry ? Icons.cloud_off_rounded : Icons.inbox_outlined,
+              color: AppColors.textTertiary,
+              size: 28,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 13,
+                height: 1.4,
+              ),
+            ),
+            if (retry) ...[
+              const SizedBox(height: 8),
+              TextButton.icon(
+                onPressed: _load,
+                icon: const Icon(Icons.refresh_rounded, size: 18),
+                label: const Text('Try again'),
+              ),
+            ],
+          ],
+        ),
+      );
   BoxDecoration _cardDec() => BoxDecoration(color: AppColors.cardBackground, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: AppColors.border), boxShadow: AppShadows.card);
 }

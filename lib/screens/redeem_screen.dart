@@ -62,9 +62,9 @@ class _RedeemScreenState extends State<RedeemScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        backgroundColor: const Color(0xFFF7F8FA),
+        backgroundColor: AppColors.background,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
@@ -92,11 +92,27 @@ class _RedeemScreenState extends State<RedeemScreen> {
     if (_brands.isEmpty) {
       return const Center(child: Text('No gift cards available yet', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)));
     }
-    return GridView.builder(
-      padding: const EdgeInsets.all(16),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, childAspectRatio: 1, crossAxisSpacing: 12, mainAxisSpacing: 12),
-      itemCount: _brands.length,
-      itemBuilder: (_, i) => _brandCard(_brands[i]),
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: _load,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          final columns = width >= 760 ? 5 : width >= 560 ? 4 : width >= 340 ? 3 : 2;
+          return GridView.builder(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: columns,
+              childAspectRatio: 0.96,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+            ),
+            itemCount: _brands.length,
+            itemBuilder: (_, i) => _brandCard(_brands[i]),
+          );
+        },
+      ),
     );
   }
 
@@ -112,7 +128,7 @@ class _RedeemScreenState extends State<RedeemScreen> {
       onTap: (_confirming || _redeeming) ? null : () => _showInfo(brand),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: AppColors.border),
         ),

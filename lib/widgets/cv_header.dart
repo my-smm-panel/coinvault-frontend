@@ -39,12 +39,12 @@ class CvHeader extends StatelessWidget {
     this.showWordmark = true,
   });
 
-  static const Color _bg = Color(0xFFFAFAF8);
-  static const Color _surface = Color(0xFFFFFFFF);
-  static const Color _border = Color(0xFFE7E7E7);
-  static const Color _primaryText = Color(0xFF171717);
-  static const Color _brown = Color(0xFF5A3825);
-  static const Color _orange = Color(0xFFF59E0B);
+  static const Color _bg = AppColors.background;
+  static const Color _surface = AppColors.surface;
+  static const Color _border = AppColors.border;
+  static const Color _primaryText = AppColors.textPrimary;
+  static const Color _brown = AppColors.primaryDark;
+  static const Color _orange = AppColors.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -234,8 +234,8 @@ class _IconBtn extends StatelessWidget {
 }
 
 class _HeaderColors {
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color border = Color(0xFFE7E7E7);
-  static const Color primaryText = Color(0xFF171717);
-  static const Color orange = Color(0xFFF59E0B);
+  static const Color surface = AppColors.surface;
+  static const Color border = AppColors.border;
+  static const Color primaryText = AppColors.textPrimary;
+  static const Color orange = AppColors.primary;
 }

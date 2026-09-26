@@ -23,15 +23,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
   bool _loading = true;
   bool _failed = false;
 
-  static const _bg = Color(0xFFF7F8FA);
-  static const _card = Color(0xFFFFFFFF);
+  static const _bg = AppColors.background;
+  static const _card = AppColors.surface;
   static const _border = AppColors.border;
 
   static const _tileColors = [
     Color(0xFFF66B06),
     Color(0xFFF59E0B),
     Color(0xFF3B82F6),
-    Color(0xFF16A34A),
+    AppColors.success,
     Color(0xFFEC4899),
     Color(0xFF14B8A6),
   ];
@@ -62,7 +62,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final total = _withdrawals.length + _tasks.length;
+    final total = _loading ? null : _withdrawals.length + _tasks.length;
     return Scaffold(
       backgroundColor: _bg,
       body: SafeArea(
@@ -97,7 +97,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
-  Widget _header(int total) {
+  Widget _header(int? total) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: const BoxDecoration(
@@ -137,7 +137,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 const Icon(Icons.monetization_on_rounded,
                     color: AppColors.goldLight, size: 16),
                 const SizedBox(width: 4),
-                Text('$total',
+                Text(total?.toString() ?? '—',
                     style: const TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 13,
@@ -378,17 +378,17 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }) {
     final ok = bucket == 'Completed';
     final dot = ok
-        ? const Color(0xFF16A34A)
+        ? AppColors.success
         : bucket == 'Ongoing'
             ? AppColors.primary
-            : const Color(0xFFEF4444);
+            : AppColors.error;
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _card,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: AppColors.border),
       ),
       child: Row(
         children: [

@@ -79,7 +79,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
   Widget build(BuildContext context) {
     final color = ProviderLogos.colorFor(provider);
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -102,11 +102,11 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
                             )
                           : RefreshIndicator(
                               color: AppColors.primary,
-                              backgroundColor: Colors.white,
+                              backgroundColor: AppColors.cardBackground,
                               onRefresh: _load,
                               child: ListView.builder(
                                 padding:
-                                    const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                                    const EdgeInsets.fromLTRB(16, 8, 16, 24),
                                 itemCount: _tasks.length,
                                 itemBuilder: (_, i) =>
                                     _taskCard(_tasks[i], color),
@@ -132,7 +132,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
             onTap: () => Navigator.pop(context),
             borderRadius: BorderRadius.circular(10),
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.25),
                 borderRadius: BorderRadius.circular(10),
@@ -145,7 +145,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AppColors.cardBackground,
               borderRadius: BorderRadius.circular(12),
             ),
             child: AppLogo(
@@ -179,9 +179,9 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
 
     return Container(
       margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.35)),
       ),
@@ -205,8 +205,10 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
                       const SizedBox(height: 2),
                       Text(desc,
                           style: const TextStyle(
-                              color: AppColors.textSecondary, fontSize: 11),
-                          maxLines: 2,
+                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              height: 1.4),
+                          maxLines: 3,
                           overflow: TextOverflow.ellipsis),
                     ],
                   ],
@@ -215,42 +217,7 @@ class _ProviderTasksScreenState extends State<ProviderTasksScreen> {
 
             ],
           ),
-          if (steps.isNotEmpty) ...[
-            const SizedBox(height: 10),
-            ...steps.asMap().entries.map((e) => Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 22,
-                        height: 22,
-                        decoration: BoxDecoration(
-                          color: color.withOpacity(0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text('${e.key + 1}',
-                              style: TextStyle(
-                                  color: color,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w800)),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(top: 2),
-                          child: Text(e.value,
-                              style: const TextStyle(
-                                  color: AppColors.textPrimary, fontSize: 12)),
-                        ),
-                      ),
-                    ],
-                  ),
-                )),
-          ],
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           SizedBox(
             width: double.infinity,
             height: 42,

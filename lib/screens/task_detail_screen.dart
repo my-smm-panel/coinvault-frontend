@@ -92,7 +92,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     final hasId = _validOfferId != null;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -157,20 +157,20 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             onTap: () => Navigator.pop(context),
             borderRadius: BorderRadius.circular(10),
             child: Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.25),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(Icons.arrow_back_rounded,
-                  color: AppColors.textPrimary, size: 20),
+                  color: Colors.white, size: 20),
             ),
           ),
           const SizedBox(width: 12),
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: AppColors.textPrimary,
+              color: Colors.white,
               borderRadius: BorderRadius.circular(12),
             ),
             child: AppLogo(
@@ -187,7 +187,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             child: Text(
               widget.provider,
               style: GoogleFonts.inter(
-                  color: AppColors.textPrimary,
+                  color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w800),
               maxLines: 1,
@@ -203,7 +203,7 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: color.withOpacity(0.35)),
       ),
@@ -270,9 +270,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
       padding: EdgeInsets.fromLTRB(
           16, 12, 16, 12 + MediaQuery.of(context).padding.bottom),
       decoration: BoxDecoration(
-        color: const Color(0xFFF7F8FA),
+        color: AppColors.background,
         border: Border(
-            top: BorderSide(color: AppColors.textPrimary.withOpacity(0.06))),
+            top: BorderSide(color: AppColors.border)),
       ),
       child: Column(
         children: [
@@ -282,9 +282,9 @@ class _TaskDetailScreenState extends State<TaskDetailScreen> {
             child: ElevatedButton(
               onPressed: enabled ? _startTask : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: enabled ? color : const Color(0xFFE8F0FF),
+                backgroundColor: enabled ? color : const Color(0xFFE8E8E8),
                 foregroundColor: enabled ? Colors.white : AppColors.textSecondary,
-                disabledBackgroundColor: const Color(0xFFE8F0FF),
+                disabledBackgroundColor: const Color(0xFFE8E8E8),
                 disabledForegroundColor: AppColors.textSecondary,
                 elevation: 0,
                 shape: RoundedRectangleBorder(

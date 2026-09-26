@@ -23,14 +23,13 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
   bool _loading = true;
   bool _failed = false;
 
-  static const Color _bg = Color(0xFFFAFAF8);
-  static const Color _card = Color(0xFFFFFFFF);
-  static const Color _border = Color(0xFFE7E7E7);
-  static const Color _primaryText = Color(0xFF171717);
-  static const Color _secondaryText = Color(0xFF6B7280);
-  static const Color _orange = Color(0xFFF59E0B);
-  static const Color _orange2 = Color(0xFFF7A928);
-  static const Color _brown = Color(0xFF5A3825);
+  static const Color _bg = AppColors.background;
+  static const Color _card = AppColors.surface;
+  static const Color _border = AppColors.border;
+  static const Color _primaryText = AppColors.textPrimary;
+  static const Color _secondaryText = AppColors.textSecondary;
+  static const Color _orange = AppColors.primary;
+  static const Color _brown = AppColors.primaryDark;
 
   @override
   void initState() {
@@ -153,7 +152,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       child: Container(
         height: 40,
         decoration: BoxDecoration(
-          color: const Color(0xFFF1F1F4),
+          color: AppColors.surfaceVariant,
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
@@ -238,7 +237,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           height: d,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: gold ? const Color(0xFFFFF7E6) : const Color(0xFFF1F1F4),
+            color: gold ? AppColors.goldContainer : AppColors.surfaceVariant,
             border: Border.all(
                 color: gold ? _orange : _border, width: gold ? 2.2 : 1),
           ),
@@ -267,8 +266,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           width: 64,
           decoration: BoxDecoration(
             color: gold
-                ? const Color(0xFFFDEBC8)
-                : const Color(0xFFF1F1F4),
+                ? AppColors.goldContainer
+                : AppColors.surfaceVariant,
             borderRadius: BorderRadius.circular(8),
           ),
           alignment: Alignment.center,
@@ -309,23 +308,21 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       return Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFF7E6),
+          color: AppColors.goldContainer,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: const Color(0xFFF3E3C2)),
+          border: Border.all(color: AppColors.primaryContainer),
         ),
         child: const Text(
-            'Complete a task to enter the leaderboard.',
+            'No rank is available for this period yet.',
             style: TextStyle(color: _secondaryText, fontSize: 13)),
       );
     }
-    // progress to next rank: rough position indicator (rank vs 100)
-    final pct = (100 - rank).clamp(0, 100) / 100;
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7E6),
+        color: AppColors.goldContainer,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF3E3C2)),
+        border: Border.all(color: AppColors.primaryContainer),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -349,18 +346,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           Text('$periodCoins ${_periodLabel()}',
               style: const TextStyle(
                   color: _primaryText, fontSize: 13, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 9),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: pct,
-              minHeight: 6,
-              backgroundColor: const Color(0xFFEFE4CD),
-              color: _orange,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text('Climbing the ranks — keep earning!',
+          const SizedBox(height: 8),
+          const Text('Rank is based on your coins earned during this period.',
               style: TextStyle(color: _secondaryText, fontSize: 11)),
         ],
       ),
@@ -421,10 +408,10 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
       margin: const EdgeInsets.only(bottom: 8, top: 4),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: isMe ? const Color(0xFFFFF7E6) : _card,
+        color: isMe ? AppColors.goldContainer : _card,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-            color: isMe ? const Color(0xFFF3D9A8) : _border, width: 1),
+            color: isMe ? AppColors.primaryLight : _border, width: 1),
       ),
       child: Row(
         children: [
@@ -442,7 +429,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             width: 36,
             height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F1F4),
+              color: AppColors.surfaceVariant,
               shape: BoxShape.circle,
             ),
             child: avatar != null && avatar.isNotEmpty
@@ -515,7 +502,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         Row(
           children: [
             _statCard('Coins Earned', coins == null ? '—' : _fmt(coins), Icons.savings_rounded,
-                const Color(0xFFF59E0B)),
+                AppColors.gold),
             const SizedBox(width: 10),
             _statCard('Tasks Completed', myTasks?.toString() ?? '—', Icons.task_alt_rounded,
                 const Color(0xFF16A34A)),

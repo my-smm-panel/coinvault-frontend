@@ -1,101 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
 import '../services/balance_stream.dart';
+import '../widgets/app_logo.dart';
 import '../widgets/cv_header.dart';
 import 'earn_screen.dart';
-import 'task_detail_screen.dart';
-import '../widgets/app_logo.dart';
 import 'invite_screen.dart';
 import 'leaderboard_screen.dart';
-import 'missions_screen.dart';
 import 'quiz_screen.dart';
 import 'scratch_screen.dart';
 import 'spin_screen.dart';
 import 'surveys_screen.dart';
-import 'tracking_screen.dart';
+import 'task_detail_screen.dart';
 import 'withdraw_screen.dart';
 
-
-class BannerSlide {
-  final String title;
-  final String subtitle;
-  final String cta;
-  final IconData icon;
-  final Color accent;
-  final Color accentSoft;
-  final String? imageAsset;
-  final String reward;
-  final VoidCallback onTap;
-
-  const BannerSlide({required this.title, required this.subtitle, required this.cta,
-    required this.icon, required this.accent, required this.accentSoft,
-    this.imageAsset, required this.reward, required this.onTap});
-}
-
-class HomeBannerCarousel extends StatelessWidget {
-  final List<BannerSlide> slides;
-  const HomeBannerCarousel({super.key, required this.slides});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 148,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: slides.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          final slide = slides[index];
-          return InkWell(
-            onTap: slide.onTap,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
-            child: Container(
-              width: MediaQuery.of(context).size.width - 48,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: slide.accentSoft,
-                borderRadius: BorderRadius.circular(AppRadius.lg),
-                border: Border.all(color: slide.accent.withOpacity(0.22)),
-              ),
-              child: Row(children: [
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-                  Text(slide.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(color: slide.accent, fontSize: 17, fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 4),
-                  Text(slide.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-                  if (slide.reward.isNotEmpty) ...[
-                    const SizedBox(height: 5),
-                    Text(slide.reward, style: TextStyle(color: slide.accent, fontSize: 11, fontWeight: FontWeight.w800)),
-                  ],
-                  const SizedBox(height: 7),
-                  Text(slide.cta, style: TextStyle(color: slide.accent, fontSize: 11, fontWeight: FontWeight.w800)),
-                ])),
-                const SizedBox(width: 8),
-                if (slide.imageAsset != null)
-                  Image.asset(slide.imageAsset!, width: 62, height: 62, fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => Icon(slide.icon, size: 42, color: slide.accent))
-                else
-                  Icon(slide.icon, size: 42, color: slide.accent),
-              ]),
-            ),
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// Home — content-rich CoinVault rewards home (light premium design).
-///
-/// Global header → promo carousel → balance summary → today's earnings →
-/// surveys → tasks → available offers → quick earn →
-/// recommended → high-paying tasks → daily spin → daily missions →
-/// referrals → offers → top earners → how to earn.
+/// Main user app shell.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -106,209 +27,60 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
 
-  void _pushScreen(Widget page) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-  }
+  Widget _currentPage() => switch (_currentIndex) {
+        0 => const HomeTab(),
+        1 => const EarnScreen(),
+        2 => const LeaderboardScreen(),
+        3 => const SurveysScreen(),
+        _ => const WithdrawScreen(),
+      };
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.surface,
-      body: _currentIndex == 0
-          ? const HomeTab()
-          : _currentIndex == 1
-              ? const EarnScreen()
-              : _currentIndex == 2
-                  ? const LeaderboardScreen()
-                  : const SurveysScreen(),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          border: Border(top: BorderSide(color: AppColors.border, width: 1)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _NavItem(
-                  icon: Icons.home_rounded,
-                  label: 'Home',
-                  isActive: _currentIndex == 0,
-                  onTap: () => setState(() => _currentIndex = 0),
-                ),
-                _NavItem(
-                  icon: Icons.task_alt_rounded,
-                  label: 'Earn',
-                  isActive: _currentIndex == 1,
-                  onTap: () => setState(() => _currentIndex = 1),
-                ),
-                Expanded(
-                  child: InkWell(
-                    onTap: () => setState(() => _currentIndex = 2),
-                    borderRadius: BorderRadius.circular(28),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 46,
-                          height: 46,
-                          margin: const EdgeInsets.only(top: 2),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _currentIndex == 2
-                                ? AppColors.primaryContainer
-                                : AppColors.goldContainer,
-                            border: Border.all(
-                              color: _currentIndex == 2
-                                  ? AppColors.primary
-                                  : AppColors.border,
-                              width: 1.5,
-                            ),
-                            boxShadow: _currentIndex == 2
-                                ? [
-                                    BoxShadow(
-                                      color: AppColors.primary.withOpacity(0.18),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Icon(
-                            Icons.emoji_events_rounded,
-                            color: _currentIndex == 2
-                                ? AppColors.primaryDark
-                                : AppColors.gold,
-                            size: 25,
-                          ),
-                        ),
-                        Text(
-                          'Ranks',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: _currentIndex == 2
-                                ? AppColors.primaryDark
-                                : AppColors.textTertiary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                _NavItem(
-                  icon: Icons.assignment_rounded,
-                  label: 'Surveys',
-                  isActive: _currentIndex == 3,
-                  onTap: () => setState(() => _currentIndex = 3),
-                ),
-                _NavItem(
-                  icon: Icons.account_balance_wallet_rounded,
-                  label: 'Withdraw',
-                  isActive: false,
-                  onTap: () => _pushScreen(const WithdrawScreen()),
-                ),
-              ],
-            ),
+      backgroundColor: AppColors.background,
+      body: _currentPage(),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) => setState(() => _currentIndex = index),
+        height: 72,
+        backgroundColor: AppColors.surface,
+        indicatorColor: AppColors.primaryContainer,
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded),
+            label: 'Home',
           ),
-        ),
+          NavigationDestination(
+            icon: Icon(Icons.bolt_outlined),
+            selectedIcon: Icon(Icons.bolt_rounded),
+            label: 'Earn',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.emoji_events_outlined),
+            selectedIcon: Icon(Icons.emoji_events_rounded),
+            label: 'Ranks',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.poll_outlined),
+            selectedIcon: Icon(Icons.poll_rounded),
+            label: 'Surveys',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet_rounded),
+            label: 'Wallet',
+          ),
+        ],
       ),
     );
   }
 }
 
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-  final int? badge;
-
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-    this.badge,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isActive ? AppColors.primaryContainer : Colors.transparent,
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                    ),
-                    child: Icon(
-                      icon,
-                      size: 24,
-                      color: isActive ? AppColors.primary : AppColors.textTertiary,
-                    ),
-                  ),
-                  if (badge != null && badge! > 0 && !isActive)
-                    Positioned(
-                      right: -6,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: AppColors.error,
-                          borderRadius: BorderRadius.circular(AppRadius.full),
-                        ),
-                        constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                        child: Text(
-                          badge.toString(),
-                          style: AppTextStyles.bodySmall.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 10,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: AppTextStyles.bodySmall.copyWith(
-                  color: isActive ? AppColors.primary : AppColors.textTertiary,
-                  fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Content-rich light-theme home dashboard (design sheet):
+/// Home dashboard: server-published daily task first, then wallet, surveys,
+/// multi-step content, and compact shortcuts. Nothing here invents rewards.
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
 
@@ -317,366 +89,323 @@ class HomeTab extends StatefulWidget {
 }
 
 class _HomeTabState extends State<HomeTab> {
+  List<Map<String, dynamic>> _offers = [];
   List<dynamic> _surveys = [];
-  List<dynamic> _offers = [];
-  Map<String, dynamic> _leaderboard = {};
   Map<String, dynamic>? _spinStatus;
-  bool _loadingHome = true;
+  bool _loading = true;
   bool _offersUnavailable = false;
   bool _surveysUnavailable = false;
-  int? _todayEarnings;
-  bool _hideFeaturedPopup = false;
+  bool _popupReady = false;
+  bool _hideFeaturedPopup = true;
   String? _featuredPopupKey;
 
   @override
   void initState() {
     super.initState();
-    // Never carry a prior user's balance into a newly opened home screen.
+    // Do not show a previous account's in-memory balance while refreshing.
     BalanceStream.instance.clear();
-    _loadHomeData();
-    _loadActivity();
-    _loadLeaderboard();
+    _loadHome();
   }
 
-  Future<void> _loadHomeData() async {
-    if (mounted) setState(() => _loadingHome = true);
-    final repo = AppRepository.instance;
+  Future<void> _loadHome() async {
+    if (mounted) setState(() => _loading = true);
     final results = await Future.wait<dynamic>([
-      repo.fetchSurveys(),
-      repo.fetchOffers(),
-      repo.spinStatus(),
-      repo.fetchWalletBalance(),
+      AppRepository.instance.fetchOffers(),
+      AppRepository.instance.fetchSurveys(),
+      AppRepository.instance.spinStatus(),
+      AppRepository.instance.fetchWalletBalance(),
     ]);
     if (!mounted) return;
-    final surveys = results[0] as List<dynamic>?;
-    final offers = results[1] as List<dynamic>?;
+
+    final rawOffers = results[0] as List<dynamic>?;
+    final rawSurveys = results[1] as List<dynamic>?;
     setState(() {
-      _surveysUnavailable = surveys == null;
-      _offersUnavailable = offers == null;
-      _surveys = surveys ?? [];
-      _offers = (offers ?? const <dynamic>[])
+      _offersUnavailable = rawOffers == null;
+      _surveysUnavailable = rawSurveys == null;
+      _offers = (rawOffers ?? const <dynamic>[])
           .whereType<Map>()
-          .map((m) => Map<String, dynamic>.from(m))
+          .map((offer) => Map<String, dynamic>.from(offer))
           .toList();
+      _surveys = rawSurveys ?? [];
       _spinStatus = results[2] is Map
           ? Map<String, dynamic>.from(results[2] as Map)
           : null;
-      _loadingHome = false;
+      _loading = false;
     });
-    await _restoreFeaturedPopupDismissal();
+    await _restorePopupState();
   }
+
+  Future<void> _refreshHome() => _loadHome();
 
   String _dayKey() {
     final now = DateTime.now();
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
   }
 
+  String _offerId(Map<String, dynamic> offer) =>
+      (offer['id'] ?? offer['_id'] ?? offer['offerId'] ??
+              offer['providerOfferId'] ?? '')
+          .toString()
+          .trim();
+
+  DateTime? _dateValue(dynamic value) {
+    if (value is num) {
+      final millis = value > 1e12 ? value.toInt() : value.toInt() * 1000;
+      return DateTime.fromMillisecondsSinceEpoch(millis).toLocal();
+    }
+    if (value is String) return DateTime.tryParse(value)?.toLocal();
+    return null;
+  }
+
   Map<String, dynamic>? _dailyFeaturedOffer() {
-    final today = DateTime.now();
-    final eligible = _offers.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).where((offer) {
-      if (offer['isFeatured'] != true || offer['isActive'] == false) return false;
-      if ((offer['title'] ?? '').toString().trim().isEmpty) return false;
-      final startRaw = offer['startDate'];
-      final endRaw = offer['endDate'];
-      final start = startRaw is String ? DateTime.tryParse(startRaw)?.toLocal() : null;
-      final end = endRaw is String ? DateTime.tryParse(endRaw)?.toLocal() : null;
-      final day = DateTime(today.year, today.month, today.day);
-      if (start != null && day.isBefore(DateTime(start.year, start.month, start.day))) return false;
-      if (end != null && day.isAfter(DateTime(end.year, end.month, end.day))) return false;
-      return true;
-    }).toList();
-    if (eligible.isEmpty) return null;
-    final dayNumber = DateTime(today.year, today.month, today.day)
-        .difference(DateTime(2024, 1, 1)).inDays;
-    return eligible[dayNumber.abs() % eligible.length];
+    final now = DateTime.now();
+    final day = DateTime(now.year, now.month, now.day);
+    for (final offer in _offers) {
+      if (offer['isFeatured'] != true || offer['isActive'] == false) continue;
+      if ((offer['title'] ?? '').toString().trim().isEmpty) continue;
+      final start = _dateValue(offer['startDate']);
+      final end = _dateValue(offer['endDate']);
+      if (start != null && day.isBefore(DateTime(start.year, start.month, start.day))) continue;
+      if (end != null && day.isAfter(DateTime(end.year, end.month, end.day))) continue;
+      return offer;
+    }
+    return null;
   }
 
-  String _popupDismissalKey(Map<String, dynamic> offer) {
-    final id = (offer['id'] ?? offer['_id'] ?? offer['offerId'] ?? offer['title']).toString();
-    return 'featured_popup_${_dayKey()}_$id';
-  }
-
-  Future<void> _restoreFeaturedPopupDismissal() async {
+  Future<void> _restorePopupState() async {
     final offer = _dailyFeaturedOffer();
     if (offer == null) {
-      if (mounted) setState(() { _featuredPopupKey = null; _hideFeaturedPopup = true; });
+      if (mounted) {
+        setState(() {
+          _featuredPopupKey = null;
+          _hideFeaturedPopup = true;
+          _popupReady = true;
+        });
+      }
       return;
     }
-    final key = _popupDismissalKey(offer);
-    _featuredPopupKey = key;
-    final prefs = await SharedPreferences.getInstance();
-    final hidden = key != null && (prefs.getBool(key) ?? false);
-    if (mounted) setState(() => _hideFeaturedPopup = hidden);
+
+    final id = _offerId(offer).isEmpty
+        ? (offer['title'] ?? 'featured').toString()
+        : _offerId(offer);
+    final key = 'featured_popup_${_dayKey()}_$id';
+    final preferences = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _featuredPopupKey = key;
+      _hideFeaturedPopup = preferences.getBool(key) ?? false;
+      _popupReady = true;
+    });
   }
 
   Future<void> _dismissFeaturedPopup() async {
     final key = _featuredPopupKey;
     if (mounted) setState(() => _hideFeaturedPopup = true);
-    if (key != null) await (await SharedPreferences.getInstance()).setBool(key, true);
-  }
-
-  Future<void> _refreshHome() async {
-    await Future.wait<void>([
-      _loadHomeData(),
-      _loadActivity(),
-      _loadLeaderboard(),
-    ]);
-  }
-
-  Future<void> _loadActivity() async {
-    try {
-      final list = await AppRepository.instance.fetchActivity();
-      if (!mounted) return;
-      final now = DateTime.now();
-      var earned = 0;
-      var hasDatedEarnings = false;
-      for (final raw in list ?? const <dynamic>[]) {
-        if (raw is! Map) continue;
-        final type = (raw['type'] ?? '').toString().toLowerCase();
-        if (!{'task', 'survey', 'spin'}.contains(type)) continue;
-        final amount = raw['coins'];
-        if (amount is! num || amount <= 0) continue;
-        final status = (raw['status'] ?? '').toString().toUpperCase();
-        if (!{'VERIFIED', 'DONE', 'COMPLETED'}.contains(status)) continue;
-        final ts = raw['at'] ?? raw['timestamp'] ?? raw['createdAt'] ?? raw['date'];
-        DateTime? dt;
-        if (ts is num) {
-          dt = DateTime.fromMillisecondsSinceEpoch(
-              ts > 1e12 ? ts.toInt() : (ts.toInt() * 1000));
-        } else if (ts is String) {
-          dt = DateTime.tryParse(ts);
-        }
-        final localDt = dt?.toLocal();
-        if (localDt != null && localDt.year == now.year && localDt.month == now.month && localDt.day == now.day) {
-          earned += amount.toInt();
-          hasDatedEarnings = true;
-        }
-      }
-      setState(() {
-        _todayEarnings = hasDatedEarnings ? earned : null;
-      });
-    } catch (_) {
-      if (mounted) setState(() {
-        _todayEarnings = null;
-      });
+    if (key != null) {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool(key, true);
     }
   }
-
-  Future<void> _loadLeaderboard() async {
-    try {
-      final lb = await AppRepository.instance.fetchLeaderboard('weekly');
-      if (mounted) setState(() => _leaderboard = lb ?? <String, dynamic>{});
-    } catch (_) {}
-  }
-
-  void _push(BuildContext context, Widget page) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-  }
-
-  String _fmt(int n) {
-    final str = n.abs().toString();
-    final sb = StringBuffer();
-    for (var i = 0; i < str.length; i++) {
-      if (i > 0 && (str.length - i) % 3 == 0) {
-        sb.write(',');
-      }
-      sb.write(str[i]);
-    }
-    return n.isNegative ? '-$sb' : sb.toString();
-  }
-
-  int? _todayEarned() => _todayEarnings;
 
   List<Map<String, dynamic>> _serverTasks() {
-    final tasks = _offers
-        .whereType<Map>()
-        .map((raw) => Map<String, dynamic>.from(raw))
-        .where((task) {
-          final type = (task['type'] ?? task['category'] ?? '')
-              .toString()
-              .toUpperCase();
-          final id = (task['id'] ??
-                  task['_id'] ??
-                  task['offerId'] ??
-                  task['providerOfferId'] ??
-                  '')
-              .toString()
-              .trim();
-          return (type.contains('TASK') || type.startsWith('INSTALL') ||
-                  type.contains('GAME') || type.contains('MULTI')) &&
-              (task['title'] ?? '').toString().trim().isNotEmpty &&
-              id.isNotEmpty;
-        })
-        .toList();
+    final tasks = _offers.where((offer) {
+      final type = (offer['type'] ?? offer['category'] ?? '')
+          .toString()
+          .toUpperCase();
+      return (type.contains('TASK') || type.startsWith('INSTALL') ||
+              type.contains('GAME') || type.contains('MULTI')) &&
+          (offer['title'] ?? '').toString().trim().isNotEmpty &&
+          _offerId(offer).isNotEmpty;
+    }).toList();
 
-    // If the admin/API marks a daily or featured task, prefer the first such
-    // item. Otherwise preserve server ordering and show its first task.
-    final featuredIndex = tasks.indexWhere((task) => _taskPriority(task) > 0);
-    if (featuredIndex > 0) {
-      final featured = tasks.removeAt(featuredIndex);
-      tasks.insert(0, featured);
-    }
+    int priority(Map<String, dynamic> task) =>
+        task['isTaskOfDay'] == true ||
+                task['isDaily'] == true ||
+                task['isFeatured'] == true ||
+                task['featured'] == true
+            ? 1
+            : 0;
+    tasks.sort((a, b) => priority(b).compareTo(priority(a)));
     return tasks;
   }
 
-  int _taskPriority(Map<String, dynamic> task) =>
-      task['isTaskOfDay'] == true ||
-              task['isDaily'] == true ||
-              task['isFeatured'] == true ||
-              task['featured'] == true
-          ? 1
-          : 0;
+  List<Map<String, dynamic>> _multiStepContent() {
+    final tasks = _serverTasks();
+    final highlightedId = tasks.isEmpty ? '' : _offerId(tasks.first);
+    return _offers.where((offer) {
+      final type = (offer['type'] ?? offer['category'] ?? '')
+          .toString()
+          .toUpperCase();
+      final steps = offer['instructions'];
+      final hasSeveralSteps = steps is List && steps.length > 1;
+      final id = _offerId(offer);
+      return id != highlightedId &&
+          (type.contains('GAME') || type.contains('MULTI') || hasSeveralSteps) &&
+          (offer['title'] ?? '').toString().trim().isNotEmpty &&
+          id.isNotEmpty;
+    }).toList();
+  }
 
-  List<Map<String, dynamic>> _generalOffers() => _offers
-      .whereType<Map>()
-      .map((raw) => Map<String, dynamic>.from(raw))
-      .where((offer) {
-        final type = (offer['type'] ?? offer['category'] ?? '')
-            .toString()
-            .toUpperCase();
-        return (offer['title'] ?? '').toString().trim().isNotEmpty &&
-            !type.contains('TASK') &&
-            !type.startsWith('INSTALL');
-      })
-      .toList();
+  List<Map<String, dynamic>> _otherOffers() {
+    return _offers.where((offer) {
+      final type = (offer['type'] ?? offer['category'] ?? '')
+          .toString()
+          .toUpperCase();
+      return (offer['title'] ?? '').toString().trim().isNotEmpty &&
+          _offerId(offer).isNotEmpty &&
+          !type.contains('TASK') &&
+          !type.contains('SURVEY') &&
+          !type.startsWith('INSTALL') &&
+          !type.contains('GAME') &&
+          !type.contains('MULTI');
+    }).toList();
+  }
 
-  Widget _featuredPopup(BuildContext context) {
-    final offer = _dailyFeaturedOffer();
-    if (offer == null || _hideFeaturedPopup) return const SizedBox.shrink();
-    final description = (offer['shortDesc'] ?? offer['description'] ?? '').toString().trim();
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.fromLTRB(15, 13, 8, 14),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF173B34), Color(0xFF236B58)]),
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        boxShadow: AppShadows.card,
-      ),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Padding(padding: EdgeInsets.only(top: 2), child: Icon(Icons.campaign_rounded, color: Colors.white, size: 22)),
-        const SizedBox(width: 11),
-        Expanded(child: InkWell(
-          onTap: () => _push(context, const EarnScreen()),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('FEATURED TODAY', style: TextStyle(color: Color(0xFFD8F2E5), fontSize: 9.5, letterSpacing: .8, fontWeight: FontWeight.w900)),
-            const SizedBox(height: 4),
-            Text((offer['title'] ?? '').toString(), maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
-            if (description.isNotEmpty) ...[
-              const SizedBox(height: 3),
-              Text(description, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Color(0xFFE4F2EC), fontSize: 11.5, height: 1.3)),
+  void _push(Widget page) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => page));
+  }
+
+  void _openOffer(Map<String, dynamic> offer) {
+    final instructions = offer['instructions'];
+    final steps = instructions is List
+        ? instructions
+            .where((step) => step != null && step.toString().trim().isNotEmpty)
+            .map((step) => step.toString())
+            .toList()
+        : const <String>[];
+    _push(TaskDetailScreen(
+      provider: (offer['provider'] ?? offer['providerName'] ?? '').toString(),
+      title: (offer['title'] ?? '').toString(),
+      desc: (offer['shortDesc'] ?? offer['description'] ?? '').toString(),
+      // Keep earned/reward amounts off the home task cards.
+      coins: null,
+      steps: steps,
+      offerId: _offerId(offer),
+    ));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: BalanceStream.instance,
+      builder: (context, _) {
+        final balance = BalanceStream.instance.value;
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          body: Column(
+            children: [
+              CvHeader(
+                showProfile: true,
+                profileLeft: true,
+                showMoney: false,
+                showWordmark: false,
+              ),
+              Expanded(
+                child: RefreshIndicator(
+                  color: AppColors.primary,
+                  backgroundColor: AppColors.surface,
+                  onRefresh: _refreshHome,
+                  child: ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 6, 16, 28),
+                    children: [
+                      _sectionHeader('Task of the Day',
+                          subtitle: 'Your top available task from the server'),
+                      const SizedBox(height: 10),
+                      _taskOfDay(),
+                      if (_popupReady && !_hideFeaturedPopup) ...[
+                        const SizedBox(height: 14),
+                        _featuredPopup(),
+                      ],
+                      const SizedBox(height: 14),
+                      _walletSummary(balance),
+                      const SizedBox(height: 24),
+                      _sectionHeader('Surveys',
+                          subtitle: 'Survey opportunities available to you',
+                          action: 'View all',
+                          onAction: () => _push(const SurveysScreen())),
+                      const SizedBox(height: 10),
+                      _surveyList(),
+                      const SizedBox(height: 24),
+                      _sectionHeader('Games & multi-step tasks',
+                          subtitle: 'Explore server-published activities',
+                          action: 'All tasks',
+                          onAction: () => _push(const EarnScreen())),
+                      const SizedBox(height: 10),
+                      _multiStepList(),
+                      const SizedBox(height: 24),
+                      _sectionHeader('More tasks',
+                          subtitle: 'Browse other available activities',
+                          action: 'View all',
+                          onAction: () => _push(const EarnScreen())),
+                      const SizedBox(height: 10),
+                      _otherTaskList(),
+                      if (_otherOffers().isNotEmpty) ...[
+                        const SizedBox(height: 24),
+                        _sectionHeader('More offers',
+                            action: 'View all',
+                            onAction: () => _push(const EarnScreen())),
+                        const SizedBox(height: 10),
+                        _otherOfferList(),
+                      ],
+                      const SizedBox(height: 24),
+                      _sectionHeader('Quick access'),
+                      const SizedBox(height: 10),
+                      _quickAccess(),
+                      const SizedBox(height: 18),
+                      _dailySpinCard(),
+                      const SizedBox(height: 12),
+                      _inviteCard(),
+                    ],
+                  ),
+                ),
+              ),
             ],
-            const SizedBox(height: 8),
-            const Text('See details  →', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w800)),
-          ]),
-        )),
-        IconButton(
-          tooltip: 'Dismiss until tomorrow',
-          visualDensity: VisualDensity.compact,
-          onPressed: _dismissFeaturedPopup,
-          icon: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
-        ),
-      ]),
+          ),
+        );
+      },
     );
   }
 
-  Widget _taskOfDay(BuildContext context) {
-    if (_loadingHome) {
-      return Container(
-        height: 190,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceVariant,
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-        ),
-      );
-    }
-
+  Widget _taskOfDay() {
+    if (_loading) return _taskSkeleton();
     final tasks = _serverTasks();
     if (tasks.isEmpty) {
-      final message = _offersUnavailable
-          ? 'Tasks could not be loaded. Pull down to retry.'
-          : 'No tasks have been published yet. Add one in the admin panel, then pull down to refresh.';
-      return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: AppColors.cardBackground,
-          borderRadius: BorderRadius.circular(AppRadius.xl),
-          border: Border.all(color: AppColors.border),
-          boxShadow: AppShadows.card,
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: AppColors.primaryContainer,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: const Icon(Icons.task_alt_rounded,
-                  color: AppColors.primary, size: 25),
-            ),
-            const SizedBox(width: 13),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text('Task of the Day',
-                      style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800)),
-                  const SizedBox(height: 5),
-                  Text(message,
-                      style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12.5,
-                          height: 1.35)),
-                ],
-              ),
-            ),
-          ],
-        ),
+      return _emptyCard(
+        icon: Icons.task_alt_rounded,
+        title: _offersUnavailable ? 'Tasks could not load' : 'No tasks posted yet',
+        message: _offersUnavailable
+            ? 'Pull down to retry.'
+            : 'Tasks added in the admin panel will appear here.',
+        actionLabel: _offersUnavailable ? 'Retry' : 'Browse tasks',
+        onAction: _offersUnavailable ? _refreshHome : () => _push(const EarnScreen()),
       );
     }
 
     final task = tasks.first;
+    final provider = (task['provider'] ?? task['providerName'] ?? task['cat'] ?? '')
+        .toString()
+        .trim();
     final title = (task['title'] ?? '').toString().trim();
     final description = (task['shortDesc'] ?? task['description'] ?? '')
         .toString()
         .trim();
-    final provider = (task['provider'] ?? task['cat'] ?? '').toString();
-    final durationRaw = task['durationMinutes'] ??
-        task['duration'] ??
-        task['timeEstimate'];
-    final duration = durationRaw is num
-        ? '${durationRaw.toInt()} min'
-        : (durationRaw ?? '').toString().trim();
-    final id = (task['id'] ??
-            task['_id'] ??
-            task['offerId'] ??
-            task['providerOfferId'] ??
-            '')
-        .toString()
-        .trim();
-    final instructions = (task['instructions'] as List?)
-            ?.map((step) => step.toString())
-            .toList() ??
-        const <String>[];
+    final instructions = task['instructions'];
+    final durationValue = task['durationMinutes'] ?? task['duration'];
+    final duration = durationValue is num && durationValue > 0
+        ? '${durationValue.toInt()} min'
+        : '';
+    final isFeatured = task['isTaskOfDay'] == true ||
+        task['isDaily'] == true ||
+        task['isFeatured'] == true ||
+        task['featured'] == true;
 
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFFFF8E9), Color(0xFFFFFDF7)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.xl),
-        border: Border.all(color: AppColors.gold.withOpacity(0.38)),
+        border: Border.all(color: AppColors.gold.withOpacity(.42)),
         boxShadow: AppShadows.card,
       ),
       child: Column(
@@ -685,87 +414,89 @@ class _HomeTabState extends State<HomeTab> {
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
-                  color: AppColors.gold.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(AppRadius.full),
+                  color: AppColors.primaryContainer,
+                  borderRadius: BorderRadius.circular(13),
                 ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
+                child: AppLogo(
+                  provider: provider,
+                  title: title,
+                  size: 42,
+                  radius: 13,
+                  fallbackIcon: Icons.task_alt_rounded,
+                  fallbackColor: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.auto_awesome_rounded,
-                        size: 14, color: AppColors.gold),
-                    SizedBox(width: 5),
-                    Text('TASK OF THE DAY',
-                        style: TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 0.55)),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryContainer,
+                        borderRadius: BorderRadius.circular(AppRadius.full),
+                      ),
+                      child: Text(
+                        isFeatured ? 'FEATURED TASK' : 'AVAILABLE TASK',
+                        style: const TextStyle(
+                          color: AppColors.primaryDark,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: .6,
+                        ),
+                      ),
+                    ),
+                    if (provider.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(provider,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: AppColors.textSecondary, fontSize: 11)),
+                    ],
                   ],
                 ),
               ),
-              const Spacer(),
-              if (provider.isNotEmpty)
-                Text(provider,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600)),
             ],
           ),
           const SizedBox(height: 13),
           Text(title,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.inter(
-                  color: AppColors.textPrimary,
-                  fontSize: 19,
-                  fontWeight: FontWeight.w800,
-                  height: 1.2)),
-          const SizedBox(height: 6),
-          Text(
-            description.isEmpty ? 'Open the task to see its instructions.' : description,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-                color: AppColors.textSecondary, fontSize: 12.5, height: 1.4),
-          ),
-          if (duration.isNotEmpty || instructions.isNotEmpty) ...[
-            const SizedBox(height: 13),
+              style: AppTextStyles.titleLarge.copyWith(
+                  fontWeight: FontWeight.w800, height: 1.2)),
+          if (description.isNotEmpty) ...[
+            const SizedBox(height: 5),
+            Text(description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTextStyles.bodySmall.copyWith(
+                    color: AppColors.textSecondary, height: 1.4)),
+          ],
+          if ((instructions is List && instructions.isNotEmpty) || duration.isNotEmpty) ...[
+            const SizedBox(height: 11),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (duration.isNotEmpty)
-                  _taskInfoChip(Icons.schedule_rounded, duration),
-                if (instructions.isNotEmpty)
-                  _taskInfoChip(Icons.list_alt_rounded,
-                      '${instructions.length} steps'),
+                if (instructions is List && instructions.isNotEmpty)
+                  _infoChip(Icons.list_alt_rounded, '${instructions.length} steps'),
+                if (duration.isNotEmpty) _infoChip(Icons.schedule_rounded, duration),
               ],
             ),
           ],
-          const SizedBox(height: 15),
+          const SizedBox(height: 13),
           SizedBox(
             width: double.infinity,
             height: 44,
             child: ElevatedButton.icon(
-              onPressed: () => _push(
-                context,
-                TaskDetailScreen(
-                  provider: provider,
-                  title: title,
-                  desc: description,
-                  coins: null,
-                  steps: instructions,
-                  offerId: id,
-                ),
-              ),
+              onPressed: () => _openOffer(task),
               icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-              label: const Text('View task details',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
+              label: const Text('View task details'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
@@ -780,1136 +511,558 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _taskInfoChip(IconData icon, String label) {
+  Widget _featuredPopup() {
+    final offer = _dailyFeaturedOffer();
+    if (offer == null) return const SizedBox.shrink();
+    final description = (offer['shortDesc'] ?? offer['description'] ?? '')
+        .toString()
+        .trim();
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: const EdgeInsets.fromLTRB(14, 12, 4, 12),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.8),
-        borderRadius: BorderRadius.circular(AppRadius.full),
-        border: Border.all(color: AppColors.border),
+        color: const Color(0xFF173B34),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.primary),
-          const SizedBox(width: 5),
-          Text(label,
-              style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: BalanceStream.instance,
-      builder: (context, _) {
-        final coins = BalanceStream.instance.value;
-
-        return Scaffold(
-          backgroundColor: AppColors.surface,
-          body: SafeArea(
-            child: RefreshIndicator(
-              color: AppColors.primary,
-              backgroundColor: AppColors.cardBackground,
-              onRefresh: _refreshHome,
-              child: SingleChildScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 10, 16, 104),
+          const Icon(Icons.campaign_rounded,
+              color: Colors.white, size: 21),
+          const SizedBox(width: 10),
+          Expanded(
+            child: InkWell(
+              onTap: () => _openOffer(offer),
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CvHeader(
-                      showProfile: true,
-                      profileLeft: true,
-                      showMoney: false,
-                      coins: null,
-                      showWordmark: false,
-                    ),
-                    const SizedBox(height: 12),
-                    _featuredPopup(context),
-                    _balanceSummary(context, coins),
-                    const SizedBox(height: 20),
-                    _sectionTitle('Task of the Day'),
-                    const SizedBox(height: 10),
-                    _taskOfDay(context),
-                    const SizedBox(height: 18),
-                    _sectionTitle('All available tasks', action: 'View all',
-                      onAction: () => _push(context, const EarnScreen())),
-                    const SizedBox(height: 10),
-                    _loadingHome ? _skeletonH() : _tasksRow(context),
-                    if (_loadingHome || _surveys.isNotEmpty || _surveysUnavailable) ...[
-                      const SizedBox(height: 22),
-                      _sectionTitle('Surveys', action: 'View all',
-                        onAction: () => _push(context, const SurveysScreen())),
-                      const SizedBox(height: 10),
-                      _loadingHome ? _skeletonH() : _surveyRow(context),
+                    const Text('FEATURED BY COINVAULT',
+                        style: TextStyle(
+                            color: Color(0xFFD8F2E5),
+                            fontSize: 9,
+                            letterSpacing: .7,
+                            fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 3),
+                    Text((offer['title'] ?? '').toString(),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800)),
+                    if (description.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      Text(description,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              color: Color(0xFFE4F2EC), fontSize: 11)),
                     ],
-                    if (_loadingHome || _multiStepTasks().isNotEmpty || _offersUnavailable) ...[
-                      const SizedBox(height: 22),
-                      _sectionTitle('Games & multi-step tasks', action: 'View all',
-                        onAction: () => _push(context, const EarnScreen())),
-                      const SizedBox(height: 10),
-                      _loadingHome ? _skeletonH() : _multiTaskRow(context),
-                    ],
-                    const SizedBox(height: 22),
-                    _sectionTitle('Quick Earn'),
-                    const SizedBox(height: 10),
-                    _quickEarn(context),
-                    if (_loadingHome || _generalOffers().isNotEmpty || _offersUnavailable) ...[
-                      const SizedBox(height: 22),
-                      _sectionTitle('More offers', action: 'View all',
-                        onAction: () => _push(context, const EarnScreen())),
-                      const SizedBox(height: 10),
-                      _loadingHome ? _skeletonH() : _limitedOffers(context),
-                    ],
-                    const SizedBox(height: 22),
-                    _dailySpinCard(context),
-                    const SizedBox(height: 14),
-                    _inviteCard(context),
                   ],
                 ),
               ),
             ),
           ),
-        );
-      },
-    );
-  }
-
-  // ───────────────────────── Promo carousel ───────────────────────────────
-  // Slides are built from REAL offers fetched from the backend — never
-  // hardcoded. If the backend returns no offers, the carousel is hidden.
-  Widget _promoCarousel(BuildContext context) {
-    final offers = _offers.whereType<Map>().where((m) => (m['title'] ?? '').toString().trim().isNotEmpty).take(5).toList();
-    if (offers.isEmpty) return const SizedBox.shrink();
-
-    const accents = [
-      Color(0xFFF59E0B), Color(0xFF16A34A), Color(0xFF3B82F6),
-      Color(0xFF8B5CF6), Color(0xFFEC4899),
-    ];
-    const accentSofts = [
-      Color(0xFFFFF7E6), Color(0xFFE9F7EE), Color(0xFFEAF1FF),
-      Color(0xFFF1ECFE), Color(0xFFFDF0F6),
-    ];
-
-    return HomeBannerCarousel(
-      slides: [
-        for (var i = 0; i < offers.length; i++)
-          BannerSlide(
-            title: offers[i]['title'].toString(),
-            subtitle: (offers[i]['shortDesc'] ?? offers[i]['description'] ?? 'Tap to view offer').toString(),
-            cta: 'View Offer',
-            icon: Icons.local_offer_rounded,
-            accent: accents[i % accents.length],
-            accentSoft: accentSofts[i % accentSofts.length],
-            imageAsset: i == 0 ? 'assets/bear_earn.png' : null,
-            reward: offers[i]['coins'] is num
-                ? '+${(offers[i]['coins'] as num).toInt()} Coins'
-                : offers[i]['rewardCoins'] is num
-                    ? '+${(offers[i]['rewardCoins'] as num).toInt()} Coins'
-                    : '',
-            onTap: () => _push(context, const EarnScreen()),
+          IconButton(
+            tooltip: 'Hide this featured item for today',
+            onPressed: _dismissFeaturedPopup,
+            icon: const Icon(Icons.close_rounded,
+                color: Colors.white, size: 19),
+            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
           ),
-      ],
+        ],
+      ),
     );
   }
 
-  // ───────────────────────── Balance summary ───────────────────────────────
-  Widget _balanceSummary(BuildContext context, int? coins) {
+  Widget _walletSummary(int? balance) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+      padding: const EdgeInsets.fromLTRB(15, 13, 12, 13),
       decoration: BoxDecoration(
-        gradient: AppColors.cardGradient,
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(AppRadius.lg),
         border: Border.all(color: AppColors.border),
         boxShadow: AppShadows.card,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
-          Row(
-            children: [
-              const Icon(Icons.account_balance_wallet_rounded,
-                  color: AppColors.primary, size: 19),
-              const SizedBox(width: 7),
-              const Text('Your wallet',
-                  style: TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800)),
-              const Spacer(),
-              TextButton.icon(
-                onPressed: () => _push(context, const WithdrawScreen()),
-                icon: const Icon(Icons.north_east_rounded, size: 15),
-                label: const Text('Withdraw'),
-                style: TextButton.styleFrom(
-                  foregroundColor: AppColors.primaryDark,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  visualDensity: VisualDensity.compact,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          Row(children: [
-            const Text('Available balance', style: TextStyle(color: AppColors.textSecondary, fontSize: 11.5)),
-            const Spacer(),
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              alignment: Alignment.centerRight,
-              child: Row(children: [
-                Text(coins == null ? '—' : _fmt(coins), style: GoogleFonts.inter(
-                  color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.w800)),
-                const SizedBox(width: 5),
-                const Text('coins', style: TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.w600)),
-              ]),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: AppColors.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
             ),
-          ]),
-        ],
-      ),
-    );
-  }
-
-  Widget _miniStat(String label, String value, IconData icon, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 26,
-          height: 26,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(8),
+            child: const Icon(Icons.account_balance_wallet_rounded,
+                color: AppColors.primaryDark, size: 20),
           ),
-          child: Icon(icon, size: 15, color: color),
-        ),
-        const SizedBox(width: 7),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 10.5)),
-            Text(value,
-                style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800)),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // ───────────────────────── Today's earnings ──────────────────────────────
-  Widget _todayEarningsCard(BuildContext context) {
-    final earned = _todayEarned();
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: _cardDec(),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          const Text("Today's Earnings", style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-          const Spacer(),
-          GestureDetector(
-            onTap: () => _push(context, const TrackingScreen()),
-            child: Row(children: const [
-              Text('View Activity', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w700)),
-              Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primary),
-            ]),
-          ),
-        ]),
-        const SizedBox(height: 10),
-        Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-          Text(earned == null ? '—' : '+${_fmt(earned)}', style: GoogleFonts.inter(
-            fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.primary, height: 1.1)),
-          const SizedBox(width: 5),
-          const Text('Coins earned today', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
-        ]),
-        const SizedBox(height: 8),
-        Text(earned == null ? 'Activity earnings are unavailable.' : 'Based on dated activity records returned by the server.',
-          style: const TextStyle(color: AppColors.textSecondary, fontSize: 11.5)),
-      ]),
-    );
-  }
-
-  // ───────────────────────── Featured surveys ──────────────────────────────
-  Widget _surveyRow(BuildContext context) {
-    final surveys = _surveys.whereType<Map>().where((m) => (m['title'] ?? '').toString().trim().isNotEmpty).take(6).toList();
-    if (surveys.isEmpty) {
-      return _emptyRow(_surveysUnavailable
-          ? 'Surveys could not be loaded. Pull down to retry.'
-          : 'No surveys are available right now.');
-    }
-    final cards = surveys.map((m) {
-      final duration = m['durationMinutes'] ?? m['duration'];
-      return _hCard(
-        context: context,
-        title: m['title'].toString(),
-        sub: (m['provider'] ?? m['shortDesc'] ?? m['description'] ?? '').toString(),
-        coins: null,
-        meta: duration is num && duration > 0 ? '${duration.toInt()} min' : '',
-        chip: 'Survey',
-        icon: Icons.poll_rounded,
-        color: const Color(0xFF3B82F6),
-        cta: 'Start',
-        provider: (m['provider'] ?? '').toString(),
-        onTap: () => _push(context, const SurveysScreen()),
-      );
-    }).toList();
-    return SizedBox(height: 168, child: ListView.separated(
-      scrollDirection: Axis.horizontal, itemCount: cards.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 10), itemBuilder: (_, i) => cards[i]));
-  }
-
-  Widget _tasksRow(BuildContext context) {
-    final tasks = _offers.whereType<Map>().where((m) {
-      final type = (m['type'] ?? '').toString().toUpperCase();
-      final id = (m['id'] ?? m['_id'] ?? m['offerId'] ?? m['providerOfferId'] ?? '')
-          .toString()
-          .trim();
-      return (type.startsWith('INSTALL') || type.contains('TASK') ||
-              type.contains('GAME') || type.contains('MULTI')) &&
-          (m['title'] ?? '').toString().trim().isNotEmpty &&
-          id.isNotEmpty;
-    }).toList();
-    if (tasks.isEmpty) return _emptyRow('Task data is unavailable.');
-    final cards = tasks.map((m) {
-      final duration = m['durationMinutes'] ?? m['duration'];
-      return _hCard(
-        context: context,
-        title: (m['title'] ?? '').toString(),
-        sub: (m['shortDesc'] ?? m['description'] ?? m['provider'] ?? '').toString(),
-        coins: null,
-        meta: duration is num && duration > 0 ? '${duration.toInt()} min' : '',
-        chip: 'Task',
-        icon: Icons.task_alt_rounded,
-        color: const Color(0xFF16A34A),
-        cta: 'View Task',
-        provider: (m['provider'] ?? '').toString(),
-        onTap: () {
-          final id = (m['id'] ?? m['_id'] ?? m['offerId'] ?? m['providerOfferId'] ?? '')
-              .toString()
-              .trim();
-          final instructions = (m['instructions'] as List?)?.map((e) => e.toString()).toList() ?? const <String>[];
-          _push(context, TaskDetailScreen(
-            provider: (m['provider'] ?? '').toString(),
-            title: (m['title'] ?? '').toString(),
-            desc: (m['shortDesc'] ?? m['description'] ?? '').toString(),
-            coins: null,
-            steps: instructions,
-            offerId: id.isEmpty ? null : id,
-          ));
-        },
-      );
-    }).toList();
-    return SizedBox(height: 178, child: ListView.separated(
-      scrollDirection: Axis.horizontal, itemCount: cards.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 10), itemBuilder: (_, i) => cards[i]));
-  }
-
-  List<Map<String, dynamic>> _multiStepTasks() => _serverTasks().where((task) {
-    final type = (task['type'] ?? task['category'] ?? '').toString().toUpperCase();
-    final instructions = task['instructions'];
-    final milestones = task['milestones'] ?? task['steps'];
-    return type.contains('GAME') || type.contains('MULTI') ||
-        (instructions is List && instructions.length > 1) ||
-        (milestones is List && milestones.length > 1);
-  }).toList();
-
-  Widget _multiTaskRow(BuildContext context) {
-    final tasks = _multiStepTasks();
-    if (tasks.isEmpty) return _emptyRow(_offersUnavailable
-        ? 'Games and multi-step tasks could not be loaded. Pull down to retry.'
-        : 'No games or multi-step tasks have been published yet.');
-    final cards = tasks.map((task) {
-      final instructions = (task['instructions'] as List?)
-          ?.map((step) => step.toString()).toList() ?? const <String>[];
-      final milestones = task['milestones'] ?? task['steps'];
-      final count = instructions.isNotEmpty ? instructions.length : (milestones is List ? milestones.length : 0);
-      final id = (task['id'] ?? task['_id'] ?? task['offerId'] ?? task['providerOfferId'] ?? '').toString().trim();
-      return _hCard(
-        context: context,
-        title: (task['title'] ?? '').toString(),
-        sub: (task['shortDesc'] ?? task['description'] ?? task['provider'] ?? '').toString(),
-        coins: null,
-        meta: count > 0 ? '$count steps' : '',
-        chip: (task['type'] ?? '').toString().toUpperCase().contains('GAME') ? 'Game' : 'Multi-step',
-        icon: Icons.extension_rounded,
-        color: const Color(0xFF8B5CF6),
-        cta: 'View details',
-        provider: (task['provider'] ?? '').toString(),
-        onTap: () => _push(context, TaskDetailScreen(
-          provider: (task['provider'] ?? '').toString(),
-          title: (task['title'] ?? '').toString(),
-          desc: (task['shortDesc'] ?? task['description'] ?? '').toString(),
-          steps: instructions,
-          offerId: id.isEmpty ? null : id,
-        )),
-      );
-    }).toList();
-    return SizedBox(height: 178, child: ListView.separated(
-      scrollDirection: Axis.horizontal, itemCount: cards.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 10), itemBuilder: (_, i) => cards[i]));
-  }
-
-  Widget _hCard({
-    required BuildContext context,
-    required String title,
-    required String sub,
-    required int? coins,
-    required String meta,
-    required String chip,
-    required IconData icon,
-    required Color color,
-    required String cta,
-    required VoidCallback onTap,
-    String? provider,
-    double width = 200,
-  }) {
-    return Container(
-      width: width,
-      padding: const EdgeInsets.all(13),
-      decoration: _cardDec(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              // ONE resolver: real provider logo → app logo from title →
-              // clean activity icon. Never a dummy brand logo.
-              AppLogo(
-                provider: provider,
-                title: title,
-                size: 36,
-                radius: 9,
-                fallbackIcon: icon,
-                fallbackColor: color,
-              ),
-              const Spacer(),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                ),
-                child: Text(chip,
-                    style: TextStyle(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                        color: color)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 9),
-          Text(title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
-          const SizedBox(height: 3),
-          Text(sub,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary)),
-          const SizedBox(height: 7),
-          if (meta.isNotEmpty)
-            Row(children: [
-              const Icon(Icons.access_time_rounded, size: 13, color: AppColors.textSecondary),
-              const SizedBox(width: 4),
-              Text(meta, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-            ]),
-          const Spacer(),
-          SizedBox(
-            width: double.infinity,
-            height: 32,
-            child: ElevatedButton(
-              onPressed: onTap,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-              child: Text(cta,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w800)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ───────────────────────── Offer of the day ──────────────────────────────
-  Widget _offerOfDay(BuildContext context) {
-    final offers = _offers.whereType<Map>().where((m) => (m['title'] ?? '').toString().trim().isNotEmpty).toList();
-    if (offers.isEmpty) {
-      return _emptyRow(_offersUnavailable
-          ? 'Offers could not be loaded. Pull down to retry.'
-          : 'No offers are available right now.');
-    }
-    final offer = offers.first;
-    final reward = offer['coins'] is num ? (offer['coins'] as num).toInt() : (offer['rewardCoins'] is num ? (offer['rewardCoins'] as num).toInt() : null);
-    final steps = (offer['instructions'] as List?)?.take(4).toList() ?? const [];
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.primary.withOpacity(0.35), width: 1.5),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          Container(width: 40, height: 40, decoration: BoxDecoration(gradient: AppColors.goldGradient, borderRadius: BorderRadius.circular(11)),
-            child: const Icon(Icons.local_offer_rounded, color: Colors.white, size: 21)),
           const SizedBox(width: 11),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(offer['title'].toString(), maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-            const SizedBox(height: 3),
-            Text((offer['shortDesc'] ?? offer['description'] ?? '').toString(), maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
-          ])),
-          if (reward != null) Padding(padding: const EdgeInsets.only(left: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            const Text('Reward', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-            Text('+${_fmt(reward)}', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.primary)),
-          ])),
-        ]),
-        if (steps.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          Row(children: [for (int i = 0; i < steps.length; i++) ...[
-            _milestone(i + 1, steps[i].toString(), i == 0 ? AppColors.primary : AppColors.border),
-            if (i != steps.length - 1) Expanded(child: Container(height: 2, color: AppColors.border, margin: const EdgeInsets.symmetric(horizontal: 4))),
-          ]]),
-        ],
-        const SizedBox(height: 13),
-        SizedBox(width: double.infinity, height: 38, child: ElevatedButton(
-          onPressed: () => _push(context, const EarnScreen()),
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.md))),
-          child: const Text('View Offer', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
-        )),
-      ]),
-    );
-  }
-
-  Widget _milestone(int n, String label, Color color) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 22,
-          height: 22,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text('$n',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800)),
-          ),
-        ),
-        const SizedBox(height: 4),
-        SizedBox(
-          width: 58,
-          child: Text(label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 9, color: AppColors.textSecondary)),
-        ),
-      ],
-    );
-  }
-
-  // ───────────────────────── Quick earn ────────────────────────────────────
-  Widget _quickEarn(BuildContext context) {
-    final items = [
-      ('Surveys', Icons.poll_rounded, const Color(0xFF3B82F6), () => _push(context, const SurveysScreen())),
-      ('Quizzes', Icons.school_rounded, const Color(0xFF10B981), () => _push(context, const QuizScreen())),
-      ('Tasks', Icons.task_alt_rounded, const Color(0xFFF59E0B), () => _push(context, const EarnScreen())),
-      ('Offers', Icons.local_offer_rounded, const Color(0xFF8B5CF6), () => _push(context, const EarnScreen())),
-      ('Scratch', Icons.grid_view_rounded, const Color(0xFFEC4899), () => _push(context, const ScratchScreen())),
-      ('Spin', Icons.donut_large_rounded, const Color(0xFF14B8A6), () => _push(context, const SpinScreen())),
-    ];
-    return GridView.count(
-      crossAxisCount: 3, shrinkWrap: true, physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 9, crossAxisSpacing: 9, childAspectRatio: 1.15,
-      children: items.map((it) => GestureDetector(
-        onTap: it.$4,
-        child: Container(padding: const EdgeInsets.all(10), decoration: _cardDec(), child: Column(
-          mainAxisAlignment: MainAxisAlignment.center, children: [
-            Container(width: 34, height: 34, decoration: BoxDecoration(color: it.$3.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
-              child: Icon(it.$2, size: 18, color: it.$3)),
-            const SizedBox(height: 6),
-            Text(it.$1, style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-          ],
-        )),
-      )).toList(),
-    );
-  }
-
-  // ───────────────────────── Recommended ───────────────────────────────────
-  Widget _recommendedRow(BuildContext context) {
-    // Built from REAL backend data — surveys + offers. Never hardcoded.
-    final recs = <Map<String, dynamic>>[];
-    for (final s in _surveys.whereType<Map>().where((m) => (m['title'] ?? '').toString().trim().isNotEmpty).take(2)) {
-      final reward = s['rewardCoins'] ?? s['coins'] ?? s['reward'];
-      if (reward is! num) continue;
-      recs.add({
-        't': s['title'].toString(),
-        'c': reward.toInt(),
-        'm': 'Survey',
-        'i': Icons.poll_rounded,
-        'col': const Color(0xFF3B82F6),
-        'cta': 'Take Survey',
-        'go': () => _push(context, const SurveysScreen()),
-      });
-    }
-    for (final o in _offers.whereType<Map>().where((m) => (m['title'] ?? '').toString().trim().isNotEmpty).take(2)) {
-      final reward = o['coins'] ?? o['rewardCoins'];
-      if (reward is! num) continue;
-      recs.add({
-        't': o['title'].toString(),
-        'c': reward.toInt(),
-        'm': 'Offer',
-        'i': Icons.local_offer_rounded,
-        'col': AppColors.primary,
-        'cta': 'View Offer',
-        'go': () => _push(context, const EarnScreen()),
-      });
-    }
-    if (recs.isEmpty) return const SizedBox.shrink();
-    return SizedBox(
-      height: 132,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: recs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (_, i) {
-          final r = recs[i];
-          return Container(
-            width: 176,
-            padding: const EdgeInsets.all(12),
-            decoration: _cardDec(),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: (r['col'] as Color).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(r['i'] as IconData,
-                          size: 16, color: r['col'] as Color),
-                    ),
-                    const Spacer(),
-                    Text('+${_fmt(r['c'] as int)}',
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(r['t'] as String,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary)),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Icon(Icons.access_time_rounded,
-                        size: 12, color: AppColors.textSecondary),
-                    const SizedBox(width: 3),
-                    Text(r['m'] as String,
-                        style: const TextStyle(
-                            fontSize: 10.5,
-                            color: AppColors.textSecondary)),
-                  ],
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  height: 30,
-                  child: ElevatedButton(
-                    onPressed: r['go'] as VoidCallback,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
-                    ),
-                    child: Text(r['cta'] as String,
-                        style: const TextStyle(
-                            fontSize: 11.5, fontWeight: FontWeight.w800)),
-                  ),
-                ),
+                const Text('Available balance',
+                    style: TextStyle(
+                        color: AppColors.textSecondary, fontSize: 11)),
+                const SizedBox(height: 2),
+                Text(balance == null ? '—' : '${_formatNumber(balance)} coins',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.titleMedium.copyWith(
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w800)),
               ],
             ),
-          );
-        },
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            onPressed: () => _push(const WithdrawScreen()),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.primaryDark,
+              side: const BorderSide(color: AppColors.primary),
+              minimumSize: const Size(86, 42),
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+            ),
+            child: const Text('Withdraw'),
+          ),
+        ],
       ),
     );
   }
 
-  // ───────────────────────── High-paying tasks ─────────────────────────────
-  Widget _highPayingList(BuildContext context) {
-    final high = _offers.whereType<Map>()
-        .where((o) => (o['title'] ?? '').toString().trim().isNotEmpty && (o['coins'] is num || o['rewardCoins'] is num))
-        .toList()
-      ..sort((a, b) {
-        final aCoins = a['coins'] is num ? (a['coins'] as num).toInt() : (a['rewardCoins'] as num).toInt();
-        final bCoins = b['coins'] is num ? (b['coins'] as num).toInt() : (b['rewardCoins'] as num).toInt();
-        return bCoins.compareTo(aCoins);
-      });
-    final selected = high.take(4).toList();
-    if (selected.isEmpty) return const SizedBox.shrink(); // no fake fallback
+  Widget _surveyList() {
+    if (_loading) return _listSkeleton();
+    final surveys = _surveys.whereType<Map>().where((survey) {
+      return (survey['title'] ?? '').toString().trim().isNotEmpty;
+    }).take(3).toList();
+    if (surveys.isEmpty) {
+      return _emptyCard(
+        icon: Icons.poll_rounded,
+        title: _surveysUnavailable ? 'Surveys could not load' : 'No surveys available',
+        message: _surveysUnavailable
+            ? 'Pull down to try again.'
+            : 'New survey opportunities will appear here when available.',
+      );
+    }
     return Column(
-      children: selected.map((m) {
-        final coins = m['coins'] is num ? (m['coins'] as num).toInt() : (m['rewardCoins'] as num).toInt();
-        final provider = (m['provider'] ?? m['cat'] ?? '').toString();
-        final title = m['title'].toString();
+      children: surveys.map((survey) {
+        final provider = (survey['provider'] ?? '').toString();
+        final description = (survey['shortDesc'] ?? survey['description'] ?? '')
+            .toString()
+            .trim();
         return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Container(
-            padding: const EdgeInsets.all(13),
-            decoration: _cardDec(),
-            child: Row(
-              children: [
-                AppLogo(
-                  provider: provider,
-                  title: title,
-                  size: 44,
-                  fallbackIcon: Icons.local_fire_department_rounded,
-                  fallbackColor: AppColors.primary,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(m['title'].toString(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary)),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text((m['cat'] ?? m['provider'] ?? '').toString(),
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text('+${_fmt(coins)}',
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary)),
-                    const Text('Coins',
-                        style: TextStyle(
-                            fontSize: 10, color: AppColors.textSecondary)),
-                  ],
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () => _push(context, const EarnScreen()),
-                  child: const Icon(Icons.arrow_forward_ios_rounded,
-                      size: 15, color: AppColors.primary),
-                ),
-              ],
-            ),
+          padding: const EdgeInsets.only(bottom: 9),
+          child: _activityRow(
+            icon: Icons.poll_rounded,
+            title: (survey['title'] ?? '').toString(),
+            detail: description.isEmpty ? provider : description,
+            label: 'Open',
+            color: const Color(0xFF3B82F6),
+            onTap: () => _push(const SurveysScreen()),
           ),
         );
       }).toList(),
     );
   }
 
-  // ───────────────────────── Daily spin ────────────────────────────────────
-  Widget _dailySpinCard(BuildContext context) {
+  Widget _multiStepList() {
+    if (_loading) return _listSkeleton();
+    final items = _multiStepContent().take(3).toList();
+    if (items.isEmpty) {
+      return _emptyCard(
+        icon: Icons.sports_esports_rounded,
+        title: _offersUnavailable ? 'Activities could not load' : 'No games or multi-step tasks yet',
+        message: _offersUnavailable
+            ? 'Pull down to try again.'
+            : 'Activities added by the team will appear here.',
+      );
+    }
+    return Column(
+      children: items.map((item) => Padding(
+        padding: const EdgeInsets.only(bottom: 9),
+        child: _activityRow(
+          icon: Icons.sports_esports_rounded,
+          title: (item['title'] ?? '').toString(),
+          detail: (item['shortDesc'] ?? item['description'] ?? item['provider'] ?? '')
+              .toString(),
+          label: 'Details',
+          color: const Color(0xFF7056C9),
+          onTap: () => _openOffer(item),
+        ),
+      )).toList(),
+    );
+  }
+
+  Widget _otherTaskList() {
+    if (_loading) return _listSkeleton();
+    final all = _serverTasks();
+    final featuredId = all.isEmpty ? '' : _offerId(all.first);
+    final multiStepIds = _multiStepContent().map(_offerId).toSet();
+    final remaining = all
+        .where((task) => _offerId(task) != featuredId &&
+            !multiStepIds.contains(_offerId(task)))
+        .take(3)
+        .toList();
+    if (remaining.isEmpty) {
+      return _emptyCard(
+        icon: Icons.checklist_rounded,
+        title: _offersUnavailable ? 'Tasks could not load' : 'You’re all caught up',
+        message: _offersUnavailable
+            ? 'Pull down to retry.'
+            : 'See the featured task above, or browse the full task list.',
+        actionLabel: 'Browse tasks',
+        onAction: () => _push(const EarnScreen()),
+      );
+    }
+    return Column(
+      children: remaining.map((task) => Padding(
+        padding: const EdgeInsets.only(bottom: 9),
+        child: _activityRow(
+          icon: Icons.task_alt_rounded,
+          title: (task['title'] ?? '').toString(),
+          detail: (task['shortDesc'] ?? task['description'] ?? task['provider'] ?? '')
+              .toString(),
+          label: 'Details',
+          color: AppColors.success,
+          onTap: () => _openOffer(task),
+        ),
+      )).toList(),
+    );
+  }
+
+  Widget _otherOfferList() {
+    final offers = _otherOffers().take(3).toList();
+    if (offers.isEmpty) return const SizedBox.shrink();
+    return Column(
+      children: offers.map((offer) => Padding(
+        padding: const EdgeInsets.only(bottom: 9),
+        child: _activityRow(
+          icon: Icons.local_offer_rounded,
+          title: (offer['title'] ?? '').toString(),
+          detail: (offer['shortDesc'] ?? offer['description'] ?? offer['provider'] ?? '')
+              .toString(),
+          label: 'Details',
+          color: AppColors.primaryDark,
+          onTap: () => _openOffer(offer),
+        ),
+      )).toList(),
+    );
+  }
+
+  Widget _activityRow({
+    required IconData icon,
+    required String title,
+    required String detail,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(AppRadius.lg),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(AppRadius.lg),
+            border: Border.all(color: AppColors.border),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withOpacity(.11),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: color, size: 20),
+              ),
+              const SizedBox(width: 11),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTextStyles.titleMedium.copyWith(
+                            fontSize: 14, fontWeight: FontWeight.w700)),
+                    if (detail.trim().isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(detail,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.bodySmall.copyWith(
+                              color: AppColors.textSecondary, height: 1.35)),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(label,
+                      style: TextStyle(
+                          color: color,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700)),
+                  Icon(Icons.chevron_right_rounded, color: color, size: 20),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _quickAccess() {
+    final actions = <_QuickAction>[
+      _QuickAction('Spin', Icons.casino_outlined, const Color(0xFF9A6C00),
+          () => _push(const SpinScreen())),
+      _QuickAction('Quiz', Icons.quiz_outlined, const Color(0xFF21805A),
+          () => _push(const QuizScreen())),
+      _QuickAction('Scratch', Icons.grid_view_rounded, const Color(0xFFB44778),
+          () => _push(const ScratchScreen())),
+      _QuickAction('Invite', Icons.group_add_outlined, const Color(0xFF3B6CCB),
+          () => _push(const InviteScreen())),
+    ];
+    return Wrap(
+      spacing: 9,
+      runSpacing: 9,
+      children: actions.map((action) => SizedBox(
+        width: (MediaQuery.of(context).size.width - 41) / 2,
+        child: OutlinedButton.icon(
+          onPressed: action.onTap,
+          icon: Icon(action.icon, size: 18),
+          label: Text(action.label),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: action.color,
+            backgroundColor: AppColors.surface,
+            side: BorderSide(color: action.color.withOpacity(.24)),
+            alignment: Alignment.centerLeft,
+            minimumSize: const Size(0, 46),
+          ),
+        ),
+      )).toList(),
+    );
+  }
+
+  Widget _dailySpinCard() {
     final used = _spinStatus?['spinsUsed'];
     final limit = _spinStatus?['dailyLimit'];
     final canSpin = _spinStatus?['canSpin'];
-    final String statusLabel = used is num && limit is num && used >= 0 && limit >= 0
+    final status = used is num && limit is num
         ? '${(limit.toInt() - used.toInt()).clamp(0, limit.toInt())} of ${limit.toInt()} spins available'
         : canSpin == true
             ? 'A spin is available'
             : canSpin == false
-                ? 'No spins currently available'
+                ? 'No spins available right now'
                 : 'Spin availability unavailable';
-    return Container(
-      width: double.infinity, padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(gradient: AppColors.goldGradient, borderRadius: BorderRadius.circular(AppRadius.lg)),
-      child: Row(children: [
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(children: const [Icon(Icons.donut_large_rounded, color: Colors.white, size: 19), SizedBox(width: 7),
-            Text('Spin', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white))]),
-          const SizedBox(height: 6),
-          Text(statusLabel, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 11),
-          GestureDetector(onTap: () => _push(context, const SpinScreen()), child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(AppRadius.full)),
-            child: const Text('Open Spin', style: TextStyle(color: AppColors.primaryDark, fontSize: 13, fontWeight: FontWeight.w800)),
-          )),
-        ])),
-        const SizedBox(width: 10),
-        Container(width: 78, height: 78, decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.white.withOpacity(0.18),
-          border: Border.all(color: Colors.white.withOpacity(0.55), width: 2)),
-          child: ClipOval(child: Image.asset('assets/wheel.png', fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const Icon(Icons.donut_large_rounded, color: Colors.white, size: 38))),
-        ),
-      ]),
+    return _activityRow(
+      icon: Icons.casino_rounded,
+      title: 'Daily spin',
+      detail: status,
+      label: 'Open',
+      color: AppColors.primaryDark,
+      onTap: () => _push(const SpinScreen()),
     );
   }
 
-  // ───────────────────────── Daily missions ────────────────────────────────
-  Widget _missionsRow(BuildContext context) {
+  Widget _inviteCard() {
     return Container(
-      width: double.infinity, padding: const EdgeInsets.all(16), decoration: _cardDec(),
-      child: Row(children: [
-        const Icon(Icons.flag_rounded, color: AppColors.textSecondary),
-        const SizedBox(width: 10),
-        const Expanded(child: Text('Mission progress is unavailable.', style: TextStyle(color: AppColors.textSecondary, fontSize: 12.5))),
-        TextButton(onPressed: () => _push(context, const MissionsScreen()), child: const Text('Open')),
-      ]),
-    );
-  }
-
-  // ───────────────────────── Invite & earn ─────────────────────────────────
-  Widget _inviteCard(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: _cardDec(),
+      padding: const EdgeInsets.fromLTRB(15, 13, 15, 13),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEEF5FF),
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: const Color(0xFFD9E6FF)),
+      ),
       child: Row(
         children: [
-          Expanded(
+          const Icon(Icons.group_add_rounded, color: Color(0xFF3B6CCB), size: 22),
+          const SizedBox(width: 11),
+          const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: const [
-                    Icon(Icons.card_giftcard_rounded,
-                        color: AppColors.primary, size: 19),
-                    SizedBox(width: 7),
-                    Text('Invite Friends',
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Text('Share your referral link with friends',
+                Text('Invite friends',
                     style: TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
-                const SizedBox(height: 4),
-                const SizedBox(height: 11),
-                GestureDetector(
-                  onTap: () => _push(context, const InviteScreen()),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                    ),
-                    child: const Text('Invite Now',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w800)),
-                  ),
-                ),
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800)),
+                SizedBox(height: 3),
+                Text('Share your referral link',
+                    style: TextStyle(
+                        color: AppColors.textSecondary, fontSize: 11)),
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          ClipOval(
-            child: Image.asset(
-              'assets/bear_redeem.png',
-              width: 76,
-              height: 76,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                width: 76,
-                height: 76,
-                color: const Color(0xFFFFF7E6),
-                child: const Icon(Icons.card_giftcard_rounded, size: 32),
-              ),
-            ),
+          TextButton(
+            onPressed: () => _push(const InviteScreen()),
+            child: const Text('Invite'),
           ),
         ],
       ),
     );
   }
 
-  // ───────────────────────── Limited-time offers ───────────────────────────
-  Widget _limitedOffers(BuildContext context) {
-    final offers = _generalOffers().take(5).toList();
-    if (offers.isEmpty) {
-      return _emptyRow(_offersUnavailable
-          ? 'Offers could not be loaded. Pull down to retry.'
-          : 'No offers are available right now.');
-    }
-    return SizedBox(height: 150, child: ListView.separated(
-      scrollDirection: Axis.horizontal, itemCount: offers.length,
-      separatorBuilder: (_, __) => const SizedBox(width: 10),
-      itemBuilder: (_, i) {
-        final offer = offers[i];
-        return Container(width: 190, padding: const EdgeInsets.all(13), decoration: _cardDec(), child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [Container(width: 30, height: 30, decoration: BoxDecoration(color: AppColors.primary.withOpacity(0.12), borderRadius: BorderRadius.circular(8)),
-              child: const Icon(Icons.local_offer_rounded, size: 16, color: AppColors.primary)), const Spacer(),
-              const Text('Offer', style: TextStyle(fontSize: 10, color: AppColors.textSecondary))]),
-            const SizedBox(height: 9),
-            Text(offer['title'].toString(), maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-            const SizedBox(height: 3),
-            Text((offer['shortDesc'] ?? offer['description'] ?? '').toString(), maxLines: 2, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-            const Spacer(),
-            Row(children: [
-              const Spacer(),
-              GestureDetector(onTap: () => _push(context, const EarnScreen()), child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 6),
-                decoration: BoxDecoration(color: AppColors.primary, borderRadius: BorderRadius.circular(AppRadius.full)),
-                child: const Text('View Offer', style: TextStyle(color: Colors.white, fontSize: 10.5, fontWeight: FontWeight.w800)),
-              )),
-            ]),
-          ],
-        ));
-      },
-    ));
-  }
-
-  // ───────────────────────── Top earners ───────────────────────────────────
-  Widget _topEarners(BuildContext context) {
-    final top = (_leaderboard['top'] as List?)?.take(3).toList() ?? [];
-    if (top.isEmpty) {
-      return _emptyRow('Leaderboard updates soon');
-    }
-    final medals = [AppColors.primary, const Color(0xFF9CA3AF), const Color(0xFFB45309)];
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: _cardDec(),
-      child: Column(
-        children: [
-          for (int i = 0; i < top.length; i++) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      color: medals[i].withOpacity(0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text('${i + 1}',
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: medals[i])),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      (((top[i] as Map)['user'] ?? {}) as Map)['name'] ??
-                          'User',
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  if ((top[i] as Map)['coinsEarned'] is num)
-                    Text('+${_fmt(((top[i] as Map)['coinsEarned'] as num).truncate())}',
-                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w800, color: AppColors.primary)),
-                ],
-              ),
-            ),
-            if (i != top.length - 1)
-              const Divider(height: 1, color: AppColors.border),
-          ],
-          const SizedBox(height: 8),
-          GestureDetector(
-            onTap: () => _push(context, const LeaderboardScreen()),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Text('View Full Rankings',
-                    style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700)),
-                Icon(Icons.arrow_forward_ios_rounded,
-                    size: 12, color: AppColors.primary),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ───────────────────────── How to earn ───────────────────────────────────
-  Widget _howToEarn(BuildContext context) {
-    final steps = [
-      ('Find a survey/task', Icons.search_rounded),
-      ('Complete it', Icons.check_circle_rounded),
-      ('Earn coins', Icons.monetization_on_rounded),
-      ('Redeem rewards', Icons.redeem_rounded),
-    ];
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: _cardDec(),
-      child: Row(
-        children: [
-          for (int i = 0; i < steps.length; i++) ...[
-            Expanded(
-              child: Column(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(steps[i].$2,
-                        size: 19, color: AppColors.primary),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(steps[i].$1,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.textSecondary)),
-                ],
-              ),
-            ),
-            if (i != steps.length - 1)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 22),
-                child: Icon(Icons.arrow_forward_ios_rounded,
-                    size: 12, color: AppColors.textTertiary),
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // ───────────────────────── Shared bits ───────────────────────────────────
-  BoxDecoration _cardDec() {
-    return BoxDecoration(
-      color: AppColors.cardBackground,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      border: Border.all(color: AppColors.border),
-      boxShadow: AppShadows.card,
-    );
-  }
-
-  Widget _sectionTitle(String title,
-      {String? action, VoidCallback? onAction}) {
+  Widget _sectionHeader(String title,
+      {String? subtitle, String? action, VoidCallback? onAction}) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text(title,
-            style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary)),
-        const Spacer(),
-        if (action != null && onAction != null)
-          GestureDetector(
-            onTap: onAction,
-            child: Row(
-              children: [
-                Text(action,
-                    style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700)),
-                Icon(Icons.arrow_forward_ios_rounded,
-                    size: 11, color: AppColors.primary),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title,
+                  style: AppTextStyles.titleLarge.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800)),
+              if (subtitle != null) ...[
+                const SizedBox(height: 3),
+                Text(subtitle,
+                    style: AppTextStyles.bodySmall.copyWith(
+                        color: AppColors.textSecondary)),
               ],
-            ),
+            ],
+          ),
+        ),
+        if (action != null && onAction != null)
+          TextButton(
+            onPressed: onAction,
+            style: TextButton.styleFrom(
+                minimumSize: const Size(44, 40),
+                padding: const EdgeInsets.symmetric(horizontal: 8)),
+            child: Text(action),
           ),
       ],
     );
   }
 
-  Widget _emptyRow(String text) {
+  Widget _infoChip(IconData icon, String label) {
     return Container(
-      width: double.infinity,
-      height: 90,
-      alignment: Alignment.center,
-      decoration: _cardDec(),
-      child: Text(text,
-          style: const TextStyle(
-              fontSize: 12.5, color: AppColors.textSecondary)),
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.full),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(icon, color: AppColors.primaryDark, size: 14),
+        const SizedBox(width: 5),
+        Text(label,
+            style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700)),
+      ]),
     );
   }
 
-  Widget _skeletonH() {
-    return SizedBox(
-      height: 168,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: 3,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (_, __) => Container(
-          width: 200,
-          decoration: BoxDecoration(
-            color: AppColors.surfaceVariant,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
+  Widget _emptyCard({
+    required IconData icon,
+    required String title,
+    required String message,
+    String? actionLabel,
+    VoidCallback? onAction,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceVariant,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: AppColors.textSecondary, size: 20),
           ),
-        ),
+          const SizedBox(width: 11),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800)),
+                const SizedBox(height: 3),
+                Text(message,
+                    style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 11,
+                        height: 1.35)),
+              ],
+            ),
+          ),
+          if (actionLabel != null && onAction != null) ...[
+            const SizedBox(width: 6),
+            IconButton(
+              tooltip: actionLabel,
+              onPressed: onAction,
+              icon: const Icon(Icons.arrow_forward_rounded),
+              color: AppColors.primaryDark,
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+            ),
+          ],
+        ],
       ),
     );
   }
+
+  Widget _taskSkeleton() => Container(
+        height: 180,
+        decoration: BoxDecoration(
+          color: AppColors.surfaceVariant,
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+        ),
+      );
+
+  Widget _listSkeleton() => Column(
+        children: List.generate(
+          2,
+          (index) => Padding(
+            padding: const EdgeInsets.only(bottom: 9),
+            child: Container(
+              height: 68,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceVariant,
+                borderRadius: BorderRadius.circular(AppRadius.lg),
+              ),
+            ),
+          ),
+        ),
+      );
+
+  String _formatNumber(int number) {
+    final digits = number.abs().toString();
+    final buffer = StringBuffer();
+    for (var i = 0; i < digits.length; i++) {
+      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
+      buffer.write(digits[i]);
+    }
+    return number < 0 ? '-$buffer' : buffer.toString();
+  }
+}
+
+class _QuickAction {
+  final String label;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+  const _QuickAction(this.label, this.icon, this.color, this.onTap);
 }

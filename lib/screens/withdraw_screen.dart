@@ -19,7 +19,7 @@ class WithdrawScreen extends StatefulWidget {
 }
 
 class _WithdrawScreenState extends State<WithdrawScreen> {
-  static const _bg = Color(0xFFFAFAF8);
+  static const _bg = AppColors.background;
 
   UserModel? _user;
   int? _balance;
@@ -108,6 +108,18 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
     final amount = _enteredCoins;
     return !_submitting && _balance != null && _selectedConfig != null &&
         amount != null && _minCoins != null && amount >= _minCoins! && amount <= _balance!;
+  }
+
+  String? get _submitDisabledReason {
+    if (_submitting) return 'Submitting your request…';
+    if (_balance == null) return 'Your available balance could not be loaded.';
+    if (_selectedConfig == null) return 'Choose an available withdrawal method.';
+    if (_minCoins == null) return 'The minimum withdrawal amount is not available.';
+    final amount = _enteredCoins;
+    if (amount == null) return 'Enter a whole number of coins to continue.';
+    if (amount < _minCoins!) return 'Enter at least $_minCoins coins.';
+    if (amount > _balance!) return 'Amount is more than your available balance.';
+    return null;
   }
 
   String get _methodLabel => _selectedMethod == 'BANK_TRANSFER' ? 'Bank Transfer' : 'UPI';
@@ -232,6 +244,29 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                     ].join('  •  '), style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondary)),
                   ],
                   const SizedBox(height: 18),
+                  if (_enteredCoins != null) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryContainer.withOpacity(.55),
+                        borderRadius: BorderRadius.circular(AppRadius.md),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Request summary', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                          const SizedBox(height: 5),
+                          Text('Requested: ${_enteredCoins} coins', style: const TextStyle(fontSize: 12, color: AppColors.textPrimary)),
+                          if (_feeCoins != null)
+                            Text('Fee: $_feeCoins coins', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                          const SizedBox(height: 3),
+                          const Text('Final payout value is confirmed by the server.', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
                   SizedBox(
                     height: 54,
                     child: ElevatedButton(
@@ -240,6 +275,10 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
                       child: _submitting ? const CircularProgressIndicator(color: Colors.white) : const Text('Submit withdrawal', style: TextStyle(fontWeight: FontWeight.w800)),
                     ),
                   ),
+                  if (!_canWithdraw && _submitDisabledReason != null) ...[
+                    const SizedBox(height: 8),
+                    Text(_submitDisabledReason!, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  ],
                 ],
                 const SizedBox(height: 24),
                 const Text('Recent Withdrawals', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
@@ -289,7 +328,7 @@ class _WithdrawScreenState extends State<WithdrawScreen> {
         onTap: () => setState(() { _selectedMethod = id; _detailsError = null; }),
         child: Container(
           padding: const EdgeInsets.all(13),
-          decoration: BoxDecoration(color: selected ? const Color(0xFFFFFBF2) : AppColors.cardBackground, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.8 : 1)),
+          decoration: BoxDecoration(color: selected ? AppColors.goldContainer : AppColors.cardBackground, borderRadius: BorderRadius.circular(AppRadius.lg), border: Border.all(color: selected ? AppColors.primary : AppColors.border, width: selected ? 1.8 : 1)),
           child: Row(children: [
             Icon(id == 'UPI' ? Icons.qr_code_rounded : Icons.account_balance_rounded, color: selected ? AppColors.primary : AppColors.textSecondary),
             const SizedBox(width: 12),

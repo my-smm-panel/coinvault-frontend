@@ -18,6 +18,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
   double _wipe = 0.0;
   bool _loading = true;
   bool _claiming = false;
+  bool _statusError = false;
   int? _remaining;
 
   void _newCard() {
@@ -68,16 +69,28 @@ class _ScratchScreenState extends State<ScratchScreen> {
   }
 
   Future<void> _refreshStatus() async {
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _statusError = false;
+      });
+    }
     try {
       final status = await AppRepository.instance.scratchStatus();
       if (!mounted) return;
       final raw = status?['remaining'];
       setState(() {
         _remaining = raw is num ? raw.toInt() : null;
+        _statusError = raw is! num;
         _loading = false;
       });
     } catch (_) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        setState(() {
+          _statusError = true;
+          _loading = false;
+        });
+      }
     }
   }
 
@@ -90,9 +103,22 @@ class _ScratchScreenState extends State<ScratchScreen> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
+    final cardWidth = (size.width * 0.82).clamp(0.0, 460.0).toDouble();
+    final cardHeight = cardWidth * 0.63;
     final canScratch = !_loading && _remaining != null && _remaining! > 0;
+    final cardSemanticsLabel = _loading
+        ? 'Checking scratch card availability.'
+        : _remaining == null
+            ? 'Scratch card availability could not be checked.'
+            : _remaining == 0
+                ? 'No scratch cards are currently available.'
+                : _reward != null
+                    ? 'Scratch card reward: $_reward coins.'
+                    : _revealed
+                        ? 'Card revealed. Use the Reveal Reward button to claim the server-provided reward.'
+                        : 'Scratch card available. Swipe across the card to reveal the claim option.';
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F8FA),
+      backgroundColor: AppColors.background,
       body: SafeArea(
         child: Column(
           children: [
@@ -113,16 +139,23 @@ class _ScratchScreenState extends State<ScratchScreen> {
                         style: GoogleFonts.inter(
                             color: AppColors.textSecondary, fontSize: 13)),
                     const SizedBox(height: 28),
-                    GestureDetector(
-                      onPanUpdate: canScratch ? _onScratch : null,
-                      onPanEnd: (_) {
-                        if (_scratched && !_revealed && canScratch) {
-                          setState(() => _revealed = true);
-                        }
-                      },
-                      child: Container(
-                        width: size.width * 0.82,
-                        height: size.width * 0.52,
+                    Semantics(
+                      container: true,
+                      excludeSemantics: true,
+                      label: cardSemanticsLabel,
+                      hint: canScratch && !_revealed
+                          ? 'Swipe across the card, or use the accessible option below.'
+                          : null,
+                      child: GestureDetector(
+                        onPanUpdate: canScratch ? _onScratch : null,
+                        onPanEnd: (_) {
+                          if (_scratched && !_revealed && canScratch) {
+                            setState(() => _revealed = true);
+                          }
+                        },
+                        child: Container(
+                        width: cardWidth,
+                        height: cardHeight,
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(22),
                           gradient: const LinearGradient(
@@ -160,8 +193,8 @@ class _ScratchScreenState extends State<ScratchScreen> {
                               ClipPath(
                                 clipper: _ScratchClipper(wipe: _wipe),
                                 child: Container(
-                                  width: size.width * 0.82,
-                                  height: size.width * 0.52,
+                                  width: cardWidth,
+                                  height: cardHeight,
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(colors: [
                                       AppColors.gold.withOpacity(0.15),
@@ -187,17 +220,36 @@ class _ScratchScreenState extends State<ScratchScreen> {
                                 ),
                               ),
                             if (!canScratch && !_loading)
-                              const Center(
-                                child: Text('No scratch card available',
-                                    style: TextStyle(
-                                        color: Colors.white70,
-                                        fontWeight: FontWeight.w700)),
+                              Center(
+                                child: Text(
+                                  _remaining == 0
+                                      ? 'No scratch card available'
+                                      : 'Availability could not be checked',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontWeight: FontWeight.w700),
+                                ),
                               ),
                           ],
                         ),
                       ),
+                      ),
                     ),
-                    const SizedBox(height: 28),
+                    if (canScratch && !_revealed)
+                      TextButton.icon(
+                        onPressed: () => setState(() {
+                          _scratched = true;
+                          _revealed = true;
+                        }),
+                        icon: const Icon(Icons.visibility_rounded, size: 18),
+                        label: const Text('Skip scratch and show reveal option'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: AppColors.primaryDark,
+                          minimumSize: const Size(48, 48),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
                     if (_revealed && !_claiming && _reward == null)
                       SizedBox(
                         width: double.infinity,
@@ -237,13 +289,40 @@ class _ScratchScreenState extends State<ScratchScreen> {
                                   fontWeight: FontWeight.w800, fontSize: 15)),
                         ),
                       )
+                    else if (_loading)
+                      Text(
+                        'Checking card availability…',
+                        style: GoogleFonts.inter(
+                            color: AppColors.textSecondary, fontSize: 13),
+                        textAlign: TextAlign.center,
+                      )
+                    else if (_remaining == null)
+                      Column(
+                        children: [
+                          Text(
+                            _statusError
+                                ? 'Could not check scratch card availability.'
+                                : 'Scratch card availability was not provided.',
+                            style: GoogleFonts.inter(
+                                color: AppColors.textSecondary, fontSize: 13),
+                            textAlign: TextAlign.center,
+                          ),
+                          TextButton.icon(
+                            onPressed: _refreshStatus,
+                            icon: const Icon(Icons.refresh_rounded, size: 18),
+                            label: const Text('Try again'),
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppColors.primaryDark,
+                              minimumSize: const Size(48, 48),
+                            ),
+                          ),
+                        ],
+                      )
                     else
                       Text(
-                        _loading
-                            ? 'Checking card availability…'
-                            : 'Scratch availability is determined by the server.',
+                        'Rewards and availability are supplied by the server.',
                         style: GoogleFonts.inter(
-                            color: AppColors.textSecondary, fontSize: 12),
+                            color: AppColors.textSecondary, fontSize: 13),
                         textAlign: TextAlign.center,
                       ),
                     const SizedBox(height: 24),
@@ -251,7 +330,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.cardBackground,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppColors.border),
                       ),
@@ -295,7 +374,7 @@ class _ScratchScreenState extends State<ScratchScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppColors.cardBackground,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: AppColors.border)),
             child: Text(
