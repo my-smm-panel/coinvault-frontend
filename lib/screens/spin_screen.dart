@@ -185,7 +185,7 @@ class _SpinScreenState extends State<SpinScreen> with SingleTickerProviderStateM
                     const SizedBox(height: AppSpacing.lg),
                     _buildHowItWorks(),
                     const SizedBox(height: AppSpacing.lg),
-                    _recentWins(),
+                    _recentWinsCard(),
                     const SizedBox(height: AppSpacing.lg),
                     SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const EarnScreen())), icon: const Icon(Icons.task_alt_rounded), label: const Text('Earn from available activities'))),
                   ]),
@@ -275,7 +275,7 @@ class _SpinScreenState extends State<SpinScreen> with SingleTickerProviderStateM
     );
   }
 
-  Widget _recentWins() {
+  Widget _recentWinsCard() {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [const Icon(Icons.history_rounded, color: AppColors.gold, size: 20), const SizedBox(width: 6), const Text('Recent Spins', style: TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w700)), if (_totalWon != null) ...[const SizedBox(width: 8), Text('$_totalWon coins recorded', style: const TextStyle(color: AppColors.textSecondary, fontSize: 11))], const Spacer(), InkWell(onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const HistoryScreen())), child: const Text('View all ›', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w700)))]),
       const SizedBox(height: AppSpacing.md),

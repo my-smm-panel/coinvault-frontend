@@ -181,13 +181,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               _statsGrid(balance, spinsLeft),
               const SizedBox(height: 14),
 
-              // ── Payout details ──
-              if ((user.upiId ?? '').isNotEmpty ||
-                  (user.bankDetails ?? '').isNotEmpty) ...[
-                _payoutCard(user),
-                const SizedBox(height: 14),
-              ],
-
               // ── Menu ──
               const Text(
                 'Account',
@@ -464,60 +457,4 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _payoutCard(UserModel user) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: _card,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: _border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: const [
-              Icon(Icons.account_balance_wallet_rounded,
-                  size: 17, color: AppColors.primary),
-              SizedBox(width: 7),
-              Text('Payout Details',
-                  style: TextStyle(
-                      color: _textPrimary,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if ((user.upiId ?? '').isNotEmpty)
-            Text('UPI: ${user.upiId}',
-                style: const TextStyle(
-                    color: _textSecondary, fontSize: 12.5)),
-          if ((user.bankDetails ?? '').isNotEmpty)
-            Text('Bank: ${user.bankDetails}',
-                style: const TextStyle(
-                    color: _textSecondary, fontSize: 12.5),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _push(const WithdrawScreen()),
-              icon: const Icon(Icons.edit_rounded, size: 16),
-              label: const Text('Update Payout Details'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary, width: 1.2),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

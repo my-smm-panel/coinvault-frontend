@@ -250,7 +250,8 @@ class _SurveysScreenState extends State<SurveysScreen> {
     final provider = (s['provider'] ?? '').toString().trim();
     final category = (s['category'] ?? '').toString().trim();
     final difficulty = (s['difficulty'] ?? '').toString().trim();
-    final hasId = (s['id'] ?? '').toString().trim().isNotEmpty;
+    final survey = Map<String, dynamic>.from(s);
+    final hasId = (survey['id'] ?? '').toString().trim().isNotEmpty;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12, top: 4),
@@ -369,7 +370,7 @@ class _SurveysScreenState extends State<SurveysScreen> {
                     SizedBox(
                       height: 34,
                       child: ElevatedButton(
-                        onPressed: hasId ? () => _openSurvey(s) : null,
+                        onPressed: hasId ? () => _openSurvey(survey) : null,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: hasId ? _orange : const Color(0xFFE8E8E8),
                           foregroundColor: hasId ? Colors.white : _secondaryText,

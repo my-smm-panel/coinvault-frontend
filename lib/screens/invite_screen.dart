@@ -131,7 +131,7 @@ class _InviteScreenState extends State<InviteScreen> {
                   const SizedBox(height: 20),
                   _statsGrid(),
                   const SizedBox(height: 20),
-                  _referrals(),
+                  _referralActivity(),
                   const SizedBox(height: 20),
                   _howItWorks(),
                   const SizedBox(height: 24),
@@ -288,7 +288,7 @@ class _InviteScreenState extends State<InviteScreen> {
     );
   }
 
-  Widget _referrals() {
+  Widget _referralActivity() {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
