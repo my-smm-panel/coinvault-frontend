@@ -98,9 +98,18 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             _segmented(),
             Expanded(
               child: _loading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                          color: _orange, strokeWidth: 2.5))
+                  ? ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
+                      children: [
+                        _weeklyPoolCard(),
+                        const SizedBox(height: 16),
+                        _podiumSkeleton(),
+                        const SizedBox(height: 16),
+                        _rankListSkeleton(),
+                        const SizedBox(height: 20),
+                        _statsSkeleton(),
+                      ],
+                    )
                   : _failed
                       ? Center(
                           child: Column(
@@ -674,6 +683,62 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
           ],
         ),
       ),
+    );
+  }
+
+
+  Widget _podiumSkeleton() {
+    return Container(
+      height: 200,
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          Container(width: 80, height: 96, color: AppColors.surfaceVariant),
+          Container(width: 80, height: 116, color: AppColors.surfaceVariant),
+          Container(width: 80, height: 96, color: AppColors.surfaceVariant),
+        ],
+      ),
+    );
+  }
+
+  Widget _rankListSkeleton() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: ListView.separated(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        itemCount: 5,
+        separatorBuilder: (_, __) => const Divider(height: 1, color: AppColors.border),
+        itemBuilder: (_, i) => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(width: 24, height: 24, color: AppColors.surfaceVariant),
+              const SizedBox(width: 10),
+              Container(width: 120, height: 14, color: AppColors.surfaceVariant),
+              const Spacer(),
+              Container(width: 60, height: 12, color: AppColors.surfaceVariant),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statsSkeleton() {
+    return Row(
+      children: [
+        Expanded(child: Container(height: 70, color: AppColors.surfaceVariant, margin: const EdgeInsets.only(right: 8),)),
+        Expanded(child: Container(height: 70, color: AppColors.surfaceVariant)),
+      ],
     );
   }
 

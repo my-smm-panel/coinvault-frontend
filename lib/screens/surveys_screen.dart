@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
+import '../core/coin_format.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../core/provider_logos.dart';
@@ -313,138 +314,148 @@ class _SurveysScreenState extends State<SurveysScreen> {
     final provider = (s['provider'] ?? '').toString().trim();
     final category = (s['category'] ?? '').toString().trim();
     final difficulty = (s['difficulty'] ?? '').toString().trim();
+    final detail = (s['shortDesc'] ?? s['description'] ?? '').toString().trim();
     final survey = Map<String, dynamic>.from(s);
     final hasId = (survey['id'] ?? '').toString().trim().isNotEmpty;
+    final status = (survey['status'] ?? '').toString().trim().toLowerCase();
+    final reward = survey['rewardCoins'] ?? survey['coins'] ?? survey['coinReward'];
+    final rewardInt = reward is num ? reward.toInt() : (reward is String ? int.tryParse(reward.trim()) : null);
+    final image = (survey['image'] ?? survey['icon'] ?? '').toString().trim();
+    final isNew = status == 'new' || status == 'active';
+    final isCompleted = status == 'completed' || status == 'done';
 
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       decoration: BoxDecoration(
         color: _card,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(color: _border),
-        boxShadow: const [
-          BoxShadow(color: Color(0x0F000000), blurRadius: 8, offset: Offset(0, 2)),
-        ],
+        boxShadow: AppShadows.card,
       ),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(15),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          onTap: hasId && !isCompleted ? () => _openSurvey(survey) : null,
+          borderRadius: BorderRadius.circular(18),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Provider identity from the survey catalogue.
-                Row(
-                  children: [
-                    AppLogo(
-                      provider: provider,
-                      title: title,
-                      size: 40,
-                      fallbackIcon: Icons.poll_rounded,
-                      fallbackColor: const Color(0xFF3B82F6),
-                    ),
-                    const SizedBox(width: 9),
-                    Expanded(
-                      child: provider.isEmpty
-                          ? const SizedBox.shrink()
-                          : Text(provider,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: _primaryText,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700)),
-                    ),
-                    const Spacer(),
-                  ],
+                // Big provider image / avatar
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: image.isNotEmpty
+                      ? Image.network(image, width: 56, height: 56, fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _surveyAvatar(provider, title))
+                      : _surveyAvatar(provider, title),
                 ),
-                const SizedBox(height: 10),
-                // Title
-                if (title.isNotEmpty)
-                  Text(title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          color: _primaryText,
-                          fontSize: 15.5,
-                          fontWeight: FontWeight.w700,
-                          height: 1.25)),
-                if (title.isNotEmpty && (duration.isNotEmpty ||
-                    difficulty.isNotEmpty || category.isNotEmpty))
-                  const SizedBox(height: 7),
-                // Meta row contains only fields supplied by the server.
-                if (duration.isNotEmpty || difficulty.isNotEmpty || category.isNotEmpty)
-                  Row(
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (duration.isNotEmpty) ...[
-                        const Icon(Icons.access_time_rounded,
-                            color: _secondaryText, size: 14),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(duration,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: _secondaryText, fontSize: 12)),
+                      if (isNew)
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE7F6F1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: const Text('NEW',
+                              style: TextStyle(color: Color(0xFF159D76), fontSize: 8, fontWeight: FontWeight.w900, letterSpacing: 0.5)),
                         ),
+                      Text(title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(color: _primaryText, fontSize: 14, fontWeight: FontWeight.w800)),
+                      if (detail.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Text(detail,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: _secondaryText, fontSize: 11, height: 1.25)),
                       ],
-                      if (difficulty.isNotEmpty) ...[
-                        const SizedBox(width: 12),
-                        Flexible(
-                          child: Text(difficulty,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: _secondaryText, fontSize: 11.5)),
-                        ),
-                      ],
-                      if (category.isNotEmpty) ...[
-                        const SizedBox(width: 8),
-                        Flexible(
-                          child: Text(category,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  color: _secondaryText, fontSize: 11.5)),
-                        ),
-                      ],
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          if (duration.isNotEmpty) ...[
+                            const Icon(Icons.access_time_rounded, color: _secondaryText, size: 13),
+                            const SizedBox(width: 3),
+                            Text(duration, style: const TextStyle(color: _secondaryText, fontSize: 10.5)),
+                            const SizedBox(width: 10),
+                          ],
+                          if (rewardInt != null) ...[
+                            const Icon(Icons.monetization_on_rounded, color: AppColors.gold, size: 13),
+                            const SizedBox(width: 3),
+                            Text('+${formatCoins(rewardInt)}',
+                                style: const TextStyle(color: _primaryText, fontSize: 11, fontWeight: FontWeight.w800)),
+                          ],
+                          if (difficulty.isNotEmpty) ...[
+                            const SizedBox(width: 10),
+                            Text(difficulty, style: const TextStyle(color: _secondaryText, fontSize: 10.5)),
+                          ],
+                        ],
+                      ),
                     ],
                   ),
-                const SizedBox(height: 10),
-                const Divider(height: 1, thickness: 1, color: _border),
-                const SizedBox(height: 10),
-                // Only the start action is shown; the server owns any outcome.
-                Row(
-                  children: [
-
-                    const Spacer(),
-                    SizedBox(
-                      height: 42,
-                      child: ElevatedButton(
-                        onPressed: hasId ? () => _openSurvey(survey) : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: hasId ? _orange : AppColors.surfaceVariant,
-                          foregroundColor: hasId ? Colors.white : _secondaryText,
-                          disabledBackgroundColor: AppColors.surfaceVariant,
-                          disabledForegroundColor: _secondaryText,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18)),
-                        ),
-                        child: Text(hasId ? 'Start Survey' : 'Unavailable',
-                            style: const TextStyle(
-                                fontSize: 12.5, fontWeight: FontWeight.w700)),
-                      ),
-                    ),
-                  ],
                 ),
+                const SizedBox(width: 8),
+                if (isCompleted)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceVariant,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text('Completed',
+                        style: TextStyle(color: _secondaryText, fontSize: 11, fontWeight: FontWeight.w700)),
+                  )
+                else
+                  Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Center(
+                      child: Text('Start',
+                          style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+                    ),
+                  ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
 
-        ],
+  Widget _surveyAvatar(String provider, String title) {
+    final letter = (provider.isNotEmpty ? provider : title).trim().isNotEmpty
+        ? (provider.isNotEmpty ? provider : title).trim()[0].toUpperCase()
+        : 'S';
+    final colors = [
+      const Color(0xFF159D76),
+      const Color(0xFFDC8A1C),
+      const Color(0xFF7C3AED),
+      const Color(0xFF3B82F6),
+      const Color(0xFF8B5A2B),
+    ];
+    final color = colors[letter.codeUnitAt(0) % colors.length];
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Center(
+        child: Text(letter,
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900)),
       ),
     );
   }
