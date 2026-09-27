@@ -804,7 +804,7 @@ class _HomeTabState extends State<HomeTab> {
                   crossAxisCount: columns,
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
-                  mainAxisExtent: 106,
+                  mainAxisExtent: 140,
                 ),
                 itemBuilder: (context, index) => _taskTile(tasks[index]),
               );
@@ -850,75 +850,97 @@ class _HomeTabState extends State<HomeTab> {
         .toString()
         .trim();
     final reward = _taskReward(task);
+    final image = (task['image'] ?? '').toString().trim();
     return Material(
       color: Colors.white,
-      borderRadius: BorderRadius.circular(11),
+      borderRadius: BorderRadius.circular(14),
       child: InkWell(
         onTap: () => _openOffer(task),
-        borderRadius: BorderRadius.circular(11),
+        borderRadius: BorderRadius.circular(14),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            border: Border.all(color: const Color(0xFFDDE2FA)),
-            borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: AppColors.border),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: AppShadows.card,
           ),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AppLogo(
-                provider: provider,
-                title: title,
-                size: 32,
-                radius: 9,
-                fallbackIcon: Icons.task_alt_rounded,
+              // Provider image / banner
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: image.isNotEmpty
+                    ? Image.network(image, width: double.infinity, height: 64, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _taskImageFallback(provider, title))
+                    : _taskImageFallback(provider, title),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 6),
               Text(title,
-                  maxLines: 1,
+                  maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  textAlign: TextAlign.center,
                   style: const TextStyle(
                       color: AppColors.textPrimary,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800)),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2)),
               if (detail.isNotEmpty) ...[
-                const SizedBox(height: 2),
+                const SizedBox(height: 3),
                 Text(detail,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
                     style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 8)),
+                        color: AppColors.textSecondary, fontSize: 9)),
               ],
               const Spacer(),
-              Container(
-                constraints: const BoxConstraints(minHeight: 22),
-                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBE8),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFFFE77A)),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
+              Row(
+                children: [
                   if (reward != null) ...[
                     const Icon(Icons.monetization_on_rounded,
-                        color: Color(0xFFFFB300), size: 13),
-                    const SizedBox(width: 3),
+                        color: AppColors.gold, size: 14),
+                    const SizedBox(width: 4),
                     Text(formatCoins(reward),
                         style: const TextStyle(
                             color: AppColors.textPrimary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800)),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900)),
                   ] else
                     const Text('View task',
                         style: TextStyle(
-                            color: AppColors.primaryDark,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700)),
-                ]),
+                            color: AppColors.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800)),
+                  const Spacer(),
+                  const Icon(Icons.arrow_forward_ios_rounded,
+                      color: AppColors.textTertiary, size: 12),
+                ],
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _taskImageFallback(String provider, String title) {
+    return Container(
+      width: double.infinity,
+      height: 64,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primaryContainer, AppColors.goldContainer],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      child: Center(
+        child: AppLogo(
+          provider: provider,
+          title: title,
+          size: 36,
+          radius: 10,
+          fallbackIcon: Icons.task_alt_rounded,
+          fallbackColor: AppColors.primary,
         ),
       ),
     );
@@ -934,7 +956,7 @@ class _HomeTabState extends State<HomeTab> {
             crossAxisCount: columns,
             mainAxisSpacing: 8,
             crossAxisSpacing: 8,
-            mainAxisExtent: 106,
+            mainAxisExtent: 140,
           ),
           itemBuilder: (_, __) => Container(
             decoration: BoxDecoration(

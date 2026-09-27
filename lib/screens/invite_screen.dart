@@ -147,7 +147,7 @@ class _InviteScreenState extends State<InviteScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: AppColors.brandHeader,
+        gradient: LinearGradient(colors: [AppColors.brandHeaderColor, Color(0xFF7047F7)], begin: Alignment.topLeft, end: Alignment.bottomRight),
         borderRadius: BorderRadius.circular(AppRadius.xl),
         boxShadow: [
           BoxShadow(

@@ -104,7 +104,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: const BoxDecoration(
-        gradient: AppColors.brandHeader,
+        gradient: LinearGradient(colors: [AppColors.brandHeaderColor, Color(0xFF7047F7)], begin: Alignment.topLeft, end: Alignment.bottomRight),
       ),
       child: Row(
         children: [

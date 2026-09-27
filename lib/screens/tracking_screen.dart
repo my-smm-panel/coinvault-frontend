@@ -912,7 +912,7 @@ class _ReferralsTab extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            gradient: AppColors.brandHeader,
+            gradient: LinearGradient(colors: [AppColors.brandHeaderColor, Color(0xFF7047F7)], begin: Alignment.topLeft, end: Alignment.bottomRight),
             borderRadius: BorderRadius.circular(AppRadius.xl),
           ),
           child: Column(
