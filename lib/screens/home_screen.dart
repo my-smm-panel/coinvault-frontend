@@ -15,6 +15,7 @@ import 'quiz_screen.dart';
 import 'spin_screen.dart';
 import 'surveys_screen.dart';
 import 'task_detail_screen.dart';
+import 'tracking_screen.dart';
 import 'withdraw_screen.dart';
 
 /// Main user app shell. The existing tab destinations are unchanged.
@@ -92,6 +93,7 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> {
   List<Map<String, dynamic>> _offers = [];
   List<dynamic> _surveys = [];
+  List<dynamic> _activity = [];
   bool _loading = true;
   bool _offersUnavailable = false;
   bool _surveysUnavailable = false;
@@ -163,11 +165,17 @@ class _HomeTabState extends State<HomeTab> {
     // Hide an old account's balance and never display a guessed value while
     // the authenticated, server-authoritative wallet is being refreshed.
     BalanceStream.instance.clear();
-    if (mounted) setState(() => _loading = true);
+    if (mounted) {
+      setState(() {
+        _loading = true;
+        _activity = [];
+      });
+    }
     final results = await Future.wait<dynamic>([
       AppRepository.instance.fetchOffers(),
       AppRepository.instance.fetchSurveys(),
       AppRepository.instance.fetchWalletBalance(),
+      AppRepository.instance.fetchActivity(),
     ]);
     if (!mounted || revision != _loadRevision) return;
 
@@ -181,6 +189,7 @@ class _HomeTabState extends State<HomeTab> {
           .map((offer) => Map<String, dynamic>.from(offer))
           .toList();
       _surveys = rawSurveys ?? [];
+      _activity = (results[3] as List<dynamic>?) ?? [];
       _loading = false;
     });
   }
@@ -400,12 +409,51 @@ class _HomeTabState extends State<HomeTab> {
                       _offerRows(_otherOffers().take(3).toList(),
                           Icons.local_offer_rounded, AppColors.primaryDark),
                     ],
+                    if (_recentActivities().isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      _sectionHeader('Recent activity',
+                          icon: Icons.history_rounded,
+                          action: 'View All',
+                          onAction: () => _push(const TrackingScreen())),
+                      const SizedBox(height: 9),
+                      ..._recentActivities().map(_recentActivityRow),
+                    ],
                   ],
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  List<Map<String, dynamic>> _recentActivities() => _activity
+      .whereType<Map>()
+      .map((item) => Map<String, dynamic>.from(item))
+      .where((item) =>
+          (item['type'] ?? item['action'] ?? item['title'] ??
+                  item['category'] ?? item['transactionType'] ?? '')
+              .toString()
+              .trim()
+              .isNotEmpty)
+      .take(3)
+      .toList();
+
+  Widget _recentActivityRow(Map<String, dynamic> item) {
+    final title = (item['type'] ?? item['action'] ?? item['title'] ??
+            item['category'] ?? item['transactionType'] ?? '')
+        .toString()
+        .trim();
+    final status = (item['status'] ?? item['state'] ?? '').toString().trim();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: _activityRow(
+        icon: Icons.history_rounded,
+        title: title,
+        detail: status,
+        color: AppColors.primary,
+        onTap: () => _push(const TrackingScreen()),
       ),
     );
   }
