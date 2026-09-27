@@ -8,6 +8,7 @@ import 'earn_screen.dart';
 import 'help_screen.dart';
 import 'invite_screen.dart';
 import 'leaderboard_screen.dart';
+import 'quiz_screen.dart';
 import 'spin_screen.dart';
 import 'surveys_screen.dart';
 import 'task_detail_screen.dart';
@@ -457,9 +458,6 @@ class _HomeTabState extends State<HomeTab> {
                           fontWeight: FontWeight.w800,
                           height: 1.15)),
                 ),
-              if (balance != null)
-                const Text('coins',
-                    style: TextStyle(color: Color(0xFFD8C88E), fontSize: 12)),
             ],
           );
           final withdraw = ElevatedButton(
@@ -517,41 +515,54 @@ class _HomeTabState extends State<HomeTab> {
       _QuickAction('Spin & earn', Icons.stars_rounded, const Color(0xFFFFC344),
           () => _push(const SpinScreen())),
       _QuickAction('Challenge', Icons.emoji_events_rounded,
-          const Color(0xFFFFC344), () => _push(const MissionsScreen())),
+          const Color(0xFFFFC344), () => _push(const QuizScreen())),
       _QuickAction('Refer & earn', Icons.person_add_alt_1_rounded,
           const Color(0xFFFFC344), () => _push(const InviteScreen())),
       _QuickAction('Tutorial', Icons.menu_book_rounded,
           const Color(0xFFFFC344), () => _push(const HelpScreen())),
     ];
-    return Container(
-      height: 76,
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF171D22),
-        borderRadius: BorderRadius.circular(13),
-      ),
-      child: Row(
-        children: actions.map((action) => Expanded(
-          child: InkWell(
-            onTap: action.onTap,
-            borderRadius: BorderRadius.circular(10),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(action.icon, color: action.color, size: 23),
-                const SizedBox(height: 4),
-                Text(action.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 9,
-                        fontWeight: FontWeight.w700)),
-              ],
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Padding(
+          padding: EdgeInsets.only(left: 1, bottom: 6),
+          child: Text('Earn More..',
+              style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800)),
+        ),
+        Container(
+          height: 62,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+          decoration: BoxDecoration(
+            color: const Color(0xFF171D22),
+            borderRadius: BorderRadius.circular(13),
           ),
-        )).toList(),
-      ),
+          child: Row(
+            children: actions.map((action) => Expanded(
+              child: InkWell(
+                onTap: action.onTap,
+                borderRadius: BorderRadius.circular(10),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(action.icon, color: action.color, size: 21),
+                    const SizedBox(height: 3),
+                    Text(action.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 8,
+                            fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            )).toList(),
+          ),
+        ),
+      ],
     );
   }
 
@@ -590,14 +601,14 @@ class _HomeTabState extends State<HomeTab> {
                   crossAxisCount: columns,
                   mainAxisSpacing: 8,
                   crossAxisSpacing: 8,
-                  mainAxisExtent: 124,
+                  mainAxisExtent: 106,
                 ),
                 itemBuilder: (context, index) => _taskTile(tasks[index]),
               );
             }),
           const SizedBox(height: 10),
           SizedBox(
-            height: 40,
+            height: 34,
             child: TextButton(
               onPressed: () => _push(const EarnScreen()),
               style: TextButton.styleFrom(
@@ -720,7 +731,7 @@ class _HomeTabState extends State<HomeTab> {
             crossAxisCount: columns,
             mainAxisSpacing: 8,
             crossAxisSpacing: 8,
-            mainAxisExtent: 124,
+            mainAxisExtent: 106,
           ),
           itemBuilder: (_, __) => Container(
             decoration: BoxDecoration(
@@ -736,7 +747,7 @@ class _HomeTabState extends State<HomeTab> {
     final surveys = _surveys.whereType<Map>().map((item) =>
         Map<String, dynamic>.from(item)).where((survey) =>
         (survey['title'] ?? '').toString().trim().isNotEmpty &&
-        (survey['id'] ?? '').toString().trim().isNotEmpty).take(12).toList();
+        (survey['id'] ?? survey['_id'] ?? '').toString().trim().isNotEmpty).take(12).toList();
     if (surveys.isEmpty) {
       return _emptyCard(
         icon: Icons.poll_rounded,
@@ -751,7 +762,7 @@ class _HomeTabState extends State<HomeTab> {
       );
     }
     return SizedBox(
-      height: 114,
+      height: 100,
       child: LayoutBuilder(builder: (context, constraints) {
         final tileWidth = (constraints.maxWidth - 18) / 4;
         return ListView.separated(
@@ -841,13 +852,13 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _surveySkeleton() => SizedBox(
-        height: 114,
+        height: 100,
         child: Row(
           children: List.generate(
             4,
             (index) => Expanded(
               child: Container(
-                margin: EdgeInsets.only(right: index == 0 ? 9 : 0),
+                margin: EdgeInsets.only(right: index == 3 ? 0 : 6),
                 decoration: BoxDecoration(
                   color: AppColors.surfaceVariant,
                   borderRadius: BorderRadius.circular(16),
@@ -882,7 +893,7 @@ class _HomeTabState extends State<HomeTab> {
   Widget _providerStrip() {
     if (_loading) {
       return SizedBox(
-        height: 77,
+        height: 64,
         child: Row(children: List.generate(3, (index) => Expanded(
           child: Container(
             margin: EdgeInsets.only(right: index == 2 ? 0 : 7),
@@ -904,7 +915,7 @@ class _HomeTabState extends State<HomeTab> {
     }
     final entries = counts.entries.toList();
     return SizedBox(
-      height: 78,
+      height: 64,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: entries.length,
@@ -912,7 +923,7 @@ class _HomeTabState extends State<HomeTab> {
         itemBuilder: (context, index) {
           final entry = entries[index];
           return SizedBox(
-            width: 100,
+            width: 90,
             child: Material(
               color: const Color(0xFFF5FBFF),
               borderRadius: BorderRadius.circular(11),
@@ -1088,7 +1099,7 @@ class _HomeTabState extends State<HomeTab> {
             onPressed: onAction,
             style: TextButton.styleFrom(
               foregroundColor: AppColors.primaryDark,
-              minimumSize: const Size(44, 40),
+              minimumSize: const Size(44, 30),
               padding: const EdgeInsets.symmetric(horizontal: 5),
             ),
             child: Text(action,
