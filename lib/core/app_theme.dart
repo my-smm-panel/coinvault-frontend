@@ -20,8 +20,34 @@ class AppColors {
   static const Color success = Color(0xFF16A34A);
   static const Color hot = Color(0xFFEC4899);
   static const Color error = Color(0xFFDC2626);
-}
 
+  // ── Legacy aliases (backward compat) ──
+  static const Color cardBackground = surface;
+  static const Color divider = border;
+  static const Color warning = primary;
+  static const Color primaryGradientColor = primary;
+  static const LinearGradient primaryGradient = LinearGradient(
+    colors: [primaryDark, primary],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  static const LinearGradient goldGradient = LinearGradient(
+    colors: [primary, primaryLight],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  static const LinearGradient cardGradient = LinearGradient(
+    colors: [Color(0xFFFFFFFF), Color(0xFFFFFCF7)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  static const LinearGradient brandHeaderGradient = LinearGradient(
+    colors: [brandHeader, Color(0xFF1E1245)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  static const Color goldLight = primaryLight;
+}
 class AppTextStyles {
   static TextStyle get displayLarge => GoogleFonts.inter(
     fontSize: 32, fontWeight: FontWeight.w800, color: AppColors.textPrimary, height: 1.2,
