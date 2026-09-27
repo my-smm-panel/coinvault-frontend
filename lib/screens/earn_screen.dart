@@ -134,10 +134,18 @@ class _EarnScreenState extends State<EarnScreen> {
           _available(item) &&
           _title(item).isNotEmpty &&
           _id(item).isNotEmpty &&
-          !(item['type'] ?? item['category'] ?? '')
+          !((item['type'] ?? item['category'] ?? '')
               .toString()
               .toUpperCase()
-              .contains('SURVEY'))
+              .contains('SURVEY')) &&
+          !((item['type'] ?? item['category'] ?? '')
+              .toString()
+              .toUpperCase()
+              .contains('OFFERWALL')) &&
+          !((item['type'] ?? item['category'] ?? '')
+              .toString()
+              .toUpperCase()
+              .contains('PAYMENTWALL')))
       .toList();
 
   bool _isDaily(Map item) {
@@ -365,7 +373,9 @@ class _EarnScreenState extends State<EarnScreen> {
     if (_dailyExpanded) {
       return LayoutBuilder(builder: (context, constraints) {
         const gap = 8.0;
-        final width = (constraints.maxWidth - gap * 2) / 3;
+        final columns = constraints.maxWidth < 360 ? 2 : 3;
+        final width =
+            (constraints.maxWidth - gap * (columns - 1)) / columns;
         return Wrap(
           spacing: gap,
           runSpacing: gap,
