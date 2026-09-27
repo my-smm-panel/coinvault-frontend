@@ -7,14 +7,13 @@ import '../core/app_theme.dart';
 import '../core/provider_logos.dart';
 import '../services/app_repository.dart';
 import '../services/balance_stream.dart';
-import '../services/offerwall_service.dart';
 import '../services/auth_service.dart';
 import '../widgets/cv_header.dart';
-import '../widgets/home_banner_carousel.dart';
 import 'earn_screen.dart';
+import 'help_screen.dart';
+import 'offerwall_screen.dart';
+import 'provider_tasks_screen.dart';
 import 'task_detail_screen.dart';
-import 'offer_detail_screen.dart';
-import '../widgets/app_logo.dart';
 import 'invite_screen.dart';
 import 'leaderboard_screen.dart';
 import 'missions_screen.dart';
@@ -95,36 +94,26 @@ class _HomeScreenState extends State<HomeScreen> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 46,
-                          height: 46,
+                          width: 52,
+                          height: 52,
                           margin: const EdgeInsets.only(top: 2),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: _currentIndex == 2
-                                ? AppColors.primaryContainer
-                                : AppColors.goldContainer,
+                            color: AppColors.goldContainer,
                             border: Border.all(
-                              color: _currentIndex == 2
-                                  ? AppColors.primary
-                                  : AppColors.border,
-                              width: 1.5,
-                            ),
+                                color: _currentIndex == 2 ? AppColors.gold : AppColors.border,
+                                width: 2.5),
                             boxShadow: _currentIndex == 2
-                                ? [
-                                    BoxShadow(
-                                      color: AppColors.primary.withOpacity(0.18),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 3),
-                                    ),
-                                  ]
+                                ? [BoxShadow(color: AppColors.gold.withOpacity(0.28), blurRadius: 12)]
                                 : null,
                           ),
-                          child: Icon(
-                            Icons.emoji_events_rounded,
-                            color: _currentIndex == 2
-                                ? AppColors.primaryDark
-                                : AppColors.gold,
-                            size: 25,
+                          child: ClipOval(
+                            child: Image.asset(
+                              'assets/app_icon.jpg',
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.emoji_events_rounded, color: AppColors.gold, size: 26),
+                            ),
                           ),
                         ),
                         Text(
@@ -132,9 +121,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
-                            color: _currentIndex == 2
-                                ? AppColors.primaryDark
-                                : AppColors.textTertiary,
+                            color: _currentIndex == 2 ? AppColors.gold : AppColors.textTertiary,
                           ),
                         ),
                       ],
@@ -243,7 +230,10 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-/// Content-rich light-theme home dashboard (design sheet):
+/// Home tab matching the COINIVO-style mockup:
+/// header → green balance hero → Task of the Day grid → Earn More bar →
+/// horizontal Surveys → Task Providers → Ludo double-coins banner.
+/// All data stays server-authoritative (BalanceStream + AppRepository).
 class HomeTab extends StatefulWidget {
   const HomeTab({super.key});
 
@@ -254,143 +244,46 @@ class HomeTab extends StatefulWidget {
 class _HomeTabState extends State<HomeTab> {
   List<dynamic> _surveys = [];
   List<dynamic> _tasks = [];
-  List<dynamic> _offers = [];
-  List<OfferwallOffer> _offerwallOffers = [];
-  List<dynamic> _activity = [];
-  Map<String, dynamic> _leaderboard = {};
-  bool _loadingHome = true;
-  bool _offerwallFailed = false;
-  int _spinsUsedToday = 0; // server-authoritative; set in _loadHomeData
-
-  static const int _dailyGoal = 500;
+  bool _loading = true;
 
   @override
   void initState() {
     super.initState();
-    _loadHomeData();
-    _loadActivity();
-    _loadLeaderboard();
+    _load();
   }
 
-  Future<void> _loadHomeData() async {
+  Future<void> _load() async {
     final repo = AppRepository.instance;
     final results = await Future.wait<dynamic>([
       repo.fetchSurveys(),
       repo.fetchOffers(),
-      repo.spinsRemainingToday(), // 2 — server-authoritative spin count
     ]);
-    // Fetch Offerwall.GG offers in parallel (best-effort; may fail gracefully)
-    final offerwallResult = await OfferwallService.instance.fetchOffers();
     if (!mounted) return;
     setState(() {
       _surveys = (results[0] as List<dynamic>?) ?? [];
-      final allOffers =
-          ((results[1] as List<dynamic>?) ?? []).cast<Map>();
-      _offers = allOffers;
-      _tasks = allOffers
-          .where((o) => ((o['type'] ?? '').toString().startsWith('INSTALL')))
+      _tasks = ((results[1] as List<dynamic>?) ?? [])
+          .where((o) =>
+              ((o['type'] ?? '').toString().toUpperCase().startsWith('INSTALL')) ||
+              ((o['type'] ?? '').toString().toUpperCase().startsWith('TASK')) ||
+              ((o['coins'] ?? 0) as num) > 0)
           .take(6)
-          .map((m) => <String, dynamic>{
-                'title': (m['title'] ?? '').toString(),
-                'sub': (m['shortDesc'] ?? '').toString(),
-                'coins': ((m['coins'] ?? 0) as num).toInt(),
-                'provider': _categoryLabel((m['category'] ?? 'OTHER').toString()),
-                'steps': ((m['instructions'] ?? []) as List)
-                    .map((e) => e.toString())
-                    .toList(),
-              })
           .toList();
-      // Offerwall.GG offers (may be empty if network fails)
-      if (offerwallResult != null) {
-        _offerwallOffers = offerwallResult.take(4).toList();
-        _offerwallFailed = false;
-      } else {
-        _offerwallOffers = [];
-        _offerwallFailed = true;
-      }
-      // Spins used today (server truth) — clamped 0..2.
-      final remaining = results[2] as int?;
-      _spinsUsedToday =
-          remaining == null ? 0 : (2 - remaining).clamp(0, 2).toInt();
-      _loadingHome = false;
+      _loading = false;
     });
   }
 
-  Future<void> _loadActivity() async {
-    try {
-      final list = await AppRepository.instance.fetchActivity();
-      if (!mounted) return;
-      final now = DateTime.now();
-      int earned = 0;
-      for (final raw in list) {
-        final m = raw is Map ? Map<String, dynamic>.from(raw) : <String, dynamic>{};
-        final coins = (m['coins'] as num?)?.toInt() ?? 0;
-        if (coins <= 0) continue;
-        final ts = m['timestamp'] ?? m['createdAt'] ?? m['date'];
-        DateTime? dt;
-        if (ts is num) {
-          dt = DateTime.fromMillisecondsSinceEpoch(
-              ts > 1e12 ? ts.toInt() : (ts.toInt() * 1000));
-        } else if (ts is String) {
-          dt = DateTime.tryParse(ts);
-        }
-        if (dt == null || now.difference(dt).inHours < 24) {
-          earned += coins;
-        }
-      }
-      setState(() => _activity = [
-            {'earned': earned},
-          ]);
-    } catch (_) {
-      if (mounted) setState(() => _activity = []);
-    }
-  }
-
-  Future<void> _loadLeaderboard() async {
-    try {
-      final lb = await AppRepository.instance.fetchLeaderboard('weekly');
-      if (mounted) setState(() => _leaderboard = lb);
-    } catch (_) {}
-  }
-
-  static String _categoryLabel(String c) {
-    switch (c) {
-      case 'GAME':
-        return 'Games';
-      case 'APP':
-        return 'Apps';
-      case 'FINANCE':
-        return 'Finance';
-      case 'SHOPPING':
-        return 'Shopping';
-      case 'ENTERTAINMENT':
-        return 'Fun';
-      case 'SURVEY':
-        return 'Surveys';
-      default:
-        return 'Tasks';
-    }
-  }
-
-  void _push(BuildContext context, Widget page) {
+  void _push(Widget page) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
-  String _fmt(int n) {
-    final str = n.abs().toString();
-    final sb = StringBuffer();
-    for (var i = 0; i < str.length; i++) {
-      if (i > 0 && (str.length - i) % 3 == 0) {
-        sb.write(',');
-      }
-      sb.write(str[i]);
+  String _reward(num coins) {
+    final c = coins.toInt();
+    if (c >= 1000) {
+      final k = c / 1000.0;
+      return '+ ${k == k.roundToDouble() ? k.toInt() : k.toStringAsFixed(1)}k';
     }
-    return n.isNegative ? '-$sb' : sb.toString();
-  }
-
-  int _todayEarned() {
-    if (_activity.isEmpty) return 0;
-    return ((_activity.first as Map)['earned'] as num?)?.toInt() ?? 0;
+    final s = c.toString();
+    return '+ ${s.length > 3 ? '${s.substring(0, s.length - 1)}.${s.substring(s.length - 1)}' : s}';
   }
 
   @override
@@ -398,73 +291,53 @@ class _HomeTabState extends State<HomeTab> {
     return ListenableBuilder(
       listenable: Listenable.merge([AuthService(), BalanceStream.instance]),
       builder: (context, _) {
-        final auth = AuthService();
-        final user = auth.userModel;
-        // Fresh global balance wins; fall back to login-cached coins only before
-        // the first server refresh arrives (spec R1 — never a hardcoded 0).
+        final user = AuthService().userModel;
         final coins = BalanceStream.instance.value ?? user?.coins ?? 0;
 
         return Scaffold(
-          backgroundColor: AppColors.surface,
+          backgroundColor: const Color(0xFFFAFAF8),
           body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CvHeader(
-                    showProfile: true,
-                    profileLeft: true,
-                    showMoney: true,
-                    coins: coins,
-                    showWordmark: false,
-                  ),
-                  const SizedBox(height: 12),
-                  _promoCarousel(context),
-                  const SizedBox(height: 18),
-                  _balanceSummary(context, coins),
-                  const SizedBox(height: 18),
-                  _todayEarningsCard(context),
-                  const SizedBox(height: 20),
-                  _sectionTitle('Quick Earn'),
-                  const SizedBox(height: 10),
-                  _quickEarn(context),
-                  const SizedBox(height: 18),
-                  _dailySpinCard(context),
-                  const SizedBox(height: 20),
-                  _sectionTitle('Tasks of the Day',
-                      action: 'View All',
-                      onAction: () => _push(context, const EarnScreen())),
-                  const SizedBox(height: 10),
-                  _loadingHome ? _skeletonH() : _tasksRow(context),
-                  const SizedBox(height: 20),
-                  _sectionTitle('Featured Surveys',
-                      action: 'View All',
-                      onAction: () => _push(context, const SurveysScreen())),
-                  const SizedBox(height: 10),
-                  _loadingHome ? _skeletonH() : _surveyRow(context),
-                  const SizedBox(height: 20),
-                  _sectionTitle('Offer of the Day',
-                      action: 'View All',
-                      onAction: () => _push(context, const EarnScreen())),
-                  const SizedBox(height: 10),
-                  _offerOfDay(context),
-                  const SizedBox(height: 20),
-                  _sectionTitle('Daily Missions',
-                      action: 'View All',
-                      onAction: () => _push(context, const MissionsScreen())),
-                  const SizedBox(height: 10),
-                  _missionsRow(context),
-                  const SizedBox(height: 20),
-                  _inviteCard(context),
-                  const SizedBox(height: 18),
-                  Center(
-                    child: Text(
-                      'CoinVault • Earn coins daily',
-                      style: AppTextStyles.bodySmall,
+            bottom: false,
+            child: RefreshIndicator(
+              onRefresh: _load,
+              color: AppColors.primary,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 110),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CvHeader(
+                      showProfile: true,
+                      profileLeft: true,
+                      showMoney: true,
+                      coins: coins,
+                      showWordmark: false,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 12),
+                    _balanceHero(coins),
+                    const SizedBox(height: 18),
+                    _sectionHeader('Task of the Day', 'See all',
+                        () => _push(const EarnScreen())),
+                    const SizedBox(height: 12),
+                    _loading ? _gridSkeleton() : _tasksGrid(),
+                    const SizedBox(height: 18),
+                    _earnMoreBar(),
+                    const SizedBox(height: 18),
+                    _sectionHeader('Surveys', 'View All',
+                        () => _push(const SurveysScreen())),
+                    const SizedBox(height: 12),
+                    _surveysRow(),
+                    const SizedBox(height: 18),
+                    _sectionHeader('Task Providers', 'View All',
+                        () => _push(const OfferwallScreen())),
+                    const SizedBox(height: 12),
+                    _providersRow(),
+                    const SizedBox(height: 14),
+                    _ludoBanner(),
+                    const SizedBox(height: 8),
+                  ],
+                ),
               ),
             ),
           ),
@@ -473,1442 +346,472 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  // ───────────────────────── Promo carousel ───────────────────────────────
-  // Slides are built from REAL offers fetched from the backend — never
-  // hardcoded. If the backend returns no offers, the carousel is hidden.
-  Widget _promoCarousel(BuildContext context) {
-    final offers = _offers.take(5).toList();
-    if (offers.isEmpty) return const SizedBox.shrink();
-
-    const accents = [
-      Color(0xFFF59E0B), Color(0xFF16A34A), Color(0xFF3B82F6),
-      Color(0xFF8B5CF6), Color(0xFFEC4899),
-    ];
-    const accentSofts = [
-      Color(0xFFFFF7E6), Color(0xFFE9F7EE), Color(0xFFEAF1FF),
-      Color(0xFFF1ECFE), Color(0xFFFDF0F6),
-    ];
-
-    return HomeBannerCarousel(
-      slides: [
-        for (var i = 0; i < offers.length; i++)
-          BannerSlide(
-            title: (offers[i]['title'] ?? 'Offer').toString(),
-            subtitle: (offers[i]['shortDesc'] ?? offers[i]['description'] ?? 'Tap to view offer').toString(),
-            cta: 'View Offer',
-            icon: Icons.local_offer_rounded,
-            accent: accents[i % accents.length],
-            accentSoft: accentSofts[i % accentSofts.length],
-            imageAsset: i == 0 ? 'assets/bear_earn.png' : null,
-            reward: '+${((offers[i]['coins'] ?? 0) as num).toInt()} Coins',
-            onTap: () => _push(context, const EarnScreen()),
-          ),
-      ],
-    );
-  }
-
-  // ───────────────────────── Balance summary ───────────────────────────────
-  Widget _balanceSummary(BuildContext context, int coins) {
-    final earned = _todayEarned();
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 3,
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: _cardDec(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    const Flexible(
-                      child: Text('Your Balance',
-                          style: TextStyle(
-                              color: AppColors.textSecondary,
-                              fontSize: 11.5,
-                              fontWeight: FontWeight.w600)),
-                    ),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => _push(context, const WithdrawScreen()),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 11, vertical: 5),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(AppRadius.full),
-                        ),
-                        child: const Text('Withdraw',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800)),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                // Balance value — wraps naturally, never clips or overlaps.
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: 5,
-                  runSpacing: 4,
-                  children: [
-                    const Icon(Icons.monetization_on_rounded,
-                        color: AppColors.primary, size: 22),
-                    Text(_fmt(coins),
-                        style: GoogleFonts.inter(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                          height: 1.1,
-                        )),
-                    const Text('Coins',
-                        style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600)),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text('≈ ₹${(coins / 10).toStringAsFixed(0)}',
-                    style: const TextStyle(
-                        color: AppColors.textSecondary, fontSize: 11.5)),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          flex: 2,
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: _cardDec(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _miniStat('Today', '+${_fmt(earned)}',
-                    Icons.trending_up_rounded, AppColors.success),
-                const SizedBox(height: 8),
-                _miniStat('Total Earned', _fmt(coins),
-                    Icons.emoji_events_rounded, AppColors.primary),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _miniStat(String label, String value, IconData icon, Color color) {
-    return Row(
-      children: [
-        Container(
-          width: 26,
-          height: 26,
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 15, color: color),
-        ),
-        const SizedBox(width: 7),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label,
-                style: const TextStyle(
-                    color: AppColors.textSecondary, fontSize: 10.5)),
-            Text(value,
-                style: const TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800)),
-          ],
-        ),
-      ],
-    );
-  }
-
-  // ───────────────────────── Today's earnings ──────────────────────────────
-  Widget _todayEarningsCard(BuildContext context) {
-    final earned = _todayEarned();
-    final progress = (earned / _dailyGoal).clamp(0.0, 1.0).toDouble();
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(14),
-      decoration: _cardDec(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Text("Today's Earnings",
-                  style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => _push(context, const TrackingScreen()),
-                child: Row(
-                  children: const [
-                    Text('View Activity',
-                        style: TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700)),
-                    Icon(Icons.arrow_forward_ios_rounded,
-                        size: 12, color: AppColors.primary),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text('+${_fmt(earned)}',
-                  style: GoogleFonts.inter(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.primary,
-                    height: 1.1,
-                  )),
-              const SizedBox(width: 5),
-              const Text('Coins earned today',
-                  style: TextStyle(
-                      color: AppColors.textSecondary, fontSize: 12)),
-              const Spacer(),
-              Text('${_fmt(earned)}/${_fmt(_dailyGoal)}',
-                  style: const TextStyle(
-                      color: AppColors.textPrimary,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700)),
-            ],
-          ),
-          const SizedBox(height: 9),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(AppRadius.full),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 8,
-              backgroundColor: AppColors.border,
-              valueColor:
-                  const AlwaysStoppedAnimation<Color>(AppColors.primary),
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text('Keep earning to reach your daily goal',
-              style:
-                  TextStyle(color: AppColors.textSecondary, fontSize: 11.5)),
-        ],
-      ),
-    );
-  }
-
-  // ───────────────────────── Featured surveys ──────────────────────────────
-  Widget _surveyRow(BuildContext context) {
-    if (_surveys.isEmpty) return _emptyRow('No surveys yet — check back soon');
-    final cards = _surveys.take(6).map((s) {
-      final m = s as Map;
-      return _hCard(
-        context: context,
-        title: (m['title'] ?? 'Survey').toString(),
-        sub: (m['provider'] ?? 'CPX Research').toString(),
-        coins: ((m['rewardCoins'] ?? m['coins'] ?? 0) as num).toInt(),
-        meta: '${(m['durationMinutes'] ?? m['duration'] ?? 5)} min',
-        chip: 'Survey',
-        icon: Icons.poll_rounded,
-        color: const Color(0xFF3B82F6),
-        cta: 'Start',
-        provider: (m['provider'] ?? '').toString(),
-        onTap: () => _push(context, const SurveysScreen()),
-      );
-    }).toList();
-    return SizedBox(
-      height: 168,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: cards.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (_, i) => cards[i],
-      ),
-    );
-  }
-
-  // ───────────────────────── Tasks of the day ──────────────────────────────
-  Widget _tasksRow(BuildContext context) {
-    // Combine Direct Tasks + Offerwall.GG offers
-    final combined = <Map<String, dynamic>>[];
-
-    // Direct Tasks (from _offers filtered by INSTALL type)
-    for (final t in _tasks.take(3)) {
-      final m = t as Map;
-      combined.add(<String, dynamic>{
-        'title': (m['title'] ?? 'Task').toString(),
-        'sub': (m['sub'] ?? m['provider'] ?? '').toString(),
-        'coins': ((m['coins'] ?? 0) as num).toInt(),
-        'steps': (m['steps'] as List?)?.cast<String>() ?? [],
-        'provider': (m['provider'] ?? '').toString(),
-        'icon': Icons.task_alt_rounded,
-        'color': const Color(0xFF16A34A),
-        'source': 'direct',
-      });
-    }
-
-    // Offerwall.GG offers
-    for (final o in _offerwallOffers.take(3)) {
-      combined.add(<String, dynamic>{
-        'title': o.title,
-        'sub': o.shortRequirement ?? '',
-        'coins': o.coinReward,
-        'steps': o.goals.isNotEmpty ? o.goals : (o.requirements.isNotEmpty ? o.requirements : []),
-        'provider': o.provider.isEmpty ? 'Offerwall.GG' : o.provider,
-        'icon': Icons.local_offer_rounded,
-        'color': ProviderLogos.colorFor(o.provider),
-        'source': 'offerwall',
-        'offerId': o.id,
-      });
-    }
-
-    if (combined.isEmpty) return _emptyRow('No tasks yet — check back soon');
-
-    final cards = combined.take(6).map((t) {
-      final source = t['source'] as String;
-      final isOfferwall = source == 'offerwall';
-      final provider = (t['provider'] ?? 'Offer').toString();
-      final title = (t['title'] ?? 'Task').toString();
-      final sub = (t['sub'] ?? '').toString();
-      final coins = (t['coins'] as int);
-      final steps = (t['steps'] as List).cast<String>();
-      final icon = t['icon'] as IconData;
-      final color = t['color'] as Color;
-
-      return _hCard(
-        context: context,
-        title: title,
-        sub: sub,
-        coins: coins,
-        meta: '~${(coins ~/ 20).clamp(1, 60)} min',
-        chip: isOfferwall ? 'Offer' : 'Task',
-        icon: icon,
-        color: color,
-        cta: isOfferwall ? 'Start Offer' : 'Start Task',
-        provider: provider,
-        onTap: isOfferwall
-            ? () => _push(
-                  context,
-                  OfferDetailScreen(
-                    offerId: t['offerId'] as String,
-                    provider: provider,
-                    title: title,
-                    coins: coins,
-                  ),
-                )
-            : () => _push(
-                  context,
-                  TaskDetailScreen(
-                    provider: provider,
-                    title: title,
-                    desc: sub,
-                    coins: coins,
-                    steps: steps.isNotEmpty
-                        ? steps
-                        : const ['Tap Start', 'Complete the task', 'Coins credited'],
-                  ),
-                ),
-      );
-    }).toList();
-    return SizedBox(
-      height: 168,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: cards.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (_, i) => cards[i],
-      ),
-    );
-  }
-
-  Widget _hCard({
-    required BuildContext context,
-    required String title,
-    required String sub,
-    required int coins,
-    required String meta,
-    required String chip,
-    required IconData icon,
-    required Color color,
-    required String cta,
-    required VoidCallback onTap,
-    String? provider,
-    double width = 200,
-  }) {
-    return Container(
-      width: width,
-      padding: const EdgeInsets.all(13),
-      decoration: _cardDec(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              // ONE resolver: real provider logo → app logo from title →
-              // clean activity icon. Never a dummy brand logo.
-              AppLogo(
-                provider: provider,
-                title: title,
-                size: 36,
-                radius: 9,
-                fallbackIcon: icon,
-                fallbackColor: color,
-              ),
-              const Spacer(),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(AppRadius.full),
-                ),
-                child: Text(chip,
-                    style: TextStyle(
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w800,
-                        color: color)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 9),
-          Text(title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 13.5,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary)),
-          const SizedBox(height: 3),
-          Text(sub,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                  fontSize: 11, color: AppColors.textSecondary)),
-          const SizedBox(height: 7),
-          Row(
-            children: [
-              Icon(Icons.monetization_on_rounded,
-                  size: 14, color: AppColors.primary),
-              const SizedBox(width: 4),
-              Text('+${_fmt(coins)} Coins',
-                  style: const TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.primary)),
-              const SizedBox(width: 4),
-              Text('≈ ₹${(coins / 10).toStringAsFixed(0)}',
-                  style: const TextStyle(
-                      fontSize: 10,
-                      color: AppColors.textSecondary)),
-              const SizedBox(width: 8),
-              Icon(Icons.access_time_rounded,
-                  size: 13, color: AppColors.textSecondary),
-              const SizedBox(width: 3),
-              Text(meta,
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary)),
-            ],
-          ),
-          const Spacer(),
-          SizedBox(
-            width: double.infinity,
-            height: 32,
-            child: ElevatedButton(
-              onPressed: onTap,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: EdgeInsets.zero,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-              child: Text(cta,
-                  style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w800)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ───────────────────────── Offer of the day ──────────────────────────────
-  Widget _offerOfDay(BuildContext context) {
-    if (_offers.isEmpty) return _emptyRow('No featured offer today');
-    final offer = _offers.first as Map;
-    final coins = ((offer['coins'] ?? 0) as num).toInt();
-    final steps = (offer['instructions'] as List?)?.take(4) ?? const [];
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: AppColors.cardBackground,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-        border: Border.all(color: AppColors.primary.withOpacity(0.35), width: 1.5),
-        boxShadow: AppShadows.card,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  gradient: AppColors.goldGradient,
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: const Icon(Icons.local_fire_department_rounded,
-                    color: Colors.white, size: 21),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text((offer['title'] ?? 'Offer of the Day').toString(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary)),
-                    const SizedBox(height: 3),
-                    Text((offer['shortDesc'] ?? '').toString(),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            fontSize: 11.5, color: AppColors.textSecondary)),
-                  ],
-                ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  const Text('Reward',
-                      style: TextStyle(
-                          fontSize: 10, color: AppColors.textSecondary)),
-                  Text('+${_fmt(coins)}',
-                      style: const TextStyle(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primary)),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              for (int i = 0; i < steps.length; i++) ...[
-                _milestone(i + 1, steps.elementAt(i).toString(),
-                    i == 0 ? AppColors.primary : AppColors.border),
-                if (i != steps.length - 1)
-                  Expanded(
-                    child: Container(
-                      height: 2,
-                      color: AppColors.border,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                    ),
-                  ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 13),
-          SizedBox(
-            width: double.infinity,
-            height: 38,
-            child: ElevatedButton(
-              onPressed: () => _push(context, const EarnScreen()),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppRadius.md),
-                ),
-              ),
-              child: const Text('View Offer',
-                  style:
-                      TextStyle(fontSize: 13, fontWeight: FontWeight.w800)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _milestone(int n, String label, Color color) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 22,
-          height: 22,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text('$n',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800)),
-          ),
-        ),
-        const SizedBox(height: 4),
-        SizedBox(
-          width: 58,
-          child: Text(label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  fontSize: 9, color: AppColors.textSecondary)),
-        ),
-      ],
-    );
-  }
-
-  // ───────────────────────── Quick earn ────────────────────────────────────
-  Widget _quickEarn(BuildContext context) {
-    final items = [
-      ('Surveys', Icons.poll_rounded, const Color(0xFF3B82F6), '+450',
-          () => _push(context, const SurveysScreen())),
-      ('Quizzes', Icons.school_rounded, const Color(0xFF10B981), '+300',
-          () => _push(context, const QuizScreen())),
-      ('Tasks', Icons.task_alt_rounded, const Color(0xFFF59E0B), '+600',
-          () => _push(context, const EarnScreen())),
-      ('Offers', Icons.local_offer_rounded, const Color(0xFF8B5CF6), '+1,500',
-          () => _push(context, const EarnScreen())),
-      ('Scratch', Icons.grid_view_rounded, const Color(0xFFEC4899), '+200',
-          () => _push(context, const ScratchScreen())),
-      ('Spin', Icons.donut_large_rounded, const Color(0xFF14B8A6), '+10',
-          () => _push(context, const SpinScreen())),
-    ];
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 9,
-      crossAxisSpacing: 9,
-      childAspectRatio: 1.15,
-      children: items.map((it) {
-        return GestureDetector(
-          onTap: it.$5,
-          child: Container(
-            padding: const EdgeInsets.all(10),
-            decoration: _cardDec(),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 34,
-                  height: 34,
-                  decoration: BoxDecoration(
-                    color: it.$3.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(it.$2, size: 18, color: it.$3),
-                ),
-                const SizedBox(height: 6),
-                Text(it.$1,
-                    style: const TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary)),
-                const SizedBox(height: 2),
-                Text(it.$4,
-                    style: const TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primary)),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  // ───────────────────────── Recommended ───────────────────────────────────
-  Widget _recommendedRow(BuildContext context) {
-    // Built from REAL backend data — surveys + offers. Never hardcoded.
-    final recs = <Map<String, dynamic>>[];
-    for (final s in _surveys.take(2)) {
-      recs.add({
-        't': (s['title'] ?? 'Survey').toString(),
-        'c': ((s['coins'] ?? s['reward'] ?? 0) as num).toInt(),
-        'm': 'Survey',
-        'i': Icons.poll_rounded,
-        'col': const Color(0xFF3B82F6),
-        'cta': 'Take Survey',
-        'go': () => _push(context, const SurveysScreen()),
-      });
-    }
-    for (final o in _offers.take(2)) {
-      recs.add({
-        't': (o['title'] ?? 'Offer').toString(),
-        'c': ((o['coins'] ?? 0) as num).toInt(),
-        'm': 'Offer',
-        'i': Icons.local_offer_rounded,
-        'col': AppColors.primary,
-        'cta': 'View Offer',
-        'go': () => _push(context, const EarnScreen()),
-      });
-    }
-    if (recs.isEmpty) return const SizedBox.shrink();
-    return SizedBox(
-      height: 132,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: recs.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (_, i) {
-          final r = recs[i];
-          return Container(
-            width: 176,
-            padding: const EdgeInsets.all(12),
-            decoration: _cardDec(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: (r['col'] as Color).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(r['i'] as IconData,
-                          size: 16, color: r['col'] as Color),
-                    ),
-                    const Spacer(),
-                    Text('+${_fmt(r['c'] as int)}',
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary)),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Text(r['t'] as String,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary)),
-                const SizedBox(height: 3),
-                Row(
-                  children: [
-                    Icon(Icons.access_time_rounded,
-                        size: 12, color: AppColors.textSecondary),
-                    const SizedBox(width: 3),
-                    Text(r['m'] as String,
-                        style: const TextStyle(
-                            fontSize: 10.5,
-                            color: AppColors.textSecondary)),
-                  ],
-                ),
-                const Spacer(),
-                SizedBox(
-                  width: double.infinity,
-                  height: 30,
-                  child: ElevatedButton(
-                    onPressed: r['go'] as VoidCallback,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(AppRadius.md),
-                      ),
-                    ),
-                    child: Text(r['cta'] as String,
-                        style: const TextStyle(
-                            fontSize: 11.5, fontWeight: FontWeight.w800)),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // ───────────────────────── High-paying tasks ─────────────────────────────
-  Widget _highPayingList(BuildContext context) {
-    final high = <Map>[
-      if (_offers.isNotEmpty)
-        ..._offers
-            .cast<Map>()
-            .where((o) => ((o['coins'] ?? 0) as num).toInt() >= 500)
-            .take(4)
-    ];
-    if (high.isEmpty) return const SizedBox.shrink(); // no fake fallback
-    return Column(
-      children: high.map((m) {
-        final coins = ((m['coins'] ?? 0) as num).toInt();
-        final provider = (m['provider'] ?? m['cat'] ?? '').toString();
-        final title = (m['title'] ?? 'Task').toString();
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Container(
-            padding: const EdgeInsets.all(13),
-            decoration: _cardDec(),
-            child: Row(
-              children: [
-                AppLogo(
-                  provider: provider,
-                  title: title,
-                  size: 44,
-                  fallbackIcon: Icons.local_fire_department_rounded,
-                  fallbackColor: AppColors.primary,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text((m['title'] ?? 'Task').toString(),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                  fontSize: 13.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary)),
-                          const SizedBox(width: 7),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 7, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.success.withOpacity(0.12),
-                              borderRadius:
-                                  BorderRadius.circular(AppRadius.full),
-                            ),
-                            child: const Text('New',
-                                style: TextStyle(
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.success)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text((m['cat'] ?? m['provider'] ?? 'Offer').toString(),
-                          style: const TextStyle(
-                              fontSize: 11, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text('+${_fmt(coins)}',
-                        style: const TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary)),
-                    const Text('Coins',
-                        style: TextStyle(
-                            fontSize: 10, color: AppColors.textSecondary)),
-                  ],
-                ),
-                const SizedBox(width: 8),
-                GestureDetector(
-                  onTap: () => _push(context, const EarnScreen()),
-                  child: const Icon(Icons.arrow_forward_ios_rounded,
-                      size: 15, color: AppColors.primary),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  // ───────────────────────── Daily spin ────────────────────────────────────
-  Widget _dailySpinCard(BuildContext context) {
-    final spinsLeft = (2 - _spinsUsedToday).clamp(0, 2).toInt();
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        gradient: AppColors.goldGradient,
-        borderRadius: BorderRadius.circular(AppRadius.lg),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: const [
-                    Icon(Icons.donut_large_rounded,
-                        color: Colors.white, size: 19),
-                    SizedBox(width: 7),
-                    Text('Daily Spin',
-                        style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.white)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  spinsLeft > 0
-                      ? '$spinsLeft free spin${spinsLeft == 1 ? '' : 's'} ready'
-                      : 'Your free spins are used for today',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                const Text(
-                  'Come back tomorrow for more rewards',
-                  style: TextStyle(color: Colors.white70, fontSize: 11.5),
-                ),
-                const SizedBox(height: 11),
-                GestureDetector(
-                  onTap: () => _push(context, const SpinScreen()),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                    ),
-                    child: Text(
-                      spinsLeft > 0 ? 'Spin Now' : 'View Rewards',
-                      style: const TextStyle(
-                        color: AppColors.primaryDark,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          // Use the existing CoinVault wheel art instead of a generic icon.
-          Container(
-            width: 78,
-            height: 78,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withOpacity(0.18),
-              border: Border.all(color: Colors.white.withOpacity(0.55), width: 2),
-            ),
-            child: ClipOval(
-              child: Image.asset(
-                'assets/wheel.png',
-                fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.donut_large_rounded,
-                  color: Colors.white,
-                  size: 38,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ───────────────────────── Daily missions ────────────────────────────────
-  Widget _missionsRow(BuildContext context) {
-    // Missions derived from REAL activity — no hardcoded progress or rewards.
-    final spinsUsed = _spinsUsedToday;
-      final surveysDone = _activity
-          .where((a) => a is Map && (a['type'] ?? a['source'] ?? '').toString().toUpperCase().contains('SURVEY'))
-          .length;
-      final tasksDone = _activity
-          .where((a) => a is Map && (a['type'] ?? a['source'] ?? '').toString().toUpperCase().contains('TASK'))
-          .length;
-      final missions = [
-        {'t': 'Complete 3 Surveys', 'cur': surveysDone, 'target': 3,
-         'i': Icons.poll_rounded, 'col': const Color(0xFF3B82F6)},
-        {'t': 'Complete 2 Tasks', 'cur': tasksDone, 'target': 2,
-         'i': Icons.task_alt_rounded, 'col': const Color(0xFF16A34A)},
-        {'t': 'Use 2 Free Spins', 'cur': spinsUsed, 'target': 2,
-         'i': Icons.donut_large_rounded, 'col': const Color(0xFFF59E0B)},
-    ];
-    return Column(
-      children: missions.map((m) {
-        final cur = (m['cur'] as num).toInt();
-        final target = (m['target'] as num).toInt();
-        final progress = (cur / target).clamp(0.0, 1.0).toDouble();
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Container(
-            padding: const EdgeInsets.all(13),
-            decoration: _cardDec(),
-            child: Row(
-              children: [
-                Container(
-                  width: 38,
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: (m['col'] as Color).withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(m['i'] as IconData,
-                      size: 19, color: m['col'] as Color),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(m['t'] as String,
-                          style: const TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.textPrimary)),
-                      const SizedBox(height: 6),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          minHeight: 6,
-                          backgroundColor: AppColors.border,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                              m['col'] as Color),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text('$cur/$target completed',
-                          style: const TextStyle(
-                              fontSize: 10, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text('${(progress * 100).toInt()}%',
-                    style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.primary)),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  // ───────────────────────── Invite & earn ─────────────────────────────────
-  Widget _inviteCard(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(15),
-      decoration: _cardDec(),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: const [
-                    Icon(Icons.card_giftcard_rounded,
-                        color: AppColors.primary, size: 19),
-                    SizedBox(width: 7),
-                    Text('Invite & Earn',
-                        style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary)),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Text('Invite friends and earn bonus coins',
-                    style: TextStyle(
-                        fontSize: 12, color: AppColors.textSecondary)),
-                const SizedBox(height: 4),
-                const Text('Coins for every friend who joins',
-                    style: TextStyle(
-                        fontSize: 11.5,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.primary)),
-                const SizedBox(height: 11),
-                GestureDetector(
-                  onTap: () => _push(context, const InviteScreen()),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(AppRadius.full),
-                    ),
-                    child: const Text('Invite Now',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w800)),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          ClipOval(
-            child: Image.asset(
-              'assets/bear_redeem.png',
-              width: 76,
-              height: 76,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                width: 76,
-                height: 76,
-                color: const Color(0xFFFFF7E6),
-                child: const Icon(Icons.card_giftcard_rounded, size: 32),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ───────────────────────── Limited-time offers ───────────────────────────
-  Widget _limitedOffers(BuildContext context) {
-    // Built from REAL offers — no hardcoded rewards.
-    final now = DateTime.now();
-    final offers = <Map<String, dynamic>>[];
-    for (final o in _offers.take(5)) {
-      offers.add({
-        't': (o['title'] ?? 'Offer').toString(),
-        'c': ((o['coins'] ?? 0) as num).toInt(),
-        'h': 24,
-        'i': Icons.local_offer_rounded,
-        'col': AppColors.primary,
-        'req': (o['shortDesc'] ?? o['description'] ?? 'Complete to earn').toString(),
-      });
-    }
-    if (offers.isEmpty) return const SizedBox.shrink();
-    return SizedBox(
-      height: 150,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: offers.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (_, i) {
-          final o = offers[i];
-          final ends = now.add(Duration(hours: o['h'] as int));
-          final hh = ends.hour.toString().padLeft(2, '0');
-          final mm = ends.minute.toString().padLeft(2, '0');
-          return Container(
-            width: 190,
-            padding: const EdgeInsets.all(13),
-            decoration: _cardDec(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 30,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: (o['col'] as Color).withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(o['i'] as IconData,
-                          size: 16, color: o['col'] as Color),
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 3),
-                      decoration: BoxDecoration(
-                        color: AppColors.error.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(AppRadius.full),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.timer_outlined,
-                              size: 11, color: AppColors.error),
-                          const SizedBox(width: 3),
-                          Text('Ends $hh:$mm',
-                              style: const TextStyle(
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.error)),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 9),
-                Text(o['t'] as String,
-                    style: const TextStyle(
-                        fontSize: 13.5,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary)),
-                const SizedBox(height: 3),
-                Text(o['req'] as String,
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary)),
-                const Spacer(),
-                Row(
-                  children: [
-                    Text('+${_fmt(o['c'] as int)} Coins',
-                        style: const TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.primary)),
-                    const Spacer(),
-                    GestureDetector(
-                      onTap: () => _push(context, const EarnScreen()),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 13, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(AppRadius.full),
-                        ),
-                        child: const Text('View Offer',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10.5,
-                                fontWeight: FontWeight.w800)),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  // ───────────────────────── Top earners ───────────────────────────────────
-  Widget _topEarners(BuildContext context) {
-    final top = (_leaderboard['top'] as List?)?.take(3).toList() ?? [];
-    if (top.isEmpty) {
-      return _emptyRow('Leaderboard updates soon');
-    }
-    final medals = [AppColors.primary, const Color(0xFF9CA3AF), const Color(0xFFB45309)];
-    return Container(
-      padding: const EdgeInsets.all(13),
-      decoration: _cardDec(),
-      child: Column(
-        children: [
-          for (int i = 0; i < top.length; i++) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Container(
-                    width: 26,
-                    height: 26,
-                    decoration: BoxDecoration(
-                      color: medals[i].withOpacity(0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text('${i + 1}',
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: medals[i])),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      (((top[i] as Map)['user'] ?? {}) as Map)['name'] ??
-                          'User',
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  Text('+${_fmt((((top[i] as Map)['coinsEarned'] ?? 0) as num).truncate())}',
-                      style: const TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.primary)),
-                ],
-              ),
-            ),
-            if (i != top.length - 1)
-              const Divider(height: 1, color: AppColors.border),
-          ],
-          const SizedBox(height: 8),
-          GestureDetector(
-            onTap: () => _push(context, const LeaderboardScreen()),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: const [
-                Text('View Full Rankings',
-                    style: TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700)),
-                Icon(Icons.arrow_forward_ios_rounded,
-                    size: 12, color: AppColors.primary),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ───────────────────────── How to earn ───────────────────────────────────
-  Widget _howToEarn(BuildContext context) {
-    final steps = [
-      ('Find a survey/task', Icons.search_rounded),
-      ('Complete it', Icons.check_circle_rounded),
-      ('Earn coins', Icons.monetization_on_rounded),
-      ('Redeem rewards', Icons.redeem_rounded),
-    ];
-    return Container(
-      padding: const EdgeInsets.all(15),
-      decoration: _cardDec(),
-      child: Row(
-        children: [
-          for (int i = 0; i < steps.length; i++) ...[
-            Expanded(
-              child: Column(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withOpacity(0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(steps[i].$2,
-                        size: 19, color: AppColors.primary),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(steps[i].$1,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      style: const TextStyle(
-                          fontSize: 10, color: AppColors.textSecondary)),
-                ],
-              ),
-            ),
-            if (i != steps.length - 1)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 22),
-                child: Icon(Icons.arrow_forward_ios_rounded,
-                    size: 12, color: AppColors.textTertiary),
-              ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // ───────────────────────── Shared bits ───────────────────────────────────
-  BoxDecoration _cardDec() {
-    return BoxDecoration(
-      color: AppColors.cardBackground,
-      borderRadius: BorderRadius.circular(AppRadius.lg),
-      border: Border.all(color: AppColors.border),
-      boxShadow: AppShadows.card,
-    );
-  }
-
-  Widget _sectionTitle(String title,
-      {String? action, VoidCallback? onAction}) {
+  Widget _sectionHeader(String title, String action, VoidCallback onTap) {
     return Row(
       children: [
         Text(title,
             style: const TextStyle(
-                fontSize: 16,
+                fontSize: 16.5,
                 fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary)),
+                color: Color(0xFF171717))),
         const Spacer(),
-        if (action != null && onAction != null)
-          GestureDetector(
-            onTap: onAction,
-            child: Row(
-              children: [
-                Text(action,
-                    style: const TextStyle(
-                        color: AppColors.primary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700)),
-                Icon(Icons.arrow_forward_ios_rounded,
-                    size: 11, color: AppColors.primary),
-              ],
-            ),
-          ),
+        GestureDetector(
+          onTap: onTap,
+          child: Text('$action →',
+              style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF8B5CF6))),
+        ),
       ],
     );
   }
 
-  Widget _emptyRow(String text) {
+  // ─── Green balance hero (mockup) ────────────────────────────────────────
+  Widget _balanceHero(int coins) {
     return Container(
-      width: double.infinity,
-      height: 90,
-      alignment: Alignment.center,
-      decoration: _cardDec(),
-      child: Text(text,
-          style: const TextStyle(
-              fontSize: 12.5, color: AppColors.textSecondary)),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF22A06B), Color(0xFF0E7C4A)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+        boxShadow: [
+          BoxShadow(
+              color: const Color(0xFF22A06B).withOpacity(0.30),
+              blurRadius: 18,
+              offset: const Offset(0, 8)),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: const BoxDecoration(
+                shape: BoxShape.circle, color: Color(0xFFF59E0B)),
+            child: const Center(
+              child: Text('C',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.w900)),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Your Balance',
+                    style: TextStyle(color: Colors.white70, fontSize: 12.5)),
+                const SizedBox(height: 2),
+                Text('$coins',
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 30,
+                        fontWeight: FontWeight.w900,
+                        height: 1.0)),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => _push(const WithdrawScreen()),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.card_giftcard_rounded,
+                      size: 16, color: Color(0xFF0E7C4A)),
+                  SizedBox(width: 6),
+                  Text('Redeem',
+                      style: TextStyle(
+                          color: Color(0xFF0E7C4A),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _skeletonH() {
+  // ─── Task of the Day grid (real offers) ─────────────────────────────────
+  Widget _tasksGrid() {
+    if (_tasks.isEmpty) {
+      return _emptyNote('No tasks live right now. Pull to refresh.');
+    }
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _tasks.length,
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        mainAxisSpacing: 10,
+        crossAxisSpacing: 10,
+        childAspectRatio: 0.78,
+      ),
+      itemBuilder: (context, i) {
+        final t = _tasks[i] as Map;
+        final title = (t['title'] ?? 'Task').toString();
+        final sub = (t['shortDesc'] ?? t['description'] ?? '').toString();
+        final coins = (t['coins'] ?? 0) as num;
+        return GestureDetector(
+          onTap: () => _push(TaskDetailScreen(
+            provider: 'CoinVault Partner',
+            title: title,
+            desc: sub,
+            coins: coins.toInt(),
+            steps: ((t['instructions'] ?? []) as List)
+                .map((e) => e.toString())
+                .toList(),
+          )),
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFFE7E7E7)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ProviderLogo(title, size: 38, radius: 10),
+                const SizedBox(height: 8),
+                Text(title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF171717))),
+                const SizedBox(height: 2),
+                Expanded(
+                  child: Text(sub,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 10.5,
+                          height: 1.25,
+                          color: Color(0xFF6B7280))),
+                ),
+                const SizedBox(height: 6),
+                _rewardChip(_reward(coins)),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _gridSkeleton() {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: 3,
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 0.78,
+      children: List.generate(
+          6,
+          (_) => Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEFEFEC),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              )),
+    );
+  }
+
+  Widget _rewardChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3D6),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.circle, size: 10, color: Color(0xFFF59E0B)),
+          const SizedBox(width: 4),
+          Text(label,
+              style: const TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFFB45309))),
+        ],
+      ),
+    );
+  }
+
+  // ─── Earn More bar ──────────────────────────────────────────────────────
+  Widget _earnMoreBar() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Earn More..',
+            style: TextStyle(
+                fontSize: 16.5,
+                fontWeight: FontWeight.w800,
+                color: Color(0xFF171717))),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1B1B1F),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _earnItem(Icons.monetization_on_rounded, 'Spin & earn',
+                  () => _push(const SpinScreen())),
+              _earnItem(Icons.emoji_events_rounded, 'Challenge',
+                  () => _push(const MissionsScreen())),
+              _earnItem(Icons.group_add_rounded, 'Refer & earn',
+                  () => _push(const InviteScreen())),
+              _earnItem(Icons.menu_book_rounded, 'Tutorial',
+                  () => _push(const HelpScreen())),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _earnItem(IconData icon, String label, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 26),
+          const SizedBox(height: 6),
+          Text(label,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600)),
+        ],
+      ),
+    );
+  }
+
+  // ─── Surveys row (real surveys) ─────────────────────────────────────────
+  Widget _surveysRow() {
+    if (_loading) return _rowSkeleton();
+    if (_surveys.isEmpty) return _emptyNote('No surveys live right now.');
     return SizedBox(
-      height: 168,
+      height: 128,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: 3,
+        itemCount: _surveys.length > 6 ? 6 : _surveys.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, i) {
+          final s = _surveys[i] as Map;
+          final title = (s['title'] ?? 'Survey').toString();
+          final coins = ((s['coins'] ?? 0) as num).toInt();
+          final mins = ((s['minutes'] ?? s['duration'] ?? 0) as num).toInt();
+          return GestureDetector(
+            onTap: () => _push(const SurveysScreen()),
+            child: Container(
+              width: 130,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE7E7E7)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAF1FF),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.assignment_rounded,
+                        size: 18, color: Color(0xFF3B82F6)),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF171717))),
+                  const SizedBox(height: 4),
+                  _rewardChip('+ $coins'),
+                  const Spacer(),
+                  if (mins > 0)
+                    Text('$mins mins',
+                        style: const TextStyle(
+                            fontSize: 10.5, color: Color(0xFF6B7280))),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ─── Task providers row ─────────────────────────────────────────────────
+  Widget _providersRow() {
+    const providers = [
+      ('CPX Research', '+ 30 - 300'),
+      ('BitLabs', '+ 50 - 400'),
+      ('Pollfish', '+ 10 - 250'),
+      ('AdScend', '+ 20 - 200'),
+      ('Lootably', '+ 5 - 150'),
+    ];
+    return SizedBox(
+      height: 112,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: providers.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        itemBuilder: (context, i) {
+          final (name, range) = providers[i];
+          return GestureDetector(
+            onTap: () => _push(ProviderTasksScreen(provider: name)),
+            child: Container(
+              width: 118,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFE7E7E7)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ProviderLogo(name, size: 34, radius: 10),
+                  const SizedBox(height: 8),
+                  Text(name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w800,
+                          color: Color(0xFF171717))),
+                  const SizedBox(height: 4),
+                  Text(range,
+                      style: const TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFF59E0B))),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  // ─── Ludo double-coins banner ───────────────────────────────────────────
+  Widget _ludoBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+        ),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.celebration_rounded,
+              color: Colors.white, size: 30),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Play Ludo & Double Coins',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800)),
+                SizedBox(height: 2),
+                Text('Earn up to 500 coins',
+                    style: TextStyle(color: Colors.white70, fontSize: 11.5)),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => _push(const EarnScreen()),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: const Text('Double Up',
+                  style: TextStyle(
+                      color: Color(0xFF6D28D9),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _rowSkeleton() {
+    return SizedBox(
+      height: 128,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: 4,
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (_, __) => Container(
-          width: 200,
+          width: 130,
           decoration: BoxDecoration(
-            color: AppColors.surfaceVariant,
-            borderRadius: BorderRadius.circular(AppRadius.lg),
+            color: const Color(0xFFEFEFEC),
+            borderRadius: BorderRadius.circular(14),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _emptyNote(String msg) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 22),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE7E7E7)),
+      ),
+      child: Text(msg,
+          style:
+              const TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
     );
   }
 }
