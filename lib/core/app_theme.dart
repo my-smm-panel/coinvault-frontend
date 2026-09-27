@@ -40,12 +40,6 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-  // brandHeader used as Gradient in some screens — keep as Gradient
-  static const LinearGradient brandHeader = LinearGradient(
-    colors: [Color(0xFF2D1B69), Color(0xFF7047F7)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
   static const Color goldLight = primaryLight;
 }
 class AppTextStyles {
