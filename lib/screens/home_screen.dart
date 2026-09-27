@@ -500,7 +500,7 @@ class _HomeTabState extends State<HomeTab> {
   Widget _homeTopBar(int? balance) {
     return Container(
       decoration: const BoxDecoration(
-        color: AppColors.brandHeader,
+        color: AppColors.brandHeaderColor,
         borderRadius: BorderRadius.only(
           bottomLeft: Radius.circular(24),
           bottomRight: Radius.circular(24),

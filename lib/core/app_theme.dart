@@ -5,7 +5,7 @@ class AppColors {
   static const Color background = Color(0xFFFAF8F5); // warm cream
   static const Color surface = Color(0xFFFFFFFF);    // cards
   static const Color surfaceVariant = Color(0xFFF1F4F8); // chips/skeleton
-  static const Color brandHeader = Color(0xFF2D1B69); // deep purple-blue (home header)
+  static const Color brandHeaderColor = Color(0xFF2D1B69); // deep purple-blue base
   static const Color primary = Color(0xFFF59E0B);    // amber/gold
   static const Color primaryDark = Color(0xFFD97706);
   static const Color primaryLight = Color(0xFFFBBF24);
@@ -37,6 +37,11 @@ class AppColors {
   );
   static const LinearGradient cardGradient = LinearGradient(
     colors: [Color(0xFFFFFFFF), Color(0xFFFFFCF7)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+  static const LinearGradient brandHeader = LinearGradient(
+    colors: [Color(0xFF2D1B69), Color(0xFF7047F7)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
