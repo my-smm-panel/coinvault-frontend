@@ -132,11 +132,11 @@ class _HomeTabState extends State<HomeTab> {
     'Open wallet',
   ];
   static const _carouselColors = <List<Color>>[
-    [Color(0xFF164C18), Color(0xFF2B7A24)],
-    [Color(0xFF075E68), Color(0xFF168A88)],
-    [Color(0xFF4C2B9D), Color(0xFF8052D5)],
-    [Color(0xFF9A4F16), Color(0xFFDC8A1C)],
-    [Color(0xFF173F7A), Color(0xFF2872B0)],
+    [Color(0xFF2D1B69), Color(0xFF7047F7)], // purple (home)
+    [Color(0xFF075E68), Color(0xFF168A88)], // teal (surveys)
+    [Color(0xFF7C3AED), Color(0xFF9F67FF)], // spin
+    [Color(0xFF9A4F16), Color(0xFFDC8A1C)], // trophy
+    [Color(0xFF173F7A), Color(0xFF2872B0)], // wallet
   ];
 
   @override
@@ -357,21 +357,24 @@ class _HomeTabState extends State<HomeTab> {
                 onRefresh: _loadHome,
                 child: ListView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
+                  padding: const EdgeInsets.fromLTRB(0, 8, 0, 28),
                   children: [
                     _homeCarousel(),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
                     _taskSection(),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 20),
                     _quickAccess(),
                     const SizedBox(height: 20),
-                    _sectionHeader(
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: _sectionHeader(
                       'Surveys',
                       action: 'View All',
                       onAction: () => _push(const SurveysScreen()),
                     ),
                     const SizedBox(height: 9),
                     _surveyList(),
+                    ),
                     const SizedBox(height: 20),
                     _sectionHeader(
                       'Task Providers',
@@ -462,78 +465,68 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _homeTopBar(int? balance) {
-    return SafeArea(
-      bottom: false,
-      child: SizedBox(
-        height: 56,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 19),
-          child: Row(
-            children: [
-              InkWell(
-                onTap: () => _push(const ProfileScreen()),
-                borderRadius: BorderRadius.circular(20),
-                child: ClipOval(
-                  child: Image.asset(
-                    'assets/bear_avatar.png',
-                    width: 34,
-                    height: 34,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const CircleAvatar(
-                      radius: 17,
-                      child: Icon(Icons.person_rounded),
+    return Container(
+      decoration: const BoxDecoration(
+        color: AppColors.brandHeader,
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: SizedBox(
+          height: 72,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                InkWell(
+                  onTap: () => _push(const ProfileScreen()),
+                  borderRadius: BorderRadius.circular(20),
+                  child: ClipOval(
+                    child: Image.asset(
+                      'assets/bear_avatar.png',
+                      width: 36,
+                      height: 36,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const CircleAvatar(
+                        radius: 18,
+                        backgroundColor: AppColors.primary,
+                        child: Icon(Icons.person_rounded, color: Colors.white),
+                      ),
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 34,
-                height: 34,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF7047F7), Color(0xFF9A55FF)],
+                const SizedBox(width: 10),
+                const Text('COIN VAULT',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2)),
+                const Spacer(),
+                Container(
+                  height: 36,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
                   ),
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    const Icon(Icons.monetization_on_rounded,
+                        color: AppColors.gold, size: 16),
+                    const SizedBox(width: 5),
+                    Text(balance == null ? '—' : formatCoins(balance),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900)),
+                  ]),
                 ),
-                child: const Icon(Icons.bolt_rounded,
-                    color: Colors.white, size: 21),
-              ),
-              const SizedBox(width: 7),
-              const Text('COINVAULT',
-                  style: TextStyle(
-                      color: Color(0xFF6642E8),
-                      fontSize: 17,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: .4)),
-              const Spacer(),
-              Container(
-                height: 34,
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFFF0D8),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  Container(
-                    width: 25,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF25282B),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(Icons.account_balance_wallet_rounded,
-                        color: Color(0xFFFFC43D), size: 15),
-                  ),
-                  const SizedBox(width: 5),
-                  Text(balance == null ? '—' : formatCoins(balance),
-                      style: const TextStyle(
-                          color: AppColors.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w800)),
-                ]),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -542,7 +535,7 @@ class _HomeTabState extends State<HomeTab> {
 
   Widget _homeCarousel() {
     return SizedBox(
-      height: 132,
+      height: 160,
       child: Stack(
         children: [
           PageView.builder(
@@ -552,13 +545,15 @@ class _HomeTabState extends State<HomeTab> {
             itemBuilder: (context, index) {
               final colors = _carouselColors[index];
               return ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(20),
                 child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                         colors: colors,
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight),
+                    borderRadius: BorderRadius.circular(20),
                   ),
                   child: Stack(
                     children: [
@@ -683,18 +678,20 @@ class _HomeTabState extends State<HomeTab> {
 
   Widget _quickAccess() {
     final actions = <_QuickAction>[
-      _QuickAction('Spin & earn', Icons.stars_rounded, const Color(0xFFFFC344),
+      _QuickAction('Spin & earn', Icons.stars_rounded, const Color(0xFF7C3AED),
           () => _push(const SpinScreen())),
       _QuickAction('Challenge', Icons.emoji_events_rounded,
-          const Color(0xFFFFC344), () => _push(const QuizScreen())),
+          const Color(0xFFDC8A1C), () => _push(const QuizScreen())),
       _QuickAction('Refer & earn', Icons.person_add_alt_1_rounded,
-          const Color(0xFFFFC344), () => _push(const InviteScreen())),
+          const Color(0xFFEC4899), () => _push(const InviteScreen())),
       _QuickAction('Tutorial', Icons.menu_book_rounded,
-          const Color(0xFFFFC344), () => _push(const HelpScreen())),
+          const Color(0xFF16A34A), () => _push(const HelpScreen())),
     ];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
         const Padding(
           padding: EdgeInsets.only(left: 1, bottom: 6),
           child: Text('Earn More..',
@@ -733,13 +730,15 @@ class _HomeTabState extends State<HomeTab> {
             )).toList(),
           ),
         ),
-      ],
+        ],
+      ),
     );
   }
 
   Widget _taskSection() {
     final tasks = _taskGridItems();
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: EdgeInsets.zero,
       decoration: const BoxDecoration(),
       child: Column(

@@ -1,72 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// App color palette - CoinVault light theme (per design sheet)
 class AppColors {
-  // Unified CoinVault orange/gold palette from the supplied UI reference.
-  static const Color primary = Color(0xFFA84D00);
+  static const Color background = Color(0xFFFAF8F5); // warm cream
+  static const Color surface = Color(0xFFFFFFFF);    // cards
+  static const Color surfaceVariant = Color(0xFFF1F4F8); // chips/skeleton
+  static const Color brandHeader = Color(0xFF2D1B69); // deep purple-blue (home header)
+  static const Color primary = Color(0xFFF59E0B);    // amber/gold
+  static const Color primaryDark = Color(0xFFD97706);
   static const Color primaryLight = Color(0xFFFBBF24);
-  static const Color primaryDark = Color(0xFF8C4000);
   static const Color primaryContainer = Color(0xFFFFF4E2);
-
-  // Accent - the same warm gold used for coin rewards.
-  static const Color gold = Color(0xFFF59E0B);
-  static const Color goldLight = Color(0xFFFBBF24);
+  static const Color gold = primary;
   static const Color goldContainer = Color(0xFFFFF7E6);
-
-  // Soft neutral surfaces keep the reward cards clear and readable.
-  static const Color surface = Color(0xFFFFFFFF);
-  static const Color surfaceVariant = Color(0xFFF1F4F8);
-  static const Color background = Color(0xFFF5F7FA);
-  static const Color cardBackground = Color(0xFFFFFFFF);
-
-  // Text colors (light theme)
-  static const Color textPrimary = Color(0xFF172033);
-  static const Color textSecondary = Color(0xFF647084);
-  static const Color textTertiary = Color(0xFF8993A3);
+  static const Color textPrimary = Color(0xFF171717);
+  static const Color textSecondary = Color(0xFF6B7280);
+  static const Color textTertiary = Color(0xFF9CA3AF);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
-
-  // Status colors
+  static const Color border = Color(0xFFE7E7E7);
   static const Color success = Color(0xFF16A34A);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color error = Color(0xFFEF4444);
-
-  // Dark surfaces (unused in light, kept for compat)
-  static const Color spinDark = Color(0xFFFFF7E6);
-  static const Color spinCard = Color(0xFFFFFFFF);
-
-  // Border/divider (light theme)
-  static const Color divider = Color(0xFFE8EDF3);
-  static const Color border = Color(0xFFE2E8F0);
-
-  // Gradients
-  static const LinearGradient primaryGradient = LinearGradient(
-    colors: [primaryDark, primary],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const LinearGradient goldGradient = LinearGradient(
-    colors: [gold, goldLight],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  static const LinearGradient cardGradient = LinearGradient(
-    colors: [Color(0xFFFFFFFF), Color(0xFFFFFCF7)],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
-
-  /// Warm CoinVault brand gradient used across headers and reward highlights.
-  static const LinearGradient brandHeader = LinearGradient(
-    colors: [primary, primaryDark],
-    begin: Alignment.topLeft,
-    end: Alignment.bottomRight,
-  );
+  static const Color hot = Color(0xFFEC4899);
+  static const Color error = Color(0xFFDC2626);
 }
 
-/// Text styles
 class AppTextStyles {
   static TextStyle get displayLarge => GoogleFonts.inter(
     fontSize: 32, fontWeight: FontWeight.w800, color: AppColors.textPrimary, height: 1.2,

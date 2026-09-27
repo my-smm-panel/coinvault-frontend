@@ -137,6 +137,8 @@ class _SurveysScreenState extends State<SurveysScreen> {
               const SliverToBoxAdapter(child: SizedBox(height: 12)),
               SliverToBoxAdapter(child: _filterChips()),
               const SliverToBoxAdapter(child: SizedBox(height: 6)),
+              SliverToBoxAdapter(child: _dailyProgressCard()),
+              const SliverToBoxAdapter(child: SizedBox(height: 6)),
               SliverToBoxAdapter(child: _sectionTitle()),
               if (_loading)
                 const SliverToBoxAdapter(
@@ -212,6 +214,74 @@ class _SurveysScreenState extends State<SurveysScreen> {
               fontSize: 12.5, fontWeight: FontWeight.w700),
           );
         },
+      ),
+    );
+  }
+
+  // ─────────────────────────── DAILY PROGRESS ───────────────────────────
+  Widget _dailyProgressCard() {
+    final total = _filtered.where((s) => (s as Map)['status']?.toString().toLowerCase() == 'completed').length;
+    final done = total;
+    final remaining = (3 - done).clamp(0, 3);
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
+        boxShadow: AppShadows.card,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.track_changes_rounded,
+                    color: AppColors.primary, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('Daily Poll Target',
+                    style: const TextStyle(
+                        color: _primaryText,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800)),
+              ),
+              Text('$done of 3 Finished',
+                  style: const TextStyle(
+                      color: _secondaryText, fontSize: 11, fontWeight: FontWeight.w700)),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: done / 3,
+              backgroundColor: AppColors.surfaceVariant,
+              valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(Icons.monetization_on_rounded,
+                  color: AppColors.gold, size: 13),
+              const SizedBox(width: 4),
+              Text('Finish $remaining more to unlock a 250 streak bonus',
+                  style: const TextStyle(
+                      color: _secondaryText, fontSize: 10.5)),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -120,10 +120,14 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                         padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
                         children: [
                           if (_top.isNotEmpty) ...[
+                            _weeklyPoolCard(),
+                            const SizedBox(height: 16),
                             _podium(),
                             const SizedBox(height: 16),
                             _myRankCard(),
                             const SizedBox(height: 18),
+                            _nudgeCard(),
+                            const SizedBox(height: 16),
                           ],
                           _listTitle(),
                           const SizedBox(height: 8),
@@ -298,6 +302,115 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
             fontSize: 20,
             fontWeight: FontWeight.w800,
           )),
+    );
+  }
+
+  // ─────────────────────────── WEEKLY POOL CARD ───────────────────────────
+  Widget _weeklyPoolCard() {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _card,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _border),
+        boxShadow: AppShadows.card,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.primaryContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.emoji_events_rounded,
+                color: AppColors.primary, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('WEEKLY POOL',
+                    style: TextStyle(
+                        color: _secondaryText,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8)),
+                const SizedBox(height: 3),
+                const Text('₹50,000 Cash Pool',
+                    style: TextStyle(
+                        color: _primaryText,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900)),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.success.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.success.withOpacity(0.3)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.check_circle_rounded,
+                    color: AppColors.success, size: 12),
+                const SizedBox(width: 4),
+                const Text('Guaranteed',
+                    style: TextStyle(
+                        color: AppColors.success,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ─────────────────────────── NUDGE CARD ───────────────────────────
+  Widget _nudgeCard() {
+    final rank = (_mine['rank'] as num?)?.toInt();
+    if (rank == null || rank <= 3) return const SizedBox.shrink();
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.goldContainer,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primaryContainer),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: AppColors.primary,
+            child: const Icon(Icons.emoji_events_rounded,
+                color: Colors.white, size: 16),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("You're only"+ " a few coins away from Top 20!",
+                    style: TextStyle(
+                        color: _primaryText,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w800)),
+                const SizedBox(height: 2),
+                Text('Complete 1 quick daily survey to leap forward.',
+                    style: const TextStyle(
+                        color: _secondaryText, fontSize: 11)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
