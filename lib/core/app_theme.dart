@@ -25,7 +25,6 @@ class AppColors {
   static const Color cardBackground = surface;
   static const Color divider = border;
   static const Color warning = primary;
-  static const Color primaryGradientColor = primary;
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [primaryDark, primary],
     begin: Alignment.topLeft,
@@ -41,8 +40,9 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
-  static const LinearGradient brandHeaderGradient = LinearGradient(
-    colors: [brandHeader, Color(0xFF1E1245)],
+  // brandHeader used as Gradient in some screens — keep as Gradient
+  static const LinearGradient brandHeader = LinearGradient(
+    colors: [Color(0xFF2D1B69), Color(0xFF7047F7)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
