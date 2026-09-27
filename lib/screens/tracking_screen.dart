@@ -180,7 +180,7 @@ class _TrackingScreenState extends State<TrackingScreen>
   Widget _header() {
     return Container(
       padding: const EdgeInsets.fromLTRB(8, 8, 14, 14),
-      decoration: const BoxDecoration(gradient: AppColors.brandHeader),
+      decoration: BoxDecoration(gradient: LinearGradient(colors: [AppColors.brandHeaderColor, Color(0xFF7047F7)], begin: Alignment.topLeft, end: Alignment.bottomRight)),
       child: Row(
         children: [
           InkWell(
