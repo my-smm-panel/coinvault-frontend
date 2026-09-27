@@ -197,7 +197,8 @@ class AppRepository {
 
   Future<bool> notifRead(String id) async {
     try {
-      final res = await _api.patch('/api/notifications/$id/read', {});
+      final eid = Uri.encodeComponent(id);
+      final res = await _api.patch('/api/notifications/$eid/read', {});
       return res is Map && res['success'] == true;
     } catch (_) {
       return false;
@@ -421,7 +422,8 @@ class AppRepository {
   /// Start a survey (registers IN_PROGRESS completion; server returns externalUrl).
   Future<Map<String, dynamic>?> startSurvey(String id) async {
     try {
-      final res = await _api.post('/api/surveys/$id/start', {});
+      final eid = Uri.encodeComponent(id);
+      final res = await _api.post('/api/surveys/$eid/start', {});
       if (res is Map && res['success'] == true && res['data'] is Map) {
         return Map<String, dynamic>.from(res['data'] as Map);
       }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
+import '../core/coin_format.dart';
 import '../services/app_repository.dart';
 import '../services/offerwall_service.dart';
 import '../services/paymentwall_service.dart';
@@ -475,7 +476,7 @@ class _EarnScreenState extends State<EarnScreen> {
                 size: 13, color: AppColors.primary),
             const SizedBox(width: 4),
             Text(
-              reward == null ? 'View task' : _formatNumber(reward),
+              reward == null ? 'View task' : formatCoins(reward),
               style: const TextStyle(
                   color: AppColors.primaryDark,
                   fontSize: 10,
@@ -881,13 +882,5 @@ class _EarnScreenState extends State<EarnScreen> {
         ]),
       );
 
-  String _formatNumber(int number) {
-    final digits = number.abs().toString();
-    final buffer = StringBuffer();
-    for (var i = 0; i < digits.length; i++) {
-      if (i > 0 && (digits.length - i) % 3 == 0) buffer.write(',');
-      buffer.write(digits[i]);
-    }
-    return number < 0 ? '-$buffer' : buffer.toString();
-  }
+
 }

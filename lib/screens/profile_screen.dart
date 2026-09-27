@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/coin_format.dart';
 
 import '../core/app_theme.dart';
 import '../models/app_models.dart';
@@ -110,18 +111,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) await _loadUser();
   }
 
-  static String _fmt(int n) {
-    final s = StringBuffer();
-    final str = n.abs().toString();
-    int count = 0;
-    for (int i = str.length - 1; i >= 0; i--) {
-      if (count != 0 && count % 3 == 0) s.write(',');
-      s.write(str[i]);
-      count++;
-    }
-    final rev = s.toString().split('').reversed.join();
-    return n < 0 ? '-$rev' : rev;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -306,7 +295,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         color: AppColors.primary, size: 16),
                     const SizedBox(width: 5),
                     Text(
-                      balance == null ? 'Balance unavailable' : '${_fmt(balance)} Coins',
+                      balance == null ? 'Balance unavailable' : '${formatCoins(balance)} Coins',
                       style: const TextStyle(
                         color: _textPrimary,
                         fontSize: 13.5,
@@ -333,7 +322,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       crossAxisSpacing: 10,
       childAspectRatio: 2.05,
       children: [
-        _stat('Balance', balance == null ? '—' : _fmt(balance), Icons.payments_rounded,
+        _stat('Balance', balance == null ? '—' : formatCoins(balance), Icons.payments_rounded,
             AppColors.primary),
         _stat('Spins Left', spinsLeft, Icons.donut_large_rounded,
             AppColors.primary),

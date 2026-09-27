@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
+import '../core/coin_format.dart';
 import '../screens/notifications_screen.dart';
 import '../screens/profile_screen.dart';
 
@@ -167,7 +168,7 @@ class CvHeader extends StatelessWidget {
               color: _orange, size: 16),
           const SizedBox(width: 5),
           Text(
-            _fmt(coins),
+            formatCoins(coins),
             style: const TextStyle(
               color: _primaryText,
               fontSize: 13,
@@ -179,18 +180,6 @@ class CvHeader extends StatelessWidget {
     );
   }
 
-  static String _fmt(int n) {
-    final s = StringBuffer();
-    final str = n.abs().toString();
-    int count = 0;
-    for (int i = str.length - 1; i >= 0; i--) {
-      if (count != 0 && count % 3 == 0) s.write(',');
-      s.write(str[i]);
-      count++;
-    }
-    final rev = s.toString().split('').reversed.join();
-    return n < 0 ? '-$rev' : rev;
-  }
 
   void _goNotifications(BuildContext context) {
     Navigator.of(context).push(

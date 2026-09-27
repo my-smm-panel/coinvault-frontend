@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/coin_format.dart';
 
 import '../core/app_theme.dart';
 import '../services/app_repository.dart';
@@ -255,7 +256,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
                 color: _primaryText, fontSize: 12.5, fontWeight: FontWeight.w700)),
         const SizedBox(height: 2),
         Text(
-            coins == null ? 'Coins unavailable' : '${_fmt(coins)} Coins',
+            coins == null ? 'Coins unavailable' : '${formatCoins(coins)} Coins',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
@@ -307,7 +308,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     final coins = rawCoins is num ? rawCoins.toInt() : null;
     final periodCoins = coins == null
         ? 'Coins unavailable'
-        : '${_fmt(coins)} Coins';
+        : '${formatCoins(coins)} Coins';
     if (rank == null) {
       return Container(
         padding: const EdgeInsets.all(14),
@@ -474,7 +475,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
               ],
             ),
           ),
-          Text(coins == null ? '—' : _fmt(coins),
+          Text(coins == null ? '—' : formatCoins(coins),
               style: const TextStyle(
                   color: _brown, fontSize: 13.5, fontWeight: FontWeight.w800)),
           const SizedBox(width: 4),
@@ -505,7 +506,7 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
         const SizedBox(height: 10),
         Row(
           children: [
-            _statCard('Coins Earned', coins == null ? '—' : _fmt(coins), Icons.savings_rounded,
+            _statCard('Coins Earned', coins == null ? '—' : formatCoins(coins), Icons.savings_rounded,
                 AppColors.gold),
             const SizedBox(width: 10),
             _statCard('Tasks Completed', myTasks?.toString() ?? '—', Icons.task_alt_rounded,
@@ -563,13 +564,4 @@ class _LeaderboardScreenState extends State<LeaderboardScreen> {
     );
   }
 
-  String _fmt(int n) {
-    final str = n.abs().toString();
-    final sb = StringBuffer();
-    for (var i = 0; i < str.length; i++) {
-      if (i > 0 && (str.length - i) % 3 == 0) sb.write(',');
-      sb.write(str[i]);
-    }
-    return n.isNegative ? '-$sb' : sb.toString();
-  }
 }
