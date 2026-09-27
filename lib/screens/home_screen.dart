@@ -200,6 +200,9 @@ class _HomeTabState extends State<HomeTab> {
           .toString()
           .trim();
 
+  String _offerTitle(Map<String, dynamic> offer) =>
+      (offer['title'] ?? offer['name'] ?? '').toString().trim();
+
   DateTime? _dateValue(dynamic value) {
     if (value is num) {
       final millis = value > 1e12 ? value.toInt() : value.toInt() * 1000;
@@ -238,15 +241,20 @@ class _HomeTabState extends State<HomeTab> {
       final type = (offer['type'] ?? offer['category'] ?? '')
           .toString()
           .toUpperCase();
+      final taskTagged = type.contains('TASK') ||
+          type.startsWith('INSTALL') ||
+          type.contains('GAME') ||
+          type.contains('MULTI') ||
+          offer['isTaskOfDay'] == true ||
+          offer['isDaily'] == true ||
+          offer['isFeatured'] == true;
+      final genericOffer = type.isEmpty ||
+          (!type.contains('SURVEY') &&
+              !type.contains('OFFERWALL') &&
+              !type.contains('PAYMENTWALL'));
       return _isOfferAvailable(offer) &&
-          (type.contains('TASK') ||
-              type.startsWith('INSTALL') ||
-              type.contains('GAME') ||
-              type.contains('MULTI') ||
-              offer['isTaskOfDay'] == true ||
-              offer['isDaily'] == true ||
-              offer['isFeatured'] == true) &&
-          (offer['title'] ?? '').toString().trim().isNotEmpty &&
+          (taskTagged || genericOffer) &&
+          _offerTitle(offer).isNotEmpty &&
           _offerId(offer).isNotEmpty;
     }).toList();
 
@@ -282,7 +290,7 @@ class _HomeTabState extends State<HomeTab> {
           (type.contains('GAME') ||
               type.contains('MULTI') ||
               (steps is List && steps.length > 1)) &&
-          (offer['title'] ?? '').toString().trim().isNotEmpty;
+          _offerTitle(offer).isNotEmpty;
     }).toList();
   }
 
@@ -297,22 +305,16 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   List<Map<String, dynamic>> _otherOffers() {
-    final multiIds = _multiStepContent().map(_offerId).toSet();
+    final taskIds = _serverTasks().map(_offerId).toSet();
     return _offers.where((offer) {
       final type = (offer['type'] ?? offer['category'] ?? '')
           .toString()
           .toUpperCase();
       return _isOfferAvailable(offer) &&
-          (offer['title'] ?? '').toString().trim().isNotEmpty &&
+          _offerTitle(offer).isNotEmpty &&
           _offerId(offer).isNotEmpty &&
-          !multiIds.contains(_offerId(offer)) &&
-          !type.contains('TASK') &&
-          !type.contains('SURVEY') &&
-          !type.startsWith('INSTALL') &&
-          !type.contains('GAME') &&
-          !type.contains('MULTI') &&
-          offer['isTaskOfDay'] != true &&
-          offer['isDaily'] != true;
+          !taskIds.contains(_offerId(offer)) &&
+          (type.contains('OFFERWALL') || type.contains('PAYMENTWALL'));
     }).toList();
   }
 
@@ -330,7 +332,7 @@ class _HomeTabState extends State<HomeTab> {
         : const <String>[];
     _push(TaskDetailScreen(
       provider: (offer['provider'] ?? offer['providerName'] ?? '').toString(),
-      title: (offer['title'] ?? '').toString(),
+      title: _offerTitle(offer),
       desc: (offer['shortDesc'] ?? offer['description'] ?? '').toString(),
       coins: null,
       steps: steps,
@@ -808,7 +810,7 @@ class _HomeTabState extends State<HomeTab> {
   }
 
   Widget _taskTile(Map<String, dynamic> task) {
-    final title = (task['title'] ?? '').toString().trim();
+    final title = _offerTitle(task);
     final provider =
         (task['provider'] ?? task['providerName'] ?? '').toString().trim();
     final detail = (task['shortDesc'] ?? task['description'] ?? provider)
@@ -914,8 +916,12 @@ class _HomeTabState extends State<HomeTab> {
     if (_loading) return _surveySkeleton();
     final surveys = _surveys.whereType<Map>().map((item) =>
         Map<String, dynamic>.from(item)).where((survey) =>
-        (survey['title'] ?? '').toString().trim().isNotEmpty &&
-        (survey['id'] ?? survey['_id'] ?? '').toString().trim().isNotEmpty).take(12).toList();
+        _isOfferAvailable(survey) &&
+        _offerTitle(survey).isNotEmpty &&
+        (survey['id'] ?? survey['_id'] ?? survey['surveyId'] ?? '')
+            .toString()
+            .trim()
+            .isNotEmpty).take(12).toList();
     if (surveys.isEmpty) {
       return _emptyCard(
         icon: Icons.poll_rounded,
@@ -1153,7 +1159,7 @@ class _HomeTabState extends State<HomeTab> {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: _activityRow(
                   icon: icon,
-                  title: (offer['title'] ?? '').toString(),
+                  title: _offerTitle(offer),
                   provider: (offer['provider'] ?? offer['providerName'] ?? '')
                       .toString(),
                   detail: (offer['shortDesc'] ?? offer['description'] ?? '')

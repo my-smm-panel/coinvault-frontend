@@ -31,6 +31,7 @@ class _EarnScreenState extends State<EarnScreen> {
   bool _loading = true;
   bool _dailyExpanded = false;
   bool _featuredExpanded = false;
+  int _loadRevision = 0;
 
   @override
   void initState() {
@@ -39,6 +40,7 @@ class _EarnScreenState extends State<EarnScreen> {
   }
 
   Future<void> _load() async {
+    final revision = ++_loadRevision;
     if (mounted) setState(() => _loading = true);
     final results = await Future.wait<dynamic>([
       AppRepository.instance.fetchSurveys(),
@@ -46,7 +48,7 @@ class _EarnScreenState extends State<EarnScreen> {
       OfferwallService.instance.fetchOffers(),
       PaymentwallService.instance.fetchOffers(),
     ]);
-    if (!mounted) return;
+    if (!mounted || revision != _loadRevision) return;
     setState(() {
       _surveys = (results[0] as List<dynamic>?) ?? [];
       _offers = (results[1] as List<dynamic>?) ?? [];
@@ -480,7 +482,7 @@ class _EarnScreenState extends State<EarnScreen> {
     }
     final surveys = _surveys
         .whereType<Map>()
-        .where((item) => _title(item).isNotEmpty)
+        .where((item) => _title(item).isNotEmpty && _available(item))
         .take(8)
         .toList();
     if (surveys.isEmpty) return _empty('No surveys available right now.');
