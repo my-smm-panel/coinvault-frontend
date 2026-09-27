@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../core/app_theme.dart';
@@ -8,6 +10,7 @@ import 'earn_screen.dart';
 import 'help_screen.dart';
 import 'invite_screen.dart';
 import 'leaderboard_screen.dart';
+import 'profile_screen.dart';
 import 'quiz_screen.dart';
 import 'spin_screen.dart';
 import 'surveys_screen.dart';
@@ -93,11 +96,66 @@ class _HomeTabState extends State<HomeTab> {
   bool _offersUnavailable = false;
   bool _surveysUnavailable = false;
   int _loadRevision = 0;
+  final PageController _carouselController = PageController();
+  Timer? _carouselTimer;
+  int _carouselIndex = 0;
+
+  static const _carouselImages = <String>[
+    'assets/bear_tasks.png',
+    'assets/bear_earn.png',
+    'assets/wheel.png',
+    'assets/trophy.png',
+    'assets/bear_redeem.png',
+  ];
+  static const _carouselTitles = <String>[
+    'Find your next task',
+    'Explore surveys',
+    'Try the daily spin',
+    'Check the rankings',
+    'Redeem your coins',
+  ];
+  static const _carouselSubtitles = <String>[
+    'Browse activities available to you',
+    'See surveys currently listed',
+    'Check today’s spin availability',
+    'See how you rank this week',
+    'View the withdrawal options',
+  ];
+  static const _carouselCtas = <String>[
+    'Browse tasks',
+    'View surveys',
+    'Open spin',
+    'See rankings',
+    'Open wallet',
+  ];
+  static const _carouselColors = <List<Color>>[
+    [Color(0xFF164C18), Color(0xFF2B7A24)],
+    [Color(0xFF075E68), Color(0xFF168A88)],
+    [Color(0xFF4C2B9D), Color(0xFF8052D5)],
+    [Color(0xFF9A4F16), Color(0xFFDC8A1C)],
+    [Color(0xFF173F7A), Color(0xFF2872B0)],
+  ];
 
   @override
   void initState() {
     super.initState();
     _loadHome();
+    _carouselTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (!mounted || !_carouselController.hasClients) return;
+      final next = (_carouselIndex + 1) % _carouselImages.length;
+      _carouselController.animateToPage(
+        next,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _carouselTimer?.cancel();
+    _carouselController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadHome() async {
@@ -177,13 +235,16 @@ class _HomeTabState extends State<HomeTab> {
               type.contains('GAME') ||
               type.contains('MULTI') ||
               offer['isTaskOfDay'] == true ||
-              offer['isDaily'] == true) &&
+              offer['isDaily'] == true ||
+              offer['isFeatured'] == true) &&
           (offer['title'] ?? '').toString().trim().isNotEmpty &&
           _offerId(offer).isNotEmpty;
     }).toList();
 
     int priority(Map<String, dynamic> task) {
-      if (task['isTaskOfDay'] == true || task['isDaily'] == true) return 3;
+      if (task['isTaskOfDay'] == true ||
+          task['isDaily'] == true ||
+          task['isFeatured'] == true) return 3;
       final type =
           (task['type'] ?? task['category'] ?? '').toString().toUpperCase();
       if (type.contains('TASK')) return 2;
@@ -286,7 +347,7 @@ class _HomeTabState extends State<HomeTab> {
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
                   children: [
-                    _walletHero(BalanceStream.instance.value),
+                    _homeCarousel(),
                     const SizedBox(height: 12),
                     _taskSection(),
                     const SizedBox(height: 18),
@@ -358,6 +419,23 @@ class _HomeTabState extends State<HomeTab> {
           padding: const EdgeInsets.symmetric(horizontal: 19),
           child: Row(
             children: [
+              InkWell(
+                onTap: () => _push(const ProfileScreen()),
+                borderRadius: BorderRadius.circular(20),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/bear_avatar.png',
+                    width: 34,
+                    height: 34,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => const CircleAvatar(
+                      radius: 17,
+                      child: Icon(Icons.person_rounded),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               Container(
                 width: 34,
                 height: 34,
@@ -386,8 +464,16 @@ class _HomeTabState extends State<HomeTab> {
                   borderRadius: BorderRadius.circular(11),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
-                  const Icon(Icons.monetization_on_rounded,
-                      color: Color(0xFFE6A500), size: 17),
+                  Container(
+                    width: 25,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF25282B),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(Icons.account_balance_wallet_rounded,
+                        color: Color(0xFFFFC43D), size: 15),
+                  ),
                   const SizedBox(width: 5),
                   Text(balance == null ? '—' : _formatNumber(balance),
                       style: const TextStyle(
@@ -403,111 +489,145 @@ class _HomeTabState extends State<HomeTab> {
     );
   }
 
-  Widget _walletHero(int? balance) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF226D0D), Color(0xFF154B08)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x25236B15),
-            blurRadius: 12,
-            offset: Offset(0, 4),
+  Widget _homeCarousel() {
+    return SizedBox(
+      height: 132,
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: _carouselController,
+            itemCount: _carouselImages.length,
+            onPageChanged: (index) => setState(() => _carouselIndex = index),
+            itemBuilder: (context, index) {
+              final colors = _carouselColors[index];
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                        colors: colors,
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight),
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        left: 15,
+                        top: 14,
+                        bottom: 22,
+                        right: 118,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(_carouselTitles[index],
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w900,
+                                    height: 1.1)),
+                            const SizedBox(height: 5),
+                            Text(_carouselSubtitles[index],
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                    color: Colors.white.withOpacity(.86),
+                                    fontSize: 10,
+                                    height: 1.2)),
+                            const Spacer(),
+                            InkWell(
+                              onTap: () => _openCarouselSlide(index),
+                              borderRadius: BorderRadius.circular(20),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(_carouselCtas[index],
+                                        style: TextStyle(
+                                            color: colors.last,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w800)),
+                                    const SizedBox(width: 3),
+                                    Icon(Icons.arrow_forward_rounded,
+                                        color: colors.last, size: 12),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        bottom: 4,
+                        right: 5,
+                        width: 120,
+                        child: Image.asset(
+                          _carouselImages[index],
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => const Icon(
+                              Icons.auto_awesome_rounded,
+                              color: Colors.white,
+                              size: 48),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+          Positioned(
+            bottom: 6,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(_carouselImages.length, (index) {
+                final active = index == _carouselIndex;
+                return AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  width: active ? 12 : 5,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(active ? .95 : .48),
+                    borderRadius: BorderRadius.circular(5),
+                  ),
+                );
+              }),
+            ),
           ),
         ],
       ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final narrow = constraints.maxWidth < 285;
-          final balanceText = balance == null
-              ? (_loading ? 'Checking balance…' : 'Balance unavailable')
-              : _formatNumber(balance);
-          final balanceColumn = Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Your Balance',
-                  style: TextStyle(
-                      color: Color(0xFFC9CDE3),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 1.1)),
-              const SizedBox(height: 5),
-              if (balance == null)
-                Text(balanceText,
-                    maxLines: 2,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                        height: 1.15))
-              else
-                FittedBox(
-                  alignment: Alignment.centerLeft,
-                  fit: BoxFit.scaleDown,
-                  child: Text(balanceText,
-                      maxLines: 1,
-                      style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 25,
-                          fontWeight: FontWeight.w800,
-                          height: 1.15)),
-                ),
-            ],
-          );
-          final withdraw = ElevatedButton(
-            onPressed: () => _push(const WithdrawScreen()),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFBEE493),
-              foregroundColor: const Color(0xFF174E0C),
-              elevation: 0,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              minimumSize: const Size(0, 40),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-            ),
-            child: const Text('Redeem',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800)),
-          );
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 42,
-                    height: 42,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: const Color(0xFFFFB82E),
-                      border: Border.all(
-                          color: const Color(0xFFFFE595), width: 2),
-                    ),
-                    child: const Icon(Icons.monetization_on_rounded,
-                        color: Color(0xFFFFF4C8), size: 29),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(child: balanceColumn),
-                  if (!narrow) ...[
-                    const SizedBox(width: 7),
-                    withdraw,
-                  ],
-                ],
-              ),
-              if (narrow) ...[
-                const SizedBox(height: 12),
-                SizedBox(width: double.infinity, child: withdraw),
-              ],
-            ],
-          );
-        },
-      ),
     );
+  }
+
+  void _openCarouselSlide(int index) {
+    switch (index) {
+      case 0:
+        _push(const EarnScreen());
+        break;
+      case 1:
+        _push(const SurveysScreen());
+        break;
+      case 2:
+        _push(const SpinScreen());
+        break;
+      case 3:
+        _push(const LeaderboardScreen());
+        break;
+      default:
+        _push(const WithdrawScreen());
+    }
   }
 
   Widget _quickAccess() {
